@@ -76,7 +76,7 @@ export function leakIcon(leak) {
       </div>
       <div style="
         background:rgba(15,23,42,0.72);color:#fff;
-        font-size:10px;font-weight:700;line-height:1;
+        font-size:11px;font-weight:700;line-height:1;
         padding:2px 5px;border-radius:8px;
         backdrop-filter:blur(3px);
         max-width:72px;overflow:hidden;text-overflow:ellipsis;

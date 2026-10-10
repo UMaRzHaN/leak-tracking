@@ -2,18 +2,11 @@ import { lazy, Suspense } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import Notification from "@/components/ui/Notification/Notification";
 import ConfirmSheet from "@/components/ui/ConfirmSheet/ConfirmSheet";
-import { STATUS } from "@/utils/status";
 import MonitoringSheet from "../MonitoringSheet";
 import { createMonitoringDraft } from "../monitoringDomain";
 
 const LeakDetailsSheet = lazy(
   () => import("@/features/leakDetails/LeakDetailsSheet"),
-);
-const StatusPickerModal = lazy(
-  () => import("@/features/status/StatusPickerModal/StatusPickerModal"),
-);
-const ResolveModal = lazy(
-  () => import("@/features/resolve/ResolveModal/ResolveModal"),
 );
 const ReopenLeakModal = lazy(
   () => import("@/features/status/ReopenLeakModal/ReopenLeakModal"),
@@ -35,30 +28,18 @@ export default function MonitoringDialogs({
   onCloseMonitor,
   onCloseNotification,
   onClosePendingReopen,
-  onClosePicker,
-  onCloseReopen,
-  onCloseRepair,
-  onCloseResolve,
   onConfirmMonitoringReopen,
-  onConfirmReopen,
-  onConfirmRepair,
-  onConfirmResolve,
   onDeleteLeak,
   onRepeatConfirm,
   onRepeatCancel,
   onRepeatNewRound,
   onSaveLeak,
   onSaveRecord,
-  onSelectStatus,
   onStartRound,
   onUpdateDraft,
   pendingMonitoringReopen,
   photoRequired,
-  pickerLeak,
-  reopenLeak,
-  repairLeak,
   repeatConfirmLeak,
-  resolveLeak,
   roundConfirmOpen,
   submitted,
   texts,
@@ -89,7 +70,10 @@ export default function MonitoringDialogs({
         description={t("monitoring.repeatDescription")}
         confirmLabel={t("monitoring.repeatConfirm")}
         cancelLabel={t("monitoring.cancel")}
-        secondaryActionLabel={t("monitoring.repeatSecondary")}
+        // Без «нового обхода», если новые обходы выключены в настройках.
+        secondaryActionLabel={
+          onRepeatNewRound ? t("monitoring.repeatSecondary") : null
+        }
         onSecondaryAction={onRepeatNewRound}
         onConfirm={onRepeatConfirm}
         onCancel={onRepeatCancel}
@@ -127,40 +111,6 @@ export default function MonitoringDialogs({
             onChange={(patch) => onUpdateDraft(monitorLeak.id, patch)}
             onSave={() => onSaveRecord(monitorLeak)}
             onClose={onCloseMonitor}
-          />
-        )}
-
-        {pickerLeak && (
-          <StatusPickerModal
-            current={pickerLeak.status ?? STATUS.OPEN}
-            onSelect={onSelectStatus}
-            onClose={onClosePicker}
-          />
-        )}
-
-        {resolveLeak && (
-          <ResolveModal
-            leak={resolveLeak}
-            onConfirm={onConfirmResolve}
-            onClose={onCloseResolve}
-          />
-        )}
-
-        {repairLeak && (
-          <ResolveModal
-            leak={repairLeak}
-            mode="repair"
-            onConfirm={onConfirmRepair}
-            onClose={onCloseRepair}
-          />
-        )}
-
-        {reopenLeak && (
-          <ReopenLeakModal
-            leak={reopenLeak}
-            vars={vars}
-            onConfirm={onConfirmReopen}
-            onClose={onCloseReopen}
           />
         )}
 

@@ -117,8 +117,14 @@ const scopePaths = {
     // debug-signed `releaseCheck` twin — none of which are the release, and
     // the last of which is minified exactly like it and so is the easiest to
     // mistake for it. Evidence for a release should describe the release.
+    // `verify-android-release-apk.mjs` copies the R8 mapping in here, so it
+    // is hashed together with the APK it decodes.
+    //
+    // Only what `android:release` itself produces is listed: it runs
+    // `lintRelease`, not `lintDebug`, and `assembleRelease`, not
+    // `bundleRelease`, so a debug lint report or an AAB found here would be
+    // left over from some other build and vouch for nothing.
     "android/app/build/outputs/apk/release",
-    "android/app/build/reports/lint-results-debug.html",
     "android/app/build/reports/lint-results-release.html",
     "android/app/build/test-results",
   ],

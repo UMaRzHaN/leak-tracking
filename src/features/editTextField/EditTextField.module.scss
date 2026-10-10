@@ -15,14 +15,14 @@
   }
 
   &:focus-within {
-    background: var(--c-blue-dim);
+    background: var(--c-accent-dim);
   }
 }
 
 [data-theme="dark"] .field {
   border-bottom-color: #3d5166;
   &:focus-within {
-    background: rgba(37, 99, 235, 0.12);
+    background: rgba(109, 61, 232, 0.12);
   }
 }
 
@@ -34,20 +34,20 @@
   box-shadow: var(--shadow-sm);
 
   &:focus-within {
-    border-color: var(--c-blue);
-    background: var(--c-blue-dim);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    border-color: var(--c-accent);
+    background: var(--c-accent-dim);
+    box-shadow: 0 0 0 3px rgba(109, 61, 232, 0.12);
   }
 }
 
 [data-theme="dark"] .compact:focus-within {
-  background: rgba(37, 99, 235, 0.12);
+  background: rgba(109, 61, 232, 0.12);
 }
 
 /* ── Label ── */
 .label {
   display: block;
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   color: var(--c-text3);
   text-transform: uppercase;
@@ -60,7 +60,7 @@
   text-overflow: ellipsis;
 
   .field:focus-within & {
-    color: var(--c-blue-text);
+    color: var(--c-accent-text);
   }
 }
 
@@ -74,7 +74,7 @@
 /* ── Control (input or textarea) ── */
 .control {
   /* iOS zoom prevention: font-size must be >= 16px */
-  font-size: 16px;
+  font-size: var(--fs-lg);
   flex: 1;
   min-width: 0;
   border: none;
@@ -125,7 +125,7 @@
   border-radius: 50%;
   background: var(--c-border);
   color: var(--c-text3);
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   line-height: 1;
   display: flex;
   align-items: center;

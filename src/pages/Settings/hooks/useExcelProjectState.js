@@ -1,3 +1,8 @@
+import {
+  applyProjectRounds,
+  readProjectRounds,
+  restoreProjectRounds,
+} from "@/app/project/projectRounds";
 import { useCallback } from "react";
 import {
   readMonitoringRound,
@@ -12,12 +17,17 @@ import {
   writeProjectSyncState,
 } from "@/services/sync/projectSyncState";
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
+import {
+  mergeAcceptancesAndSurvey,
+  snapshotAcceptancesAndSurvey,
+} from "@/services/backup/acceptancesAndSurvey";
 
 /**
  * Проект вокруг импорта Excel: снять снимок, применить привезённое, откатить.
  *
  * Записи утечек — не всё, что приезжает в книге: с ней приходят переменные
- * проекта, настройки экрана, обход мониторинга и состояние синхронизации.
+ * проекта, настройки экрана, обходы, накладные приёмки, обследование и
+ * состояние синхронизации.
  * Живут они не в базе, а рядом — в localStorage и в отдельных хранилищах, и
  * транзакция импорта их не откатывает. Поэтому перед вливанием снимается
  * снимок, а если импорт не сложился, снимок раскладывается обратно.
@@ -52,7 +62,9 @@ export function useExcelProjectState({
       }
       if (result.portableArchive) {
         saveMonitoringRound(activeProject.id, result.monitoringRound ?? null);
+        applyProjectRounds(activeProject.id, result.rounds);
       }
+      mergeAcceptancesAndSurvey(activeProject.id, result);
       if (result.sync) {
         await writeProjectSyncState(activeProject.id, result.sync, leaks);
       }
@@ -68,7 +80,9 @@ export function useExcelProjectState({
       varsRaw: localStorage.getItem(STORAGE_KEYS.PROJECT_VARS(projectId)),
       settings: readProjectSettings(projectId),
       monitoringRound: readMonitoringRound(projectId),
+      rounds: readProjectRounds(projectId),
       sync: await readProjectSyncStateAsync(projectId),
+      restoreAcceptancesAndSurvey: snapshotAcceptancesAndSurvey(projectId),
     };
   }, [activeProject]);
 
@@ -87,6 +101,8 @@ export function useExcelProjectState({
       );
       writeProjectSettings(projectId, snapshot.settings);
       saveMonitoringRound(projectId, snapshot.monitoringRound);
+      restoreProjectRounds(projectId, snapshot.rounds);
+      snapshot.restoreAcceptancesAndSurvey?.();
       await writeProjectSyncState(projectId, snapshot.sync, data);
     },
     [data, restoreProjectSnapshot],

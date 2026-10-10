@@ -242,6 +242,33 @@ describe("buildProjectBackupZip + peekBackupZip — round-trip", () => {
     expect(peek.detectedType).toBe("upstream");
   });
 
+  it("везёт обходы ремонтов и сверки, отличая «не было» от старого архива", async () => {
+    localStorage.clear();
+    const repairs = { number: 3, startedAt: "2026-10-01T00:00:00.000Z" };
+    localStorage.setItem(
+      `app:${UPSTREAM_PROJECT.id}:repair_round_v1`,
+      JSON.stringify(repairs),
+    );
+    const blob = await buildProjectBackupZip({
+      leaks,
+      idbGet: null,
+      project: UPSTREAM_PROJECT,
+      vars: null,
+    });
+    const peek = await peekBackupZip(blob);
+    // Вид без обхода — явный null: архив знает, что сверки не было.
+    expect(peek.meta.rounds).toEqual({ repairs, reconcile: null });
+    localStorage.clear();
+  });
+
+  it("отклоняет обход без номера в rounds", () => {
+    const result = validateProjectBackupMeta({
+      project: { name: "x", type: "upstream" },
+      rounds: { repairs: { startedAt: "2026-10-01" }, reconcile: null },
+    });
+    expect(result.ok).toBe(false);
+  });
+
   it("сохраняет и восстанавливает vars", async () => {
     const vars = { density: 0.668, GWP: 28, percentage_gas_to_flare: 50 };
     const blob = await buildProjectBackupZip({
@@ -507,13 +534,14 @@ describe("buildProjectBackupZip — порченые снимки", () => {
 });
 
 describe("buildProjectBackupZip — раскладка снимков", () => {
-  it("кладёт снимки утечки в LDAR, а осмотры — в папки обходов", async () => {
+  it("кладёт снимки утечки и осмотров в папки подразделения: LDAR и обходы", async () => {
     const { default: JSZip } = await import("jszip");
     const roundPhoto = "data:image/jpeg;base64,cm91bmQy";
     const blob = await buildProjectBackupZip({
       leaks: [
         makeLeak({
           leak_id: "3242",
+          subdivision: "НГДУ-1",
           // У открытой утечки «фото до» — снимок последнего осмотра.
           photo: roundPhoto,
           photo_repair: "data:image/jpeg;base64,cmVwYWly",
@@ -547,19 +575,19 @@ describe("buildProjectBackupZip — раскладка снимков", () => {
       .filter((name) => name.startsWith("photos/") && !zip.files[name].dir)
       .sort();
     expect(photos).toEqual([
-      "photos/LDAR/3242/repair.jpg",
-      "photos/monitoring/1/3242 (утечки нет)/record-1.jpg",
-      "photos/monitoring/2/3242 (утечка есть)/record-1.jpg",
+      "photos/LDAR/НГДУ-1/3242/repair.jpg",
+      "photos/monitoring/1/НГДУ-1/3242 (утечки нет)/record-1.jpg",
+      "photos/monitoring/2/НГДУ-1/3242 (утечка есть)/record-1.jpg",
     ]);
 
     const peek = await peekBackupZip(blob);
     const [leak] = peek.leaks;
     expect(leak.photo).toBe(
-      "zip:photos/monitoring/2/3242 (утечка есть)/record-1.jpg",
+      "zip:photos/monitoring/2/НГДУ-1/3242 (утечка есть)/record-1.jpg",
     );
     expect(leak.events.map((event) => event.photo)).toEqual([
-      "zip:photos/monitoring/1/3242 (утечки нет)/record-1.jpg",
-      "zip:photos/monitoring/2/3242 (утечка есть)/record-1.jpg",
+      "zip:photos/monitoring/1/НГДУ-1/3242 (утечки нет)/record-1.jpg",
+      "zip:photos/monitoring/2/НГДУ-1/3242 (утечка есть)/record-1.jpg",
     ]);
   });
 });

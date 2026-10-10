@@ -1,6 +1,6 @@
 export const emptyState = {
-  noRecords: "Записей пока нет",
   noFilteredRecords: "Нет записей с таким статусом",
+  noRecords: "Записей пока нет",
   addFirstLeak: "Добавьте первую утечку через кнопку + внизу",
   addLeak: "+ Добавить утечку",
 };

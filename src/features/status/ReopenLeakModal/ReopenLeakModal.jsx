@@ -5,8 +5,10 @@ import * as variables from "@/data/variables";
 import CalculationParametersForm from "@/features/calculationParameters/CalculationParametersForm";
 import {
   buildReopenCalcVars,
+  normalizeReopenMeasurements,
   REOPEN_MEASUREMENT_FIELDS,
 } from "@/utils/reopenLeak";
+import { findCalculationBlocker } from "@/utils/calculationParams";
 import { isPinkBagEquipment } from "@/utils/calculations/calculations";
 import Notification from "@/components/ui/Notification/Notification";
 import s from "./ReopenLeakModal.module.scss";
@@ -153,6 +155,26 @@ export default function ReopenLeakModal({ leak, vars, onConfirm, onClose }) {
       String(effectiveCalcVars.serial_number ?? "").trim() === ""
     ) {
       openCalcModal();
+      return;
+    }
+
+    // Пересчёт на неверных данных молча оставил бы выбросы от прежних замеров.
+    const blocker = findCalculationBlocker(
+      { ...leak, ...normalizeReopenMeasurements(draft) },
+      vars,
+      effectiveCalcVars,
+    );
+    if (blocker) {
+      if (blocker.key === "params") openCalcModal();
+      setNotification({
+        type: "error",
+        message:
+          blocker.key === "params"
+            ? t("reopen.calcParamsInvalid")
+            : `${t(`reopen.fields.${blocker.key}`)}: ${t(
+                `leakForm.validation.${blocker.code}`,
+              )}`,
+      });
       return;
     }
 

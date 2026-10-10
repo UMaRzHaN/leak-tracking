@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import ExcelJS from "exceljs";
 import JSZip from "jszip";
 import { detectImportKind } from "./importRouting";
+import { inflatedArchive } from "@/test/zipBomb";
 
 async function workbook(sheetNames) {
   const book = new ExcelJS.Workbook();
@@ -81,6 +82,57 @@ describe("working out what an imported file is", () => {
     const file = new File(["not a zip at all"], "notes.txt");
     await expect(detectImportKind(file)).resolves.toMatchObject({
       kind: "unknown",
+    });
+  });
+});
+
+describe("zip-бомба на входе", () => {
+  // Определение формата — первое, что делается с любым файлом, поэтому лимиты
+  // импорта должны действовать уже здесь, а не только в ветках разбора.
+  it("отказывает книге, чей workbook.xml раздувается за лимит", async () => {
+    const file = await inflatedArchive(
+      { "xl/workbook.xml": '<sheet name="Inventorization"/>' },
+      ["xl/workbook.xml"],
+    );
+    await expect(detectImportKind(file)).rejects.toThrow(/too large/);
+  });
+
+  it("отказывает архиву с раздутой вложенной книгой", async () => {
+    const file = await inflatedArchive({ "report/book.xlsx": "x".repeat(64) }, [
+      "report/book.xlsx",
+    ]);
+    await expect(detectImportKind(file)).rejects.toThrow(/too large/);
+  });
+
+  it("отказывает архиву, где раздутая запись лежит рядом непрочитанной", async () => {
+    // Лимит на запись — и по заголовку тоже: раздутый файл где угодно в
+    // архиве делает архив подозрительным целиком.
+    const file = await inflatedArchive(
+      { "backup.json": "{}", "junk.bin": "x" },
+      ["junk.bin"],
+    );
+    await expect(detectImportKind(file)).rejects.toThrow(/too large/);
+  });
+
+  it("отказывает файлу больше гигабайта, не открывая его", async () => {
+    const file = { size: 2 * 1024 * 1024 * 1024, arrayBuffer: vi.fn() };
+    await expect(detectImportKind(/** @type {any} */ (file))).rejects.toThrow(
+      /too large/,
+    );
+    expect(file.arrayBuffer).not.toHaveBeenCalled();
+  });
+
+  it("заглядывает только на один уровень вложенности", async () => {
+    // Книги в книге не бывает; без этого ограничения zip-«квайн» раскрывал бы
+    // себя бесконечно.
+    const inventory = await workbook(["Inventorization"]);
+    const middle = await archive({
+      "inner.xlsx": await inventory.arrayBuffer(),
+    });
+    const outer = await archive({ "outer.xlsx": await middle.arrayBuffer() });
+    await expect(detectImportKind(outer)).resolves.toEqual({
+      kind: "excel",
+      reason: "zipped-workbook",
     });
   });
 });

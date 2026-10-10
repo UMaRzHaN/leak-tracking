@@ -1,4 +1,5 @@
 import { getDistanceMeters } from "@/utils/geoUtils";
+import { hasValidCoordinates } from "@/utils/coordinates";
 import { matchesLeakLocationFilter } from "@/utils/locationFilter";
 import { toNullableNumber } from "@/utils/normalize/toNullableNumber";
 
@@ -21,8 +22,10 @@ export function toComponentMarkers(components = []) {
     const lat = toNullableNumber(component?.lat);
     const lng = toNullableNumber(component?.lng);
     // A card without a fix is not on the map. It is not lost — it is in the
-    // registry, which is where the walk is read from.
-    if (lat == null || lng == null) continue;
+    // registry, which is where the walk is read from. Числа вне диапазона
+    // (широта 380 вместо 38.0, перепутанные lat/lng) — тоже не отметка:
+    // Leaflet ставил такую булавку за краем мира или падал на ней.
+    if (!hasValidCoordinates({ lat, lng })) continue;
 
     markers.push({
       ...component,

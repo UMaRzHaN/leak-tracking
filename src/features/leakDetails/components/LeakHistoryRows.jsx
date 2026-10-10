@@ -5,6 +5,7 @@ import PhotoViewer from "@/features/photos/PhotoViewer/PhotoViewer";
 import { getMonitoringResultLabel } from "@/utils/monitoring";
 import { LEAK_EVENT_TYPES } from "@/domain/leakEvents";
 import { displayText, fmtDate } from "./viewBlockUtils";
+import InspectionFlags from "./InspectionFlags";
 import s from "@/features/leakDetails/LeakDetailsSheet.module.scss";
 
 /**
@@ -53,6 +54,11 @@ export function MonitoringRecordRow({ record, localeTexts, lang }) {
                 </div>
               )}
             </div>
+
+            <InspectionFlags
+              physicalTag={record.physicalTag}
+              fiction={record.fiction}
+            />
 
             {/*
              * Показывается изменение, а не наличие: МТР теперь пишется в

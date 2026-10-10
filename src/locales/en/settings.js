@@ -1,4 +1,69 @@
 export const settings = {
+  repairRounds: {
+    title: "Repairs",
+    allowNew: "New repair rounds",
+    allowedHint: "A new repair round can be started with “New round”.",
+    lockedHint:
+      "No new repair round can be started — checks go into the current one. Guards against a stray tap.",
+    allowFinish: "Finishing repair rounds",
+    finishAllowedHint:
+      "A round can be finished with “Finish round” once every repair is checked.",
+    finishLockedHint: "No “Finish round” button — the round stays open.",
+    allowMerge: "Merging repair rounds",
+    mergeAllowedHint:
+      "A round started by mistake can be merged into the previous one with “Merge into No. N”.",
+    mergeLockedHint: "No “Merge into No. N” link — rounds stay apart.",
+  },
+  reconcile: {
+    title: "Inventory",
+    allowNew: "New reconciliations",
+    allowedHint:
+      "A new reconciliation can be started with “New reconciliation”.",
+    lockedHint:
+      "No new reconciliation can be started — components go into the current one. Guards against a stray tap.",
+    allowFinish: "Finishing reconciliations",
+    finishAllowedHint:
+      "A reconciliation can be finished with “Finish reconciliation” once everything is reconciled.",
+    finishLockedHint:
+      "No “Finish reconciliation” button — the reconciliation stays open.",
+    allowMerge: "Merging reconciliations",
+    mergeAllowedHint:
+      "A reconciliation started by mistake can be merged into the previous one with “Merge into No. N”.",
+    mergeLockedHint: "No “Merge into No. N” link — reconciliations stay apart.",
+  },
+  rounds: {
+    title: "Monitoring",
+    allowNew: "New rounds",
+    allowedHint: "A new round can be started with “New round”.",
+    lockedHint:
+      "No new round can be started — checks go into the current one. Protects against an accidental tap.",
+    allowFinish: "Finishing rounds",
+    finishAllowedHint:
+      "A round can be finished with “Finish round” once every tag is checked.",
+    finishLockedHint:
+      "No “Finish round” button — the round stays open. Guards against a stray tap.",
+    allowMerge: "Merging rounds",
+    mergeAllowedHint:
+      "A round started by mistake can be merged into the previous one with “Merge into No. N”.",
+    mergeLockedHint:
+      "No “Merge into No. N” link — rounds stay apart. Guards against a stray tap.",
+    saved: "Round setting saved",
+    disabled: "New rounds are turned off in project settings",
+  },
+  objects: {
+    group: "Project",
+    name: "Name",
+    caption: "Project settings",
+    title: "Sites",
+    count: "sites: {{count}}",
+    search: "Find a site",
+    summary: "Sites: {{objects}} · records: {{points}}",
+    byName: "A to Z",
+    byCount: "By records",
+    points: "records: {{count}}",
+    empty: "No sites yet",
+    hint: "A site appears with the first record or card on it.",
+  },
   projectsOfDifferentTypes:
     "Projects of different types cannot be combined: current — {{v1}}, imported — {{v2}}.",
   theArchiveDoesNot:
@@ -85,6 +150,10 @@ export const settings = {
   syncCompleteVChanges: "Sync complete: {{v1}} changes applied",
   theQrCodeHas: "The QR code has expired",
   transferCompleteDevicesV: "Transfer complete. Devices: {{v1}}",
+  hostStoppedAuthLimit:
+    "Session stopped: too many wrong connection codes. Create a new QR code.",
+  hostStoppedError:
+    "The sync session was interrupted by an error. Create a new QR code.",
   localSyncError: "Local sync error",
   couldNotCreateSession: "Could not create session",
   connectionError: "Connection error",
@@ -136,6 +205,10 @@ export const settings = {
   photoOptional: "The photo is optional.",
   photoRequirements: "Photo requirements",
   photoWhenAdding: "When adding a leak",
+  photoWhenRepair: "When accepting a repair",
+  repairPhotoRequirementSaved: "Repair photo requirement saved",
+  photoWhenReconcile: "When reconciling components",
+  reconcilePhotoRequirementSaved: "Reconciliation photo requirement saved",
   photoWhenComponent: "Photo when adding a component",
   componentPhotoRequirementSaved: "Component photo requirement saved",
   photoWhenMonitoring: "During monitoring",
@@ -165,6 +238,11 @@ export const settings = {
   rename: "Rename",
   deleteConfirm: "Delete?",
   deleteProject: "Delete project",
+  folder: "Folder",
+  change: "Change",
+  deleteProjectTitle: "Delete project “{{name}}”?",
+  deleteProjectDescription:
+    "The project's records, photos and settings will be removed from this device. This cannot be undone — save a backup from the menu first.",
 
   enterSerialNumber: "Enter equipment serial number",
   gases: {
@@ -230,12 +308,16 @@ export const settings = {
   inventoryImportEmpty: "No components to import were found in the file.",
   inventoryImported:
     "Inventory: {{v1}} added, {{v2}} updated, {{v3}} number(s) colliding.",
+  inventoryImportedRemovedAndSchemas:
+    "Inventory: {{v1}} card(s) removed, {{v2}} drawing(s) restored.",
   inventoryRowsShadowed:
     "{{v1}} row(s) were not merged — those numbers already exist on the device, and a card written on site outweighs a spreadsheet row.",
   inventoryImportedIntoNewProject:
     'A component registry lives in its own project — created "{{v1}}" and merged {{v2}} card(s) into it.',
   inventoryImportNoRegistry:
     'Only "{{v1}}" projects keep a component registry. Create one and merge the inventory there — on the first screen an inventory archive creates the project by itself.',
+  bundledInventoryNoRegistry:
+    "The inventory in the archive was not loaded: projects of this type keep no component registry.",
   inventoryImportError: "Inventory import error",
 
   mapCache: "Map Cache",

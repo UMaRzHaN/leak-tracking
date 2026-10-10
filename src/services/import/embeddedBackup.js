@@ -51,7 +51,12 @@ export function parseEmbeddedBackup(workbook) {
     ...(payload.monitoringRound != null
       ? { monitoringRound: payload.monitoringRound }
       : {}),
+    ...(payload.rounds != null ? { rounds: payload.rounds } : {}),
     ...(payload.sync != null ? { sync: payload.sync } : {}),
+    ...(payload.acceptances != null
+      ? { acceptances: payload.acceptances }
+      : {}),
+    ...(payload.survey != null ? { survey: payload.survey } : {}),
   };
   const metadataValidation = validateProjectBackupMeta(metadataInput);
   if (!metadataValidation.ok) {

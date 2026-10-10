@@ -1,0 +1,138 @@
+import { describe, expect, it } from "vitest";
+import {
+  REPAIR_ROUND_FILTER as FILTER,
+  canSwipeCheckRepair,
+  getRepairRoundItems,
+  repairRoundState,
+  summarizeRepairRound,
+} from "./repairRoundDomain";
+
+const round = { number: 1, startedAt: "2026-10-02T00:00:00.000Z" };
+const started = { id: "s", type: "repair_started", date: "2026-10-01T08:00Z" };
+const mark = (date) => ({
+  id: `m-${date}`,
+  type: "repair_stage",
+  stage: "in_repair",
+  date,
+});
+const repair = (id, events, extra = {}) => ({
+  id,
+  leak_id: id,
+  status: "in_progress",
+  events: [started, ...events],
+  ...extra,
+});
+
+const due = repair("due", [mark("2026-10-01T09:00Z")]);
+// «Ждёт МТР» — открытая утечка, а не отметка.
+const waiting = repair("waiting", [mark("2026-10-01T09:00Z")], {
+  status: "open",
+});
+const checked = repair("checked", [mark("2026-10-03T09:00Z")]);
+const resolvedInRound = repair(
+  "resolved-in",
+  [{ id: "d", type: "repair_done", date: "2026-10-03T10:00Z" }],
+  { status: "resolved" },
+);
+const resolvedBefore = repair(
+  "resolved-before",
+  [{ id: "d", type: "repair_done", date: "2026-09-20T10:00Z" }],
+  { status: "resolved" },
+);
+const all = [resolvedBefore, checked, waiting, resolvedInRound, due];
+
+describe("repair round", () => {
+  it("places each repair in the round like monitoring tags", () => {
+    expect(repairRoundState(due, round)).toBe("due");
+    expect(repairRoundState(checked, round)).toBe("checked");
+    expect(repairRoundState(resolvedInRound, round)).toBe("checked");
+    expect(repairRoundState(resolvedBefore, round)).toBe("outside");
+    // Без обхода проверять предстоит всё, что в работе.
+    expect(repairRoundState(checked, null)).toBe("due");
+  });
+
+  it("в идущем обходе свайп не открывает ремонт, принятый до него", () => {
+    expect(canSwipeCheckRepair(resolvedBefore, round)).toBe(false);
+    // Принятый уже в этом обходе перепроверить можно, как и идущие.
+    expect(canSwipeCheckRepair(resolvedInRound, round)).toBe(true);
+    expect(canSwipeCheckRepair(due, round)).toBe(true);
+  });
+
+  it("без идущего обхода свайп открывает и принятый ремонт", () => {
+    expect(canSwipeCheckRepair(resolvedBefore, null)).toBe(true);
+    expect(
+      canSwipeCheckRepair(resolvedBefore, {
+        ...round,
+        completedAt: "2026-10-05T00:00:00.000Z",
+      }),
+    ).toBe(true);
+  });
+
+  it("puts a fictitious closed repair back up for a check", () => {
+    // Осмотр после устранения счёл его фикцией — ремонт снова к проверке.
+    const fiction = repair(
+      "fiction",
+      [
+        { id: "d", type: "repair_done", date: "2026-09-20T10:00Z" },
+        {
+          id: "i",
+          type: "inspection",
+          result: "still_leaking",
+          date: "2026-09-25T10:00Z",
+          fiction: true,
+        },
+      ],
+      { status: "resolved" },
+    );
+    expect(repairRoundState(fiction, round)).toBe("due");
+  });
+
+  it("counts the tabs and the header", () => {
+    expect(summarizeRepairRound(all, round)).toEqual({
+      due: 2,
+      checked: 2,
+      all: 5,
+      resolved: 1,
+      inRepair: 2,
+      waiting: 1,
+    });
+  });
+
+  it("filters by tab and orders due work first", () => {
+    const ids = (filter, search = "") =>
+      getRepairRoundItems(all, { filter, search, round }).map(
+        (leak) => leak.id,
+      );
+    expect(ids(FILTER.DUE)).toEqual(["due", "waiting"]);
+    expect(ids(FILTER.CHECKED)).toEqual(["checked", "resolved-in"]);
+    expect(ids(FILTER.ALL)).toEqual([
+      "due",
+      "waiting",
+      "checked",
+      "resolved-in",
+      "resolved-before",
+    ]);
+    expect(ids(FILTER.ALL, "WAIT")).toEqual(["waiting"]);
+  });
+});
+
+describe("слияние обхода ремонтов", () => {
+  it("переносит проверки слитого обхода в предыдущий, осмотры не трогает", async () => {
+    const { moveRepairChecksToRound } = await import("./repairRoundDomain");
+    const leak = {
+      id: "l1",
+      events: [
+        { id: "s", type: "repair_started", date: "2026-10-01", roundNumber: 3 },
+        { id: "m", type: "repair_stage", date: "2026-10-02", roundNumber: 2 },
+        { id: "i", type: "inspection", date: "2026-10-03", roundNumber: 3 },
+      ],
+    };
+    const untouched = { id: "l2", events: [] };
+
+    const { data, moved } = moveRepairChecksToRound([leak, untouched], 3, 2);
+
+    expect(moved).toBe(1);
+    expect(data[0].events.map((event) => event.roundNumber)).toEqual([2, 2, 3]);
+    expect(data[1]).toBe(untouched);
+  });
+});

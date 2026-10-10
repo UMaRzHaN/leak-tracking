@@ -1,0 +1,88 @@
+.record {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 12px 14px 0;
+  padding: 14px;
+  border: 1px solid var(--c-border-soft);
+  border-radius: var(--r-lg);
+  background: var(--c-surface);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--c-ink);
+  font-weight: 700;
+}
+
+.badge {
+  padding: 3px 10px;
+  border-radius: var(--r-pill);
+  background: var(--c-accent-surface);
+  color: var(--c-accent-text);
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.choice {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.choiceLabel {
+  color: var(--c-text3);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+
+.choiceOptions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.option,
+.optionOn {
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  background: none;
+  color: var(--c-text2);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.optionOn {
+  border-color: var(--c-accent);
+  background: var(--c-accent-surface);
+  color: var(--c-accent-text);
+}
+
+.fields {
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--c-surface-2, var(--c-surface));
+
+  & > :last-child {
+    border-bottom: none;
+  }
+}
+
+.select {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  background: var(--c-bg);
+  color: var(--c-ink);
+  font: inherit;
+  font-size: var(--fs-md);
+}

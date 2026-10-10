@@ -20,15 +20,34 @@ export const database = {
   notSpecified: "Not specified",
   radiusKm: "km",
   radiusM: "m",
-  searchPlaceholder: "Tag, location, object, description, inspector...",
+  searchPlaceholder: "Tag, location, object…",
   searchLeaks: "Search leaks",
   clearSearch: "Clear search",
+  searchScope: "Search in",
+  searchScopes: {
+    all: "All fields",
+    tag: "Tag",
+    place: "Place",
+    object: "Object",
+    description: "Description",
+    inspector: "Inspector",
+  },
+  searchIn: {
+    tag: "Search by tag...",
+    place: "Search by place...",
+    object: "Search by object and component...",
+    description: "Search by description and notes...",
+    inspector: "Search by inspector...",
+  },
   filters: "Filters",
   status: "Status",
   priority: "Priority",
   fiction: "Fiction",
   fictionOnly: "Fictions",
   fictionExclude: "No fictions",
+  physicalTag: "Physical tag",
+  tagWith: "Tag present",
+  tagWithout: "No tag",
   all: "All",
   nearbyRadius: " • within {{radius}} m",
 
@@ -44,6 +63,7 @@ export const database = {
     noNearby: "No leaks within {{radius}} m",
     noRecords: "No records",
   },
+  hiddenSelected: "{{count}} more selected, hidden by filters",
   selectedOf: "{{selected}} selected of {{visible}}",
   nearMe: "Near me",
 
@@ -60,20 +80,9 @@ export const database = {
 
   fillUserName: "Fill in the user name in the profile",
   paramsAlreadyApplied: "Selected parameters are already applied",
+  paramsInvalid: "Calculation parameters are out of range",
   paramsUpdated: "Parameters and calculations updated: {{changed}}",
   paramsUpdateFailed: "Failed to update parameters: {{message}}",
-
-  bulk: {
-    statusChanged: "Status changed for {{count}} {{records}}",
-    resolved: "Resolved {{count}} {{records}}",
-    saveError: "Save error: {{message}}",
-    records: {
-      one: "record",
-      few: "records",
-      many: "records",
-      other: "records",
-    },
-  },
 
   export: {
     hasPhoto: "Yes",

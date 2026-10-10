@@ -1,5 +1,6 @@
 import { getImageMimeTypeFromExtension } from "@/services/archive/archivePaths";
 import { readArchiveEntry } from "@/utils/importLimits";
+import { declaredEntrySize } from "@/utils/zipEntrySize";
 
 const ARCHIVE_PATH_PREFIX = "zip:";
 
@@ -33,8 +34,7 @@ export function createArchivePhotoReader(zip) {
      * untrusted — the real limits are enforced during read().
      */
     declaredSize(path) {
-      const size = Number(entryFor(path)?._data?.uncompressedSize);
-      return Number.isFinite(size) && size > 0 ? size : 0;
+      return declaredEntrySize(entryFor(path));
     },
 
     /**
@@ -46,9 +46,7 @@ export function createArchivePhotoReader(zip) {
       const sizes = {};
       for (const entry of Object.values(zip?.files ?? {})) {
         if (entry.dir) continue;
-        const size = Number(entry?._data?.uncompressedSize);
-        sizes[`${ARCHIVE_PATH_PREFIX}${entry.name}`] =
-          Number.isFinite(size) && size > 0 ? size : 0;
+        sizes[`${ARCHIVE_PATH_PREFIX}${entry.name}`] = declaredEntrySize(entry);
       }
       return sizes;
     },

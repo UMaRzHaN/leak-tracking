@@ -26,8 +26,19 @@ import {
   readMonitoringRound,
   saveMonitoringRound,
 } from "@/utils/monitoringRound";
+import { saveAcceptances } from "@/utils/acceptanceStorage";
+import { saveSurvey } from "@/utils/surveyStorage";
+import {
+  mergeAcceptancesAndSurvey,
+  snapshotAcceptancesAndSurvey,
+} from "./acceptancesAndSurvey";
 import { logger } from "@/utils/logger";
-import { openArchive } from "./backupArchiveSession";
+import { openArchive, releaseArchive } from "./backupArchiveSession";
+import {
+  applyProjectRounds,
+  readProjectRounds,
+  restoreProjectRounds,
+} from "@/app/project/projectRounds";
 import { filterIncomingLeaksForMerge, mergeLeaksByFreshness } from "./merge";
 import { collectPhotoOwners } from "@/services/storage/photoOwners";
 import { restorePhotos } from "./photoRestore";
@@ -130,6 +141,13 @@ export async function importProjectZip(file, ctx) {
       newProject.id,
       getRestoredMonitoringRound(meta, finalLeaks),
     );
+    applyProjectRounds(newProject.id, meta?.rounds);
+    if (Array.isArray(meta?.acceptances)) {
+      saveAcceptances(newProject.id, meta.acceptances);
+    }
+    if (meta?.survey) {
+      saveSurvey(newProject.id, meta.survey, { keepUpdatedAt: true });
+    }
     await saveImportedProject(finalLeaks, {
       preservedRecords: restoredRecoveryRecords,
     });
@@ -141,6 +159,10 @@ export async function importProjectZip(file, ctx) {
     // committed and outside its rollback: a project that arrived intact must
     // not be thrown away because one drawing would not store, and the operator
     // can always load that drawing again by hand.
+    //
+    // Снимки утечек уже прочитаны, а реестр и чертежи открывают файл заново в
+    // главном потоке — копию в воркере держать незачем.
+    releaseArchive(photos);
     const schemaResult = await restoreProjectSchemas(file, importedProject);
     const componentResult = await restoreProjectComponents(
       file,
@@ -211,6 +233,9 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
   const localSyncState = await readProjectSyncStateAsync(existingProjectId);
   const localSettings = readProjectSettings(existingProjectId);
   const localMonitoringRound = readMonitoringRound(existingProjectId);
+  const localRounds = readProjectRounds(existingProjectId);
+  const restoreAcceptancesAndSurvey =
+    snapshotAcceptancesAndSurvey(existingProjectId);
   const localVarsRaw = localStorage.getItem(
     STORAGE_KEYS.PROJECT_VARS(existingProjectId),
   );
@@ -333,6 +358,7 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
         localStorage.removeItem(STORAGE_KEYS.PROJECT_VARS(existingProjectId));
       }
       saveMonitoringRound(existingProjectId, nextMonitoringRound);
+      applyProjectRounds(existingProjectId, meta?.rounds);
       if (incomingSyncState) {
         await writeProjectSyncState(
           existingProjectId,
@@ -357,6 +383,7 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
         }
       }
       saveMonitoringRound(existingProjectId, nextMonitoringRound);
+      applyProjectRounds(existingProjectId, meta?.rounds, { resolve: true });
       await writeProjectSyncState(
         existingProjectId,
         mergeProjectSyncStates(
@@ -366,6 +393,10 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
         finalLeaks,
       );
     }
+
+    // Накладные и обследование сливаются при любом режиме: «Объединить» их
+    // раньше не принимал вовсе, и приёмка с другого телефона пропадала.
+    mergeAcceptancesAndSurvey(existingProjectId, meta);
 
     if (shouldApplyIncomingSettings) {
       if (incomingSettings) {
@@ -420,6 +451,8 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
     }
     writeProjectSettings(existingProjectId, localSettings);
     saveMonitoringRound(existingProjectId, localMonitoringRound);
+    restoreProjectRounds(existingProjectId, localRounds);
+    restoreAcceptancesAndSurvey();
     await writeProjectSyncState(
       existingProjectId,
       localSyncState,
@@ -480,6 +513,10 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
   // a ZIP backup, an archive merged into an existing project, and a QR
   // exchange all arrive here, and until now only a brand-new project got them
   // — two phones syncing in the field kept their walks to themselves.
+  //
+  // Сессию воркера — закрыть до них: оба заново открывают файл в главном
+  // потоке, и копия в воркере полминуты простоя была бы второй.
+  releaseArchive(photos);
   await restoreProjectComponents(zipFile, existingProject);
   await restoreProjectSchemas(zipFile, existingProject);
 

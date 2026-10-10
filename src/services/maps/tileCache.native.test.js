@@ -23,17 +23,20 @@ const {
   cacheTile,
   buildNativeTileCacheNamespace,
   clearMapCache,
+  flushMetadata,
   getMapCacheInfo,
   getTileBlobUrl,
   NATIVE_TILE_CACHE_COUNT_KEY,
   NATIVE_TILE_CACHE_DIR,
   NATIVE_TILE_CACHE_METADATA_KEY,
   preloadUrls,
+  resetMetadataMemory,
 } = await import("./tileCache");
 
 describe("tileCache native storage", () => {
   beforeEach(() => {
     localStorage.clear();
+    resetMetadataMemory();
     vi.clearAllMocks();
     filesystem.stat.mockRejectedValue(new Error("missing"));
     filesystem.mkdir.mockResolvedValue(undefined);
@@ -243,6 +246,8 @@ describe("tileCache native storage", () => {
     ).rejects.toMatchObject({ name: "AbortError" });
 
     expect(localStorage.getItem(NATIVE_TILE_CACHE_COUNT_KEY)).toBe("1");
+    // Отметки использования сбрасываются в хранилище отложенно.
+    flushMetadata();
     const metadata = JSON.parse(
       localStorage.getItem(NATIVE_TILE_CACHE_METADATA_KEY),
     );

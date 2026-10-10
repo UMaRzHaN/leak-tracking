@@ -118,22 +118,6 @@ function withStatusHistory(
   };
 }
 
-export function getOrphanedOriginalPhoto(leak) {
-  // Снимок «после» спрашивается у ленты: у записей, заведённых после переезда,
-  // поля `photo_after` нет, и сравнение с ним признало бы исходный снимок
-  // нужным навсегда.
-  const after = getRepairDonePhoto(leak);
-  if (
-    leak?.status !== STATUS.RESOLVED ||
-    !leak.photo ||
-    !after ||
-    leak.photo === after
-  ) {
-    return null;
-  }
-  return leak.photo;
-}
-
 /** @param {any} leak @param {any} status @param {{user?: any, now?: number}} [options] */
 export function changeLeakStatus(leak, status, { user, now } = {}) {
   assertStatusTransition(leak, status);
@@ -218,6 +202,32 @@ export function startLeakRepair(leak, draft = {}, { user, now } = {}) {
     photo,
     changes,
     materials: draft.materials_equipment ?? null,
+    note: draft.note ?? null,
+  });
+}
+
+/**
+ * Ремонт встал без МТР: из «в ремонте» назад в «открыта» (проверка ремонта,
+ * «утечка есть, ремонт не выполнен»). Строгий порядок статусов такого шага
+ * не знает, поэтому переход отдельный; событий он не оставляет — как и
+ * возврат в работу, — только запись в журнале.
+ *
+ * @param {any} leak @param {{ note?: string }} [draft] @param {{user?: any, now?: number}} [options]
+ */
+export function returnLeakToWaiting(leak, draft = {}, { user, now } = {}) {
+  if ((leak?.status ?? STATUS.OPEN) !== STATUS.IN_PROGRESS) {
+    const error = new Error(
+      `Invalid leak status transition: ${leak?.status} -> ${STATUS.OPEN}`,
+    );
+    error.code = "INVALID_LEAK_STATUS_TRANSITION";
+    throw error;
+  }
+  const { timestamp, iso } = lifecycleTime(now);
+  const after = { ...leak, status: STATUS.OPEN, updatedAt: timestamp };
+  return withStatusHistory(leak, after, {
+    to: STATUS.OPEN,
+    user,
+    iso,
     note: draft.note ?? null,
   });
 }

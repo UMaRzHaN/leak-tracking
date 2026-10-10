@@ -10,8 +10,11 @@ import {
   schemaIdentity,
 } from "@/domain/schemaTombstones";
 import { SchemaRepository } from "@/repositories/SchemaRepository";
+import { isSafeSchemaId } from "@/repositories/schemaPaths";
+import { createRecordId } from "@/utils/createRecordId";
+import { readArchiveEntry } from "@/utils/importLimits";
 import { logger } from "@/utils/logger";
-import { getJSZip } from "./runtime";
+import { openZip } from "@/utils/openZip";
 
 /**
  * Technological schemas travelling in and out of a project archive.
@@ -119,8 +122,7 @@ export async function restoreSchemasFromArchive(file, project) {
 
   let zip;
   try {
-    const JSZip = (await getJSZip()).default;
-    zip = await new JSZip().loadAsync(file);
+    zip = await openZip(file);
   } catch (error) {
     logger.warn("[schemas] could not reopen the archive for drawings:", error);
     return { restored: 0, skipped: 0 };
@@ -137,7 +139,7 @@ export async function restoreSchemasFromArchive(file, project) {
   const indexEntry = files.get(SCHEMA_INDEX_FILE);
   if (indexEntry) {
     files.delete(SCHEMA_INDEX_FILE);
-    return await restoreFromIndex(project, files, indexEntry);
+    return await restoreFromIndex(project, zip, files, indexEntry);
   }
 
   // Архив без списка — из версии, которая его ещё не писала. Читается как
@@ -153,7 +155,7 @@ export async function restoreSchemasFromArchive(file, project) {
 
   for (const [relativePath, entry] of files) {
     try {
-      const blob = await entry.async("blob");
+      const blob = await readArchiveEntry(zip, entry, "blob");
       const schema = createSchemaEntry({
         name: relativePath,
         // A zip carries no media type, so the name is all there is to go on —
@@ -187,11 +189,17 @@ export async function restoreSchemasFromArchive(file, project) {
  * то, что победило, — чертежи, которых здесь ещё нет, забираются из архива, а
  * те, что удалили на другом телефоне, уходят вместе с байтами.
  */
-async function restoreFromIndex(project, files, indexEntry) {
+async function restoreFromIndex(project, zip, files, indexEntry) {
   let incoming = [];
   try {
-    const parsed = JSON.parse(await indexEntry.async("string"));
-    incoming = Array.isArray(parsed?.data) ? parsed.data : [];
+    const parsed = JSON.parse(
+      await readArchiveEntry(zip, indexEntry, "string"),
+    );
+    // Свой идентификатор чертежа из архива не нужен — сводятся они по имени
+    // и размеру. А чужой, похожий на путь, стал бы именем файла.
+    incoming = (Array.isArray(parsed?.data) ? parsed.data : []).map((schema) =>
+      isSafeSchemaId(schema?.id) ? schema : { ...schema, id: createRecordId() },
+    );
   } catch (error) {
     logger.warn("[schemas] could not read the archive schema list:", error);
     return { restored: 0, skipped: files.size };
@@ -231,7 +239,7 @@ async function restoreFromIndex(project, files, indexEntry) {
       await SchemaRepository.addSchema(
         project,
         entryToStore,
-        await entry.async("blob"),
+        await readArchiveEntry(zip, entry, "blob"),
       );
       restored += 1;
     } catch (error) {

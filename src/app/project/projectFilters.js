@@ -4,6 +4,8 @@ import {
   FICTION_FILTER,
   MONITORING_FILTER,
   NEARBY_RADIUS_M,
+  SEARCH_SCOPE,
+  TAG_FILTER,
 } from "@/domain/leakFilters";
 
 // Прежде здесь стояли те же значения литералами — третья копия радиуса и
@@ -12,12 +14,16 @@ const DEFAULT_NEARBY_RADIUS = NEARBY_RADIUS_M;
 const DEFAULT_MONITORING_FILTER = MONITORING_FILTER.DUE;
 const MONITORING_FILTERS = new Set(Object.values(MONITORING_FILTER));
 const FICTION_FILTERS = new Set(Object.values(FICTION_FILTER));
+const TAG_FILTERS = new Set(Object.values(TAG_FILTER));
+const SEARCH_SCOPES = new Set(Object.values(SEARCH_SCOPE));
 
 const DEFAULT_PROJECT_FILTERS = Object.freeze({
   search: "",
+  searchScope: SEARCH_SCOPE.ALL,
   statusFilter: [],
   priorityFilter: [],
   fictionFilter: FICTION_FILTER.ALL,
+  tagFilter: TAG_FILTER.ALL,
   // Своим ключом, а не общим со статусом утечки: словари разные — у утечки
   // «Открыта», у железа «В работе», — и общий список отбирал бы по чужому.
   componentStatusFilter: [],
@@ -54,11 +60,18 @@ export function normalizeProjectFilters(value) {
   const radius = Number(value?.nearbyRadius);
   return {
     search: typeof value?.search === "string" ? value.search : "",
+    searchScope: SEARCH_SCOPES.has(value?.searchScope)
+      ? value.searchScope
+      : SEARCH_SCOPE.ALL,
     statusFilter: normalizeValues(value?.statusFilter),
     priorityFilter: normalizeValues(value?.priorityFilter),
     fictionFilter: FICTION_FILTERS.has(value?.fictionFilter)
       ? value.fictionFilter
       : FICTION_FILTER.ALL,
+    // Отбор по физ. тегу появился позже: в старых записях его нет — «все».
+    tagFilter: TAG_FILTERS.has(value?.tagFilter)
+      ? value.tagFilter
+      : TAG_FILTER.ALL,
     componentStatusFilter: normalizeValues(value?.componentStatusFilter),
     mainLocationFilter: normalizeLocationFilter(value?.mainLocationFilter),
     locationFilter: normalizeLocationFilter(value?.locationFilter),

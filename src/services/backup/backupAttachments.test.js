@@ -60,7 +60,9 @@ describe("what a ZIP backup carries besides the leaks", () => {
 
     const names = Object.keys((await new JSZip().loadAsync(blob)).files);
     expect(names).toContain("components.json");
-    expect(names).toContain("component_photos/4242.jpg");
+    // Снимки реестра — в папке места первого уровня, как у LDAR; у карточки
+    // без подразделения это папка «не указано» (без переводов — «-»).
+    expect(names).toContain("component_photos/-/4242.jpg");
     expect(names).toContain("technological_schemas/узел.pdf");
   });
 

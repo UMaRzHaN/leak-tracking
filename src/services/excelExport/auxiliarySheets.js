@@ -8,16 +8,16 @@ import {
   getMonitoringExportRows,
 } from "./monitoringRows";
 import { getRepairExportRows } from "./repairRows";
+import { getMaterialsExportRows } from "./materialsRows";
 import {
   addStructuredTable,
   getColumnWidth,
   styleBodyRows,
   styleHeaderRow,
-  yieldToMainThread,
+  writePhotoLinks,
 } from "./sheetLayout";
 
 const MONITORING_TABLE_THEME = "TableStyleMedium4";
-const EXPORT_YIELD_EVERY = 40;
 
 export function buildHistoryRows(orderedLeaks, texts) {
   const fallbackUser = texts.history.unknownUser;
@@ -153,27 +153,17 @@ export async function buildMonitoringSheet(
   styleHeaderRow(sheet, "FF548235");
   await styleBodyRows(sheet, rows.length);
 
-  for (const [rowIndex, row] of rows.entries()) {
-    if (rowIndex > 0 && rowIndex % EXPORT_YIELD_EVERY === 0) {
-      await yieldToMainThread();
-    }
-
-    for (const [key, mapKey] of [
-      ["photo", row.photoMapKey],
-      ["previousPhoto", row.previousPhotoMapKey],
-    ]) {
-      const photoColumnIndex = keys.indexOf(key) + 1;
-      const photoFile = photoMap[mapKey];
-      const photoCell = sheet.getRow(rowIndex + 2).getCell(photoColumnIndex);
-
-      if (photoFile) {
-        photoCell.value = { text: texts.photo.open, hyperlink: photoFile };
-        photoCell.font = { color: { argb: "FF1155CC" }, underline: true };
-      } else {
-        photoCell.value = row[key] ? texts.photo.missing : "";
-      }
-    }
-  }
+  await writePhotoLinks(
+    sheet,
+    rows,
+    keys,
+    [
+      ["photo", "photoMapKey"],
+      ["previousPhoto", "previousPhotoMapKey"],
+    ],
+    photoMap,
+    texts,
+  );
 
   applyColumnFormats(sheet, keys);
 
@@ -220,6 +210,7 @@ export async function buildRepairSheet(
     "resolvedTime",
     "durationHours",
     "user",
+    "brigade",
     "materials_equipment",
     "note",
     "repairPhoto",
@@ -248,22 +239,7 @@ export async function buildRepairSheet(
   styleHeaderRow(sheet, "FFC55A11");
   await styleBodyRows(sheet, rows.length);
 
-  for (const [rowIndex, row] of rows.entries()) {
-    if (rowIndex > 0 && rowIndex % EXPORT_YIELD_EVERY === 0) {
-      await yieldToMainThread();
-    }
-
-    for (const [key, mapKey] of photoColumns) {
-      const cell = sheet.getRow(rowIndex + 2).getCell(keys.indexOf(key) + 1);
-      const photoFile = map[row[mapKey]];
-      if (photoFile) {
-        cell.value = { text: texts.photo.open, hyperlink: photoFile };
-        cell.font = { color: { argb: "FF1155CC" }, underline: true };
-      } else {
-        cell.value = row[key] ? texts.photo.missing : "";
-      }
-    }
-  }
+  await writePhotoLinks(sheet, rows, keys, photoColumns, map, texts);
 
   applyColumnFormats(sheet, keys);
 
@@ -273,6 +249,105 @@ export async function buildRepairSheet(
       key,
       rows,
       { isPhoto: key === "repairPhoto" || key === "donePhoto" },
+    );
+  });
+}
+
+/** «Расход МТР» (8a): что и когда поставили, из ремонтов и осмотров. */
+export async function buildMaterialsSheet(workbook, orderedLeaks, texts) {
+  const rows = getMaterialsExportRows(orderedLeaks).map((row) => ({
+    ...row,
+    date: parseTimestamp(row.dateRaw) ?? "",
+    time: parseTimestamp(row.dateRaw) ?? "",
+    source: texts.materials.sources[row.source] ?? row.source,
+  }));
+  if (rows.length === 0) return;
+
+  const sheet = workbook.addWorksheet(texts.sheets.materials);
+  const keys = [
+    "index",
+    "leak_id",
+    "date",
+    "time",
+    "source",
+    "materials_equipment",
+    "user",
+  ];
+  const headers = keys.map((key) => texts.materials.headers[key]);
+
+  addStructuredTable(sheet, {
+    name: "Materials",
+    headers,
+    rows: rows.map((row) => keys.map((key) => toExcelCellValue(key, row[key]))),
+    theme: "TableStyleMedium7",
+  });
+  styleHeaderRow(sheet, "FF548235");
+  await styleBodyRows(sheet, rows.length);
+  applyColumnFormats(sheet, keys);
+
+  keys.forEach((key, index) => {
+    sheet.getColumn(index + 1).width = getColumnWidth(
+      headers[index],
+      key,
+      rows,
+    );
+  });
+}
+
+/**
+ * «Приёмка оборудования»: строка на позицию в партии — что пришло в этот
+ * раз, сколько набралось по позиции и сколько осталось по накладной.
+ */
+export async function buildAcceptanceSheet(workbook, acceptanceRows, texts) {
+  const { acceptance } = texts;
+  const rows = (acceptanceRows ?? []).map((row) => ({
+    ...row,
+    date: parseTimestamp(row.dateRaw) ?? "",
+    time: parseTimestamp(row.dateRaw) ?? "",
+    status: acceptance.statuses[row.status] ?? row.status,
+    unit: acceptance.units[row.unit] ?? row.unit,
+    complete: row.complete ? acceptance.yes : acceptance.no,
+    dnpnMatch: row.dnpnMatch ? acceptance.yes : acceptance.no,
+  }));
+  if (rows.length === 0) return;
+
+  const sheet = workbook.addWorksheet(texts.sheets.acceptance);
+  const keys = [
+    "invoice",
+    "supplier",
+    "warehouse",
+    "status",
+    "batch",
+    "date",
+    "time",
+    "name",
+    "unit",
+    "ordered",
+    "qty",
+    "received",
+    "left",
+    "complete",
+    "dnpnMatch",
+    "remark",
+    "user",
+  ];
+  const headers = keys.map((key) => acceptance.headers[key]);
+
+  addStructuredTable(sheet, {
+    name: "Acceptance",
+    headers,
+    rows: rows.map((row) => keys.map((key) => toExcelCellValue(key, row[key]))),
+    theme: "TableStyleMedium4",
+  });
+  styleHeaderRow(sheet, "FF2F5597");
+  await styleBodyRows(sheet, rows.length);
+  applyColumnFormats(sheet, keys);
+
+  keys.forEach((key, index) => {
+    sheet.getColumn(index + 1).width = getColumnWidth(
+      headers[index],
+      key,
+      rows,
     );
   });
 }

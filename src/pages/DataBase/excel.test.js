@@ -8,18 +8,14 @@ function excelTimeValue(value) {
   );
 }
 
-/** Ячейка-дата держит показания местных часов в UTC-полях. */
+/**
+ * Ячейка-дата держит местный день в UTC-полях — без часов: время у этих
+ * листов в своей колонке.
+ */
 function excelDateValue(value) {
   const date = new Date(value);
   return new Date(
-    Date.UTC(
-      date.getFullYear(),
-      date.getMonth(),
-      date.getDate(),
-      date.getHours(),
-      date.getMinutes(),
-      date.getSeconds(),
-    ),
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
   );
 }
 
@@ -258,6 +254,33 @@ describe("excel export helpers", () => {
     });
   });
 
+  it("без листов по утечкам кладёт в архив одну инвентаризацию", async () => {
+    const addToArchive = vi.fn(async (zip) =>
+      zip.file("Инвентаризация/a.xlsx", "x"),
+    );
+    const result = await exportToExcelFile(
+      [{ id: 2, leak_id: 2, photo: "data:image/jpeg;base64,cGhvdG8=" }],
+      [{ id: 2, name: "Leak 2", photo: "data:image/jpeg;base64,cGhvdG8=" }],
+      ["ID", "Name", "Photo"],
+      ["id", "name", "photo"],
+      "report",
+      null,
+      null,
+      translate,
+      { leakWorkbook: false, addToArchive, deliver: false },
+    );
+
+    // Книги по утечкам нет — ни листов, ни служебного слепка, ни снимков.
+    expect(mocks.workbookInstances).toHaveLength(0);
+    const zip = mocks.zipInstances[0];
+    expect(zip.file).toHaveBeenCalledTimes(1);
+    expect(zip.file).toHaveBeenCalledWith("Инвентаризация/a.xlsx", "x");
+    expect(addToArchive).toHaveBeenCalledOnce();
+    expect(result.fileName).toBe("report.zip");
+    // Лежит с выгрузками инвентаризации, а не с отчётами по утечкам.
+    expect(result.outputFolder).toBe("Inventorization");
+  });
+
   // The export used to re-sort by record id. The caller already hands over what
   // the database screen shows — filtered, and ordered by the user's own date
   // toggle — and for anything added in the app the id is a random UUID, so the
@@ -302,6 +325,27 @@ describe("excel export helpers", () => {
     expect(workbookEntry).toMatch(/escape\.xlsx$/);
     expect(workbookEntry).not.toMatch(/\.\.|[/\\]/);
     expect(result.message).toMatch(/escape\.zip/);
+  });
+
+  it("рядом с инвентаризацией кладёт отчёт и снимки в свою папку", async () => {
+    mocks.getPhotoSrcMock.mockResolvedValue("data:image/png;base64,ZmFrZQ==");
+
+    await exportToExcelFile(
+      [{ id: 1, leak_id: "7", photo: "file://photo.png" }],
+      [{ id: 1, photo: "Yes" }],
+      ["ID", "Photo"],
+      ["id", "photo"],
+      "report",
+      null,
+      null,
+      translate,
+      { archiveFolder: "Database", deliver: false },
+    );
+
+    const names = mocks.zipInstances[0].file.mock.calls.map(([name]) => name);
+    expect(names).toContain("Database/report.xlsx");
+    expect(names).toContain("Database/photos/LDAR/7/before.png");
+    expect(names.every((name) => name.startsWith("Database/"))).toBe(true);
   });
 
   it("exports zip with linked photos when photos are present", async () => {
@@ -349,8 +393,9 @@ describe("excel export helpers", () => {
     expect(backupSheet.getRow(8).getCell(3).value).toBe("Leaks");
     expect(backupSheet.getRow(8).getCell(4).value).toBe(1);
     expect(mocks.getPhotoSrcMock).toHaveBeenCalledTimes(1);
+    // Утечка без УМГ — в папке места «не указано», как у обхода.
     expect(mocks.zipInstances[0].file).toHaveBeenCalledWith(
-      "photos/LDAR/-victim-tag/before.png",
+      "photos/LDAR/Not specified/-victim-tag/before.png",
       "ZmFrZQ==",
       { base64: true },
     );
@@ -484,6 +529,31 @@ describe("excel export helpers", () => {
     expect(
       payload.leaks.map((leak) => leak.monitoringRecords[0].photo),
     ).toEqual(["zip:photos/monitoring/1/VISIBLE (leak present)/record-1.png"]);
+  });
+
+  it("carries invoices and the survey in the embedded backup", async () => {
+    // Без них круг Excel → импорт терял приёмку и ввод обследования.
+    const acceptances = [
+      { id: "inv-1", number: "1", items: [], batches: [], updatedAt: "x" },
+    ];
+    const survey = { slice: "category", groups: [], updatedAt: "y" };
+    await exportToExcelFile(
+      [],
+      [],
+      ["ID"],
+      ["id"],
+      "report",
+      null,
+      null,
+      translate,
+      { backupLeaks: [], acceptances, survey },
+    );
+
+    const payload = readEmbeddedBackup(
+      mocks.workbookInstances[0].sheets.at(-1),
+    );
+    expect(payload.acceptances).toEqual(acceptances);
+    expect(payload.survey).toEqual(survey);
   });
 
   it("omits unreadable local photo references from the embedded backup", async () => {
@@ -995,5 +1065,37 @@ describe("excel export helpers", () => {
 
   it("keeps exportToExcelZip as a backwards-compatible alias", () => {
     expect(exportToExcelZip).toBe(excelModule.exportToExcelFile);
+  });
+});
+
+describe("keepPhotoSections (8a)", () => {
+  it("keeps only the switched-on sections and the files they point to", async () => {
+    const { keepPhotoSections } = await import("./excel");
+    const resolved = {
+      photoMap: {
+        "0:photo": "photos/a.jpg",
+        "monitoring:0:0": "photos/b.jpg",
+        "event:0:0": "photos/c.jpg",
+      },
+      backupPhotoMap: { "0:photo": "photos/a.jpg", "0:x": "photos/b.jpg" },
+      photoEntries: [
+        { photoFileName: "photos/a.jpg" },
+        { photoFileName: "photos/b.jpg" },
+        { photoFileName: "photos/c.jpg" },
+      ],
+    };
+    const leaks = [{ events: [{ type: "repair_done", photo: "x" }] }];
+
+    const kept = keepPhotoSections(
+      resolved,
+      { leaks: false, repairs: true, monitoring: true },
+      leaks,
+    );
+    expect(Object.keys(kept.photoMap)).toEqual(["monitoring:0:0", "event:0:0"]);
+    expect(kept.photoEntries.map((entry) => entry.photoFileName)).toEqual([
+      "photos/b.jpg",
+      "photos/c.jpg",
+    ]);
+    expect(kept.backupPhotoMap).toEqual({ "0:x": "photos/b.jpg" });
   });
 });

@@ -3,7 +3,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const monitoringMocks = vi.hoisted(() => ({
   latestPhoto: vi.fn(() => null),
+  heroPhoto: vi.fn(() => null),
   fiction: vi.fn(() => false),
+  flag: vi.fn(() => null),
 }));
 
 vi.mock("@/hooks/useSwipeCard", () => ({
@@ -28,7 +30,9 @@ vi.mock("@/utils/timeAgo", () => ({ timeAgo: () => "now" }));
 vi.mock("@/hooks/usePhotoSrc", () => ({ usePhotoSrc: (path) => path }));
 vi.mock("@/utils/monitoring", () => ({
   getLatestMonitoringPhotoPath: monitoringMocks.latestPhoto,
+  getLeakDetailsHeroPhotoPath: monitoringMocks.heroPhoto,
   isLeakFiction: monitoringMocks.fiction,
+  getLastMonitoringFlag: monitoringMocks.flag,
 }));
 vi.mock("@/utils/locale", () => ({
   formatCompactNumber: (value) => String(value),
@@ -105,10 +109,15 @@ describe("LeakCardCompact location hierarchy", () => {
   });
 
   it("keeps the header and footer visible while collapsed and expands on click", () => {
-    renderCard({
-      location: "Compressor room",
-      leak_speed: 18.12,
-    });
+    // Сворачивается карточка только по явной просьбе: по умолчанию она
+    // раскрыта (2b, 5a).
+    renderCard(
+      {
+        location: "Compressor room",
+        leak_speed: 18.12,
+      },
+      { collapsible: true, defaultExpanded: false },
+    );
 
     expect(screen.getByText(/TAG-1/)).toBeTruthy();
     expect(screen.getByText(/18.12/)).toBeTruthy();
@@ -124,7 +133,10 @@ describe("LeakCardCompact location hierarchy", () => {
     expect(screen.getByRole("button", { name: "Collapse card" })).toBeTruthy();
   });
   it("does not toggle expansion from the selection control", () => {
-    renderCard({}, { onToggleSelect: vi.fn() });
+    renderCard(
+      {},
+      { onToggleSelect: vi.fn(), collapsible: true, defaultExpanded: false },
+    );
 
     const expandButton = screen.getByRole("button", { name: "Expand card" });
     const selectButton = screen.getByRole("button", { name: "Select leak" });
@@ -137,6 +149,18 @@ describe("LeakCardCompact location hierarchy", () => {
 describe("LeakCardCompact photo preview", () => {
   afterEach(() => {
     monitoringMocks.latestPhoto.mockReset();
+    monitoringMocks.heroPhoto.mockReset();
+  });
+
+  it("у открытой записи — главный снимок шапки, а не последний осмотр", () => {
+    // После осмотра была проверка ремонта со снимком — шапка и карта
+    // показывают её, и карточка списка не должна отставать.
+    monitoringMocks.latestPhoto.mockReturnValue("round.jpg");
+    monitoringMocks.heroPhoto.mockReturnValue("check.jpg");
+
+    const { container } = renderCard({ status: "open", photo: "before.jpg" });
+
+    expect(previewSources(container)).toEqual(["check.jpg"]);
   });
 
   const previewSources = (container) =>
@@ -170,14 +194,16 @@ describe("LeakCardCompact fiction", () => {
   afterEach(() => {
     monitoringMocks.fiction.mockReset();
     monitoringMocks.fiction.mockReturnValue(false);
+    monitoringMocks.flag.mockReset();
+    monitoringMocks.flag.mockReturnValue(null);
   });
 
-  it("помечает фикцию плашкой и окраской карточки", () => {
+  it("помечает фикцию окраской карточки, без плашки", () => {
     monitoringMocks.fiction.mockReturnValue(true);
 
     const { container } = renderCard({});
 
-    expect(screen.getByText("Fiction")).toBeTruthy();
+    expect(screen.queryByText("Fiction")).toBeNull();
     expect(container.querySelector('[data-fiction="true"]')).toBeTruthy();
   });
 
@@ -186,5 +212,37 @@ describe("LeakCardCompact fiction", () => {
 
     expect(screen.queryByText("Fiction")).toBeNull();
     expect(container.querySelector("[data-fiction]")).toBeNull();
+    expect(container.querySelector("[data-no-tag]")).toBeNull();
+  });
+
+  it("помечает утечку без тега, а вместе с фикцией — смешанной окраской", () => {
+    monitoringMocks.flag.mockImplementation((_, key) =>
+      key === "physicalTag" ? false : null,
+    );
+    const { container, unmount } = renderCard({});
+    expect(screen.queryByText("No tag")).toBeNull();
+    expect(container.querySelector('[data-no-tag="true"]')).toBeTruthy();
+    unmount();
+
+    monitoringMocks.fiction.mockReturnValue(true);
+    const both = renderCard({});
+    expect(
+      both.container.querySelector('[data-fiction="true"][data-no-tag="true"]'),
+    ).toBeTruthy();
+  });
+});
+
+describe("LeakCardCompact in the redesign", () => {
+  it("is collapsed until tapped, with priority as its stripe", () => {
+    renderCard({ location: "Pad 12", status: "in_progress", priority: "high" });
+
+    const toggle = screen.getByRole("button", { name: "Expand card" });
+    const card = toggle.closest("[data-priority]");
+    expect(card.getAttribute("data-priority")).toBe("high");
+    // Приоритет — полосой, отдельного чипа в подвале нет.
+    expect(screen.queryByText("High")).toBeNull();
+
+    fireEvent.click(toggle);
+    expect(screen.getByText("Pad 12")).toBeTruthy();
   });
 });

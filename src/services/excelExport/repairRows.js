@@ -4,6 +4,24 @@ import { getEventPhotoMapKey } from "./photoIdentity";
 const HOUR = 60 * 60 * 1000;
 
 /**
+ * Бригада попытки — из последней отметки с бригадой между началом ремонта и
+ * его завершением. Отметки пишет проверка ремонта и обход ремонтов.
+ */
+function attemptBrigade(leak, started, done) {
+  const from = Date.parse(String(started?.date ?? ""));
+  const to = Date.parse(String(done?.date ?? ""));
+  let brigade = "";
+  for (const event of getLeakEvents(leak)) {
+    if (event?.type !== "repair_stage" || !event.brigade) continue;
+    const time = Date.parse(String(event.date ?? ""));
+    if (Number.isFinite(from) && time < from) continue;
+    if (Number.isFinite(to) && time > to) continue;
+    brigade = String(event.brigade);
+  }
+  return brigade;
+}
+
+/**
  * Ремонты книги: строка на попытку, а не на утечку.
  *
  * До ленты событий починка жила на записи одиночными полями, и в книгу
@@ -47,6 +65,7 @@ export function getRepairExportRows(orderedLeaks) {
           ? Math.round(((doneAt - startedAt) / HOUR) * 100) / 100
           : "",
         user: started?.user ?? done?.user ?? "",
+        brigade: attemptBrigade(leak, started, done),
         // МТР и примечание берутся у той попытки, в которую их вписали.
         // На записи они одни на всю утечку, и вторая починка затирает первую:
         // спросить запись значит подписать всем попыткам последний МТР.

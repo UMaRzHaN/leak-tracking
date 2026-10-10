@@ -10,25 +10,20 @@ import {
   CALCULATION_PARAM_KEYS,
   CALCULATION_PARAMS_VERSION,
   calculateLeakWithSnapshot,
+  findCalculationBlocker,
 } from "@/utils/calculationParams";
-import { STATUS } from "@/utils/status";
+import { fieldLabel } from "@/utils/fieldLabels";
+import { normalizeLeakTag } from "@/utils/leakIdentity";
 import { priorityFromSpeed } from "@/utils/priority";
 import { normalizeNumber } from "@/utils/normalize/normalizeNumber";
 import { buildLeakHistoryChanges } from "@/utils/historyChanges";
-import { buildReopenedLeak } from "@/utils/reopenLeak";
-import {
-  changeLeakStatus,
-  deletePhotoIfUnreferenced,
-  getOrphanedOriginalPhoto,
-} from "@/domain/leakLifecycle";
 import {
   cleanupUncommittedPhotoReplacements,
   persistPhotoReplacements,
   replaceLeakInCollection,
 } from "../utils/persistPhotoReplacements";
-import { ignoredError } from "@/utils/ignoredError";
 import { fromEntries } from "@/utils/fromEntries";
-import { useLeakRepairConfirm } from "./useLeakRepairConfirm";
+import { applyRecordEdits } from "@/domain/recordEdits";
 
 export function useLeakDetailsPersistence({
   leak,
@@ -40,6 +35,7 @@ export function useLeakDetailsPersistence({
   editFields,
   localEdit,
   localCalcParams,
+  recordEdits = /** @type {Record<string, Record<string, any>>} */ ({}),
   dirtyFields,
   calcParamsDirty,
   originalCalcParams,
@@ -52,10 +48,6 @@ export function useLeakDetailsPersistence({
   setNotification,
   setActiveTab,
   requireHistoryUser,
-  setStatusPickerOpen,
-  setResolveOpen,
-  setRepairOpen,
-  setReopenOpen,
   paramsTab,
 }) {
   const { t } = useLanguage();
@@ -77,6 +69,69 @@ export function useLeakDetailsPersistence({
         message: t("leakDetails.enterSerialNumber"),
       });
       return;
+    }
+
+    const fieldError = (key, reason) =>
+      setNotification({
+        type: "error",
+        message: t("leakDetails.fieldInvalid", {
+          field: fieldLabel(key, t, key),
+          reason,
+        }),
+      });
+
+    // Номер бирки сводит записи при импорте и обмене: дубль склеил бы две
+    // разные утечки. При заведении это проверяется, а здесь номер правился
+    // свободно.
+    if (dirtyFields.some(({ key }) => key === "leak_id")) {
+      const tag = normalizeLeakTag(localEdit.leak_id);
+      if (!tag) {
+        fieldError("leak_id", t("leakForm.validation.required"));
+        return;
+      }
+      if (
+        allLeaks?.some(
+          (other) =>
+            other.id !== leak.id && normalizeLeakTag(other.leak_id) === tag,
+        )
+      ) {
+        setNotification({
+          type: "error",
+          message: t("addLeak.errors.duplicateTag"),
+        });
+        return;
+      }
+    }
+
+    // `calculations` на неверном входе возвращает запись как есть, и новая
+    // скорость сохранилась бы рядом с выбросами от прежней.
+    const measurementKeys = ["leak_speed", "pressure", "temperature"];
+    const editedMeasurements = dirtyFields.filter(({ key }) =>
+      measurementKeys.includes(key),
+    );
+    if (editedMeasurements.length > 0 || calcParamsDirty) {
+      const candidate = { ...leak };
+      for (const { key } of editedMeasurements) {
+        candidate[key] = normalizeNumber(localEdit[key]);
+      }
+      const speedCleared =
+        editedMeasurements.some(({ key }) => key === "leak_speed") &&
+        (candidate.leak_speed == null || candidate.leak_speed === "");
+      const blocker = speedCleared
+        ? { key: "leak_speed", code: "required" }
+        : findCalculationBlocker(candidate, vars, localCalcParams);
+      if (blocker?.key === "params") {
+        setActiveTab(paramsTab);
+        setNotification({
+          type: "error",
+          message: t("leakDetails.calcParamsInvalid"),
+        });
+        return;
+      }
+      if (blocker) {
+        fieldError(blocker.key, t(`leakForm.validation.${blocker.code}`));
+        return;
+      }
     }
 
     const lat = Number(localEdit.lat ?? leak.lat);
@@ -131,6 +186,7 @@ export function useLeakDetailsPersistence({
       // Правка координаты руками отменяет радиус приёмника: он измерял ту
       // точку, а не эту. Оставить его — выдать вписанное значение за снятое,
       // и на карте такая точка выглядела бы достовернее, чем она есть.
+      // Координаты, поставленные кнопкой «по GPS», несут свой радиус.
       const coordsEditedByHand = dirtyFields.some(
         ({ key }) => key === "lat" || key === "lng",
       );
@@ -138,7 +194,13 @@ export function useLeakDetailsPersistence({
       const base = {
         ...leak,
         ...textPatch,
-        ...(coordsEditedByHand ? { coords_accuracy: undefined } : {}),
+        ...(coordsEditedByHand
+          ? {
+              coords_accuracy: Number.isFinite(localEdit.__gps?.accuracy)
+                ? Math.round(localEdit.__gps.accuracy)
+                : undefined,
+            }
+          : {}),
         photo: photoPath ?? leak.photo,
         // Правка снимка починки — не новый ремонт, а исправление вложения у
         // того, который уже был: меняется событие, а не поле записи. У записи
@@ -156,9 +218,14 @@ export function useLeakDetailsPersistence({
         measurementChanged || calcParamsDirty
           ? calculateLeakWithSnapshot(base, vars, localCalcParams)
           : base;
-      const withoutHistory = speedChanged
+      const withSpeed = speedChanged
         ? { ...withCalc, priority: priorityFromSpeed(withCalc[speedKey]) }
         : withCalc;
+      // Исправленные осмотры и ремонты; итог последнего осмотра ведёт статус.
+      const { leak: withoutHistory, changes: recordChanges } = applyRecordEdits(
+        withSpeed,
+        recordEdits,
+      );
       const fieldChanges = buildLeakHistoryChanges({
         before: leak,
         after: withoutHistory,
@@ -175,7 +242,7 @@ export function useLeakDetailsPersistence({
         after: localCalcParams,
         fields: CALCULATION_PARAM_KEYS.map((key) => ({ key })),
       });
-      const changes = [...fieldChanges, ...calcChanges];
+      const changes = [...fieldChanges, ...calcChanges, ...recordChanges];
       const withPriority = {
         ...withoutHistory,
         history: [
@@ -220,88 +287,9 @@ export function useLeakDetailsPersistence({
       setSaving(false);
     }
   };
-  const reportSaveError = () => {
-    setNotification({
-      type: "error",
-      message: t("leakDetails.saveError"),
-    });
-  };
-
-  const handleStatusChange = () => setStatusPickerOpen(true);
-
-  const handleStatusSelect = async (newStatus) => {
-    setStatusPickerOpen(false);
-    if (newStatus === leak.status) return;
-
-    if (!requireHistoryUser()) return;
-
-    if (newStatus === STATUS.RESOLVED) {
-      setResolveOpen(true);
-      return;
-    }
-
-    if (newStatus === STATUS.IN_PROGRESS) {
-      setRepairOpen(true);
-      return;
-    }
-
-    if (newStatus === STATUS.OPEN && leak.status === STATUS.RESOLVED) {
-      setReopenOpen(true);
-      return;
-    }
-
-    const orphanedPhoto = getOrphanedOriginalPhoto(leak);
-    try {
-      const next = changeLeakStatus(leak, newStatus, { user: historyUser });
-      const nextData = replaceLeakInCollection(allLeaks, next);
-      await onSave(next);
-      await deletePhotoIfUnreferenced(
-        orphanedPhoto,
-        nextData,
-        deletePhoto,
-      ).catch(ignoredError("leakDetails.photoCleanup"));
-    } catch {
-      reportSaveError();
-    }
-  };
-
-  const { handleRepairConfirm, handleResolveConfirm } = useLeakRepairConfirm({
-    allLeaks,
-    deletePhoto,
-    historyUser,
-    leak,
-    onSave,
-    reportSaveError,
-    requireHistoryUser,
-    setRepairOpen,
-    setResolveOpen,
-  });
-
-  const handleReopenConfirm = async (draft) => {
-    if (!requireHistoryUser()) return;
-    const next = buildReopenedLeak({ leak, draft, vars, user: historyUser });
-    const nextData = replaceLeakInCollection(allLeaks, next);
-    const orphanedPhoto = getOrphanedOriginalPhoto(leak);
-    try {
-      await onSave(next, { optimistic: false });
-      setReopenOpen(false);
-      await deletePhotoIfUnreferenced(
-        orphanedPhoto,
-        nextData,
-        deletePhoto,
-      ).catch(ignoredError("leakDetails.photoCleanup"));
-    } catch {
-      reportSaveError();
-    }
-  };
 
   return {
     saving,
     handleSave,
-    handleStatusChange,
-    handleStatusSelect,
-    handleResolveConfirm,
-    handleRepairConfirm,
-    handleReopenConfirm,
   };
 }

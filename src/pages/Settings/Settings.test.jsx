@@ -13,12 +13,13 @@ const mocks = vi.hoisted(() => ({
   setLeakPhotoRequired: vi.fn(),
   setMonitoringPhotoRequired: vi.fn(),
   setComponentPhotoRequired: vi.fn(),
+  setRepairPhotoRequired: vi.fn(),
+  setReconcilePhotoRequired: vi.fn(),
   handleAdd: vi.fn(),
   handleSelect: vi.fn(),
   handleRename: vi.fn(),
   handleRemove: vi.fn(),
   handleChangeSyncId: vi.fn(),
-  handleExportZip: vi.fn(),
   handleImportZip: vi.fn(),
   detectImportKind: vi.fn(),
 }));
@@ -56,6 +57,8 @@ vi.mock("@/app/project/hooks/usePhotoRequirements", () => ({
     setLeakPhotoRequired: mocks.setLeakPhotoRequired,
     setMonitoringPhotoRequired: mocks.setMonitoringPhotoRequired,
     setComponentPhotoRequired: mocks.setComponentPhotoRequired,
+    setRepairPhotoRequired: mocks.setRepairPhotoRequired,
+    setReconcilePhotoRequired: mocks.setReconcilePhotoRequired,
   }),
 }));
 vi.mock("./hooks/useSettingsTexts", () => ({
@@ -113,8 +116,6 @@ vi.mock("./hooks/useProjectActions", () => ({
 vi.mock("./hooks/useBackupActions", () => ({
   useBackupActions: () => ({
     importZipRef: { current: null },
-    handleExportZip: mocks.handleExportZip,
-    isExportingZip: false,
     handleImportZip: mocks.handleImportZip,
     importConfirmState: { open: false },
     confirmImport: vi.fn(),
@@ -156,15 +157,11 @@ vi.mock("./components/AddProjectForm", () => ({
     </div>
   ),
 }));
-vi.mock("./components/ProjectList", () => ({
-  default: ({ onSelect, onRename, onRemove, onChangeSyncId }) => (
+vi.mock("./components/ActiveProjectCard", () => ({
+  default: ({ onRename, onChangeSyncId }) => (
     <div>
-      <button onClick={() => onSelect("project-1")}>select-project</button>
-      <button onClick={() => onRename("project-1", "Renamed")}>
-        rename-project
-      </button>
-      <button onClick={() => onRemove("project-1")}>remove-project</button>
-      <button onClick={() => onChangeSyncId("project-1")}>sync-id</button>
+      <button onClick={() => onRename("Renamed")}>rename-project</button>
+      <button onClick={onChangeSyncId}>sync-id</button>
     </div>
   ),
 }));
@@ -177,10 +174,9 @@ vi.mock("./components/EmissionsSummarySection", () => ({
   default: () => <div>emissions</div>,
 }));
 vi.mock("./components/FieldVisibilitySection", () => ({
-  default: ({ onConfigure, onExportModeChange }) => (
+  default: ({ onConfigure }) => (
     <div>
       <button onClick={onConfigure}>configure-fields</button>
-      <button onClick={() => onExportModeChange("latest")}>export-mode</button>
     </div>
   ),
 }));
@@ -189,6 +185,8 @@ vi.mock("./components/PhotoRequirementsSection", () => ({
     onLeakPhotoRequiredChange,
     onMonitoringPhotoRequiredChange,
     onComponentPhotoRequiredChange,
+    onRepairPhotoRequiredChange,
+    onReconcilePhotoRequiredChange,
     hasComponentRegistry,
   }) => (
     <div>
@@ -198,6 +196,12 @@ vi.mock("./components/PhotoRequirementsSection", () => ({
       </button>
       <button onClick={() => onMonitoringPhotoRequiredChange(true)}>
         require-monitor-photo
+      </button>
+      <button onClick={() => onReconcilePhotoRequiredChange(false)}>
+        optional-reconcile-photo
+      </button>
+      <button onClick={() => onRepairPhotoRequiredChange(false)}>
+        optional-repair-photo
       </button>
       <button onClick={() => onComponentPhotoRequiredChange(true)}>
         require-component-photo
@@ -225,11 +229,11 @@ vi.mock("./components/ProjectManagementDialogs", () => ({
     </div>
   ),
 }));
-// Одна кнопка импорта: секция отдаёт файл, а страница сама решает, что это.
-vi.mock("./components/BackupSection", () => ({
-  default: ({ onExport, onImport }) => (
+// Одна кнопка импорта: экран импорта отдаёт файл, а страница сама решает,
+// что это. ZIP-бэкап выгружается из меню, в настройках его больше нет.
+vi.mock("./components/ImportSection", () => ({
+  default: ({ onImport }) => (
     <div>
-      <button onClick={onExport}>export-backup</button>
       <button
         onClick={() =>
           onImport({
@@ -257,8 +261,11 @@ vi.mock("./components/MapCacheSection", () => ({
   ),
 }));
 vi.mock("./components/DangerZoneSection", () => ({
-  default: ({ onClearDatabase }) => (
-    <button onClick={onClearDatabase}>danger-clear</button>
+  default: ({ onClearDatabase, onRemoveProject }) => (
+    <div>
+      <button onClick={onClearDatabase}>danger-clear</button>
+      <button onClick={onRemoveProject}>danger-remove</button>
+    </div>
   ),
 }));
 vi.mock("@/features/fieldVisibility/FieldVisibilityModal", () => ({
@@ -318,21 +325,16 @@ describe("Settings", () => {
     await waitFor(() => expect(screen.getByText("cache:12")).toBeTruthy());
     for (const label of [
       "Settings",
-      "select-project",
       "rename-project",
-      "remove-project",
       "sync-id",
       "appearance",
-      "export-mode",
       "require-leak-photo",
       "require-monitor-photo",
-      "export-backup",
-      "import-backup",
+      "optional-repair-photo",
+      "optional-reconcile-photo",
     ])
       fireEvent.click(screen.getByText(label));
 
-    fireEvent.click(screen.getByText("+ Add project"));
-    fireEvent.click(screen.getByText("confirm-add"));
     fireEvent.click(screen.getByText("configure-fields"));
     fireEvent.click(screen.getByText("save-fields"));
     fireEvent.click(screen.getByText("cache:12"));
@@ -346,13 +348,31 @@ describe("Settings", () => {
       expect(screen.getByText("notice:Database cleared")).toBeTruthy(),
     );
 
+    // Удаление проекта — в опасной зоне и только после подтверждения.
+    fireEvent.click(screen.getByText("danger-remove"));
+    expect(mocks.handleRemove).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText("confirm:settings.deleteProjectTitle:"));
+
     expect(onBack).toHaveBeenCalled();
-    expect(mocks.handleAdd).toHaveBeenCalledWith("New", "upstream");
+    expect(mocks.handleRename).toHaveBeenCalledWith("project-1", "Renamed");
+    expect(mocks.handleRemove).toHaveBeenCalledWith("project-1");
     expect(mocks.setHiddenFields).toHaveBeenCalled();
-    expect(mocks.setMonitoringExportMode).toHaveBeenCalledWith("latest");
     expect(mocks.setLeakPhotoRequired).toHaveBeenCalledWith(true);
     expect(mocks.setMonitoringPhotoRequired).toHaveBeenCalledWith(true);
-    expect(mocks.handleExportZip).toHaveBeenCalled();
+    expect(mocks.setRepairPhotoRequired).toHaveBeenCalledWith(false);
+    expect(mocks.setReconcilePhotoRequired).toHaveBeenCalledWith(false);
+  });
+
+  it("routes an imported ZIP backup from the import screen", async () => {
+    render(
+      <Settings
+        view="import"
+        data={[]}
+        setData={vi.fn()}
+        clearDatabase={mocks.clearDatabase}
+      />,
+    );
+    fireEvent.click(screen.getByText("import-backup"));
     // Файл распознан как ZIP-бэкап и ушёл тому же обработчику, что и раньше.
     await waitFor(() => expect(mocks.handleImportZip).toHaveBeenCalled());
   });
@@ -405,8 +425,22 @@ describe("Settings", () => {
     expect(screen.getByText("registry:false")).toBeTruthy();
   });
 
-  it("prompts to create the first project and closes the form on cancel", () => {
-    mocks.projects = [];
+  it("shows only the active project, with no list or add form", () => {
+    render(
+      <Settings
+        data={[]}
+        setData={vi.fn()}
+        clearDatabase={mocks.clearDatabase}
+      />,
+    );
+
+    // Проекты добавляют из меню, в окне поверх него — здесь формы нет.
+    expect(screen.getByText("rename-project")).toBeTruthy();
+    expect(screen.queryByText("confirm-add")).toBeNull();
+  });
+
+  it("says there is no project yet", () => {
+    mocks.activeProject = null;
     render(
       <Settings
         data={[]}
@@ -416,15 +450,6 @@ describe("Settings", () => {
     );
 
     expect(screen.getByText("No projects")).toBeTruthy();
-
-    fireEvent.click(screen.getByText("+ Add project"));
-    // Пока форма открыта, "проектов нет" не показывается — иначе экран
-    // одновременно и предлагает завести проект, и жалуется на их отсутствие.
-    expect(screen.queryByText("No projects")).toBeNull();
-
-    fireEvent.click(screen.getByText("cancel-add"));
-    expect(screen.getByText("No projects")).toBeTruthy();
-    expect(mocks.handleAdd).not.toHaveBeenCalled();
   });
 
   it("dismisses a notification", async () => {
@@ -436,12 +461,14 @@ describe("Settings", () => {
       />,
     );
 
-    fireEvent.click(screen.getByText("export-mode"));
+    await waitFor(() => expect(screen.getByText("cache:12")).toBeTruthy());
+    fireEvent.click(screen.getByText("cache:12"));
+    fireEvent.click(screen.getByText("confirm:Clear map cache"));
     await waitFor(() =>
-      expect(screen.getByText("notice:Export mode saved")).toBeTruthy(),
+      expect(screen.getByText("notice:Cache cleared")).toBeTruthy(),
     );
 
-    fireEvent.click(screen.getByText("notice:Export mode saved"));
+    fireEvent.click(screen.getByText("notice:Cache cleared"));
     expect(screen.queryByText(/^notice:/)).toBeNull();
   });
 

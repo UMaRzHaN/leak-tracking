@@ -1,8 +1,11 @@
+import GpsCoordsUpdate from "@/features/coords/GpsCoordsUpdate";
 import { useMemo, useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import EditTextField from "@/features/editTextField/EditTextField";
 import SettingsModal from "@/features/settings/SettingsModal/SettingsModal";
 import EditPhotoRow from "./EditPhotoRow";
+import RecordEditList from "./RecordEditList";
+import { RECORD_KIND } from "@/domain/recordEdits";
 import { fieldLabel } from "@/utils/fieldLabels";
 import s from "@/features/leakDetails/LeakDetailsSheet.module.scss";
 
@@ -28,6 +31,8 @@ export default function EditBlock(props) {
     isNative,
     showAfter,
     showRepair,
+    // Записанные координаты — чтобы «Отменить» вернул их на место.
+    originalCoords = /** @type {{lat?: any, lng?: any}|null} */ (null),
   } = props;
 
   const allFields = useMemo(() => {
@@ -57,6 +62,22 @@ export default function EditBlock(props) {
 
   const setField = (key, value) =>
     setLocalEdit((prev) => ({ ...prev, [key]: value }));
+
+  // Записанные осмотры и проверки ремонта — ответы и текст (см. recordEdits).
+  if (activeTab === "monitoring" || activeTab === "repairs") {
+    return (
+      <RecordEditList
+        leak={props.leak}
+        kind={
+          activeTab === "monitoring"
+            ? RECORD_KIND.INSPECTION
+            : RECORD_KIND.REPAIR
+        }
+        edits={props.recordEdits}
+        setEdits={props.setRecordEdits}
+      />
+    );
+  }
 
   if (activeTab === "info") {
     const hasText = textFields.length > 0;
@@ -127,6 +148,28 @@ export default function EditBlock(props) {
       <div className={s.tabPane}>
         {coordFields.length > 0 ? (
           <div className={s.coordGroup}>
+            {/* Одной кнопкой — туда, где стоит человек; поля ниже — руками. */}
+            <GpsCoordsUpdate
+              current={originalCoords}
+              applied={localEdit.__gps ?? null}
+              onApply={(coords) =>
+                setLocalEdit((prev) =>
+                  coords
+                    ? {
+                        ...prev,
+                        lat: coords.lat,
+                        lng: coords.lng,
+                        __gps: coords,
+                      }
+                    : {
+                        ...prev,
+                        lat: originalCoords?.lat ?? "",
+                        lng: originalCoords?.lng ?? "",
+                        __gps: null,
+                      },
+                )
+              }
+            />
             <div className={s.coordPair}>
               {coordFields.map(({ key, label }) => (
                 <EditTextField

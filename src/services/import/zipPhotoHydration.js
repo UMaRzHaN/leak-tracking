@@ -27,9 +27,16 @@ function getMimeFromPath(path) {
   return getImageMimeTypeFromExtension(extension);
 }
 
-async function zipPhotoToBlob(zip, path) {
+/**
+ * Путь в книге — от папки самой книги. Книга лежит в корне архива или, когда
+ * рядом инвентаризация, в своей папке (`Database/…`); старые архивы — только
+ * в корне, поэтому корень остаётся запасным местом.
+ */
+async function zipPhotoToBlob(zip, path, baseDir = "") {
   const relativePath = path.replace(/^zip:/, "");
-  const file = zip.file(relativePath);
+  const file =
+    (baseDir ? zip.file(`${baseDir}${relativePath}`) : null) ??
+    zip.file(relativePath);
   if (!file) return null;
   const blob = await readArchiveEntry(zip, file, "blob");
   const mime = getMimeFromPath(relativePath);
@@ -40,6 +47,8 @@ export async function hydrateZipPhotos(
   result,
   zip,
   concurrency = DEFAULT_ZIP_HYDRATE_CONCURRENCY,
+  // Папка книги внутри архива, с косой чертой на конце; "" — корень.
+  baseDir = "",
 ) {
   let restoredPhotos = 0;
   let missingPhotos = 0;
@@ -48,7 +57,7 @@ export async function hydrateZipPhotos(
   const readPhoto = (path) => {
     const key = String(path).replace(/^zip:/, "");
     if (!photoCache.has(key)) {
-      photoCache.set(key, zipPhotoToBlob(zip, `zip:${key}`));
+      photoCache.set(key, zipPhotoToBlob(zip, `zip:${key}`, baseDir));
     }
     return photoCache.get(key);
   };

@@ -7,6 +7,11 @@ import { usePhotoRequirements } from "@/app/project/hooks/usePhotoRequirements";
 import { useProjectVars } from "@/app/project/hooks/useProjectVars";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import { useDataBaseFilters } from "@/pages/DataBase/hooks/useDataBaseFilters";
+import {
+  useAllowFinishRounds,
+  useAllowMergeRounds,
+  useAllowNewRounds,
+} from "@/app/project/hooks/useAllowNewRounds";
 import { STATUS } from "@/utils/status";
 import { MONITORING_RESULT, isMonitoringDue } from "@/utils/monitoring";
 import {
@@ -15,16 +20,14 @@ import {
   readMonitoringRound,
   saveMonitoringRound,
 } from "@/utils/monitoringRound";
+import { ROUND_KIND } from "@/app/project/roundConflict";
+import { useRoundStartGuard } from "@/app/project/hooks/useRoundStartGuard";
 import { dataUrlToBlob } from "@/utils/photoConversion";
 import { buildReopenedLeak } from "@/utils/reopenLeak";
-import { getRepairDonePhoto, getRepairPhoto } from "@/domain/leakEvents";
+import { getRepairDonePhoto } from "@/domain/leakEvents";
 import {
-  changeLeakStatus,
   deleteLeakPhotosIfUnreferenced,
   deletePhotoIfUnreferenced,
-  getOrphanedOriginalPhoto,
-  resolveLeakRecord,
-  startLeakRepair,
 } from "@/domain/leakLifecycle";
 import {
   buildMonitoringPatch,
@@ -36,6 +39,7 @@ import {
   getMonitoringRoundSummary,
   getMonitoringFlagDefaults,
   getNextMonitoringRoundNumber,
+  mergeRoundIntoPrevious,
 } from "../monitoringDomain";
 import { MONITORING_FILTER as FILTERS } from "@/domain/leakFilters";
 import { ignoredError } from "@/utils/ignoredError";
@@ -48,6 +52,10 @@ export function useMonitoringPage({
   requestedLeakId,
   requestedLeakIds = /** @type {any[]} */ ([]),
   onRequestedLeakConsumed,
+  // Возврат на экран, откуда позвали проверку; true — вернулись.
+  onLeaveCheck = /** @type {((event?: {saved?: string}) => boolean)|null} */ (
+    null
+  ),
   onRequestedLeaksConsumed,
   userProfile,
 }) {
@@ -64,6 +72,10 @@ export function useMonitoringPage({
   const [monitoringRound, setMonitoringRound] = useState(() =>
     readMonitoringRound(activeProject?.id ?? null),
   );
+  // Новые обходы можно запретить в настройках — от случайного нажатия.
+  const [allowNewRounds] = useAllowNewRounds(activeProject?.id ?? null);
+  const [allowFinishRounds] = useAllowFinishRounds(activeProject?.id ?? null);
+  const [allowMergeRounds] = useAllowMergeRounds(activeProject?.id ?? null);
   const [listHeight, setListHeight] = useState(420);
   const [localMonitoringFilter, setLocalMonitoringFilter] = useState(
     FILTERS.DUE,
@@ -74,10 +86,6 @@ export function useMonitoringPage({
     sharedFilters?.setMonitoringFilter ?? setLocalMonitoringFilter;
   const [drafts, setDrafts] = useState({});
   const [activeLeak, setActiveLeak] = useState(/** @type {any} */ (null));
-  const [pickerLeak, setPickerLeak] = useState(/** @type {any} */ (null));
-  const [resolveLeak, setResolveLeak] = useState(/** @type {any} */ (null));
-  const [repairLeak, setRepairLeak] = useState(/** @type {any} */ (null));
-  const [reopenLeak, setReopenLeak] = useState(/** @type {any} */ (null));
   const [pendingMonitoringReopen, setPendingMonitoringReopen] = useState(
     /** @type {any} */ (null),
   );
@@ -153,7 +161,38 @@ export function useMonitoringPage({
     return () => observer.disconnect();
   }, []);
 
+  // Слить текущий обход с предыдущим: новый начали по ошибке.
+  const [mergeConfirmOpen, setMergeConfirmOpen] = useState(false);
+  const mergeRound = async () => {
+    setMergeConfirmOpen(false);
+    if (!allowMergeRounds) return;
+    const result = mergeRoundIntoPrevious(data, monitoringRound);
+    if (!result) return;
+    if (result.moved > 0) await setData(result.data, { optimistic: false });
+    saveMonitoringRound(activeProject?.id ?? null, result.round);
+    setMonitoringRound(result.round);
+    setNotification({
+      type: "success",
+      message: t("monitoring.mergeDone", {
+        number: result.round.number,
+        count: result.moved,
+      }),
+    });
+  };
+
+  const roundBlocked = useRoundStartGuard(
+    activeProject?.id ?? null,
+    ROUND_KIND.MONITORING,
+    setNotification,
+  );
   const startNewRound = () => {
+    if (!allowNewRounds) return;
+    // Обход ремонтов не завершён — второй открытый обход не начинается.
+    if (roundBlocked()) {
+      setRoundConfirmOpen(false);
+      setPendingRoundLeakId(null);
+      return;
+    }
     const next = createMonitoringRound(nextMonitoringRoundNumber);
     const pendingLeak = data.find((leak) => leak.id === pendingRoundLeakId);
     saveMonitoringRound(activeProject?.id ?? null, next);
@@ -179,7 +218,7 @@ export function useMonitoringPage({
   };
 
   const finishRound = () => {
-    if (!allTagsChecked || isRoundCompleted) return;
+    if (!allowFinishRounds || !allTagsChecked || isRoundCompleted) return;
     const completed = completeMonitoringRound(
       monitoringRound,
       new Date().toISOString(),
@@ -222,6 +261,13 @@ export function useMonitoringPage({
     (leak) => {
       if (!leak) return;
       if (!hasActiveMonitoringRound) {
+        if (!allowNewRounds) {
+          setNotification({
+            type: "warning",
+            message: t("settings.rounds.disabled"),
+          });
+          return;
+        }
         setPendingRoundLeakId(leak.id);
         setRoundConfirmOpen(true);
         return;
@@ -233,10 +279,12 @@ export function useMonitoringPage({
       showMonitoringSheet(leak);
     },
     [
+      allowNewRounds,
       hasActiveMonitoringRound,
       monitoringRoundId,
       monitoringRoundNumber,
       showMonitoringSheet,
+      t,
     ],
   );
 
@@ -289,6 +337,8 @@ export function useMonitoringPage({
       leakNumber: t("monitoring.leakNumber"),
       close: t("monitoring.close"),
       save: t("monitoring.save"),
+      saveCheck: t("monitoring.saveCheck"),
+      checkTitle: t("monitoring.checkTitle"),
       saving: t("monitoring.saving"),
       saveFailed: t("monitoring.saveFailed"),
       required: t("monitoring.required"),
@@ -421,6 +471,8 @@ export function useMonitoringPage({
       setMonitorQueueTotal(0);
     }
     setSubmitted(false);
+    // Проверку позвали с другого экрана — туда же и вернуться, с итогом.
+    if (!nextQueueLeak && onLeaveCheck?.({ saved: texts.saved })) return;
     setNotification({ type: "success", message: texts.saved });
   };
 
@@ -547,153 +599,6 @@ export function useMonitoringPage({
     );
   };
 
-  const handlePickStatus = (leak) => {
-    if (!requireHistoryUser()) return;
-    setPickerLeak(leak);
-  };
-
-  const handleStatusSelect = async (newStatus) => {
-    const leak = pickerLeak;
-    setPickerLeak(null);
-    if (!leak || newStatus === leak.status) return;
-    if (!requireHistoryUser()) return;
-
-    if (newStatus === STATUS.RESOLVED) {
-      setResolveLeak(leak);
-      return;
-    }
-
-    if (newStatus === STATUS.IN_PROGRESS) {
-      setRepairLeak(leak);
-      return;
-    }
-
-    if (newStatus === STATUS.OPEN && leak.status === STATUS.RESOLVED) {
-      setReopenLeak(leak);
-      return;
-    }
-
-    const orphanedPhoto = getOrphanedOriginalPhoto(leak);
-
-    const next = data.map((item) =>
-      item.id === leak.id
-        ? changeLeakStatus(item, newStatus, {
-            user: profileName,
-          })
-        : item,
-    );
-    await setData(next);
-
-    await deletePhotoIfUnreferenced(orphanedPhoto, next, deletePhoto).catch(
-      ignoredError("monitoring.photoCleanup"),
-    );
-  };
-
-  const handleResolveConfirm = async ({
-    photo_after,
-    materials_equipment,
-    note,
-  }) => {
-    const leak = resolveLeak;
-    if (!leak) return;
-    if (!requireHistoryUser()) return;
-
-    try {
-      const next = data.map((item) =>
-        item.id === leak.id
-          ? resolveLeakRecord(
-              item,
-              { photo_after, materials_equipment, note },
-              { user: profileName },
-            )
-          : item,
-      );
-      await setData(next);
-      setResolveLeak(null);
-      const displacedAfter = getRepairDonePhoto(leak);
-      if (displacedAfter && displacedAfter !== photo_after) {
-        await deletePhotoIfUnreferenced(
-          displacedAfter,
-          next,
-          deletePhoto,
-        ).catch(ignoredError("monitoring.photoCleanup"));
-      }
-    } catch (error) {
-      if (photo_after && photo_after !== getRepairDonePhoto(leak)) {
-        deletePhotoIfUnreferenced(photo_after, data, deletePhoto).catch(
-          ignoredError("monitoring.photoCleanup"),
-        );
-      }
-      throw error;
-    }
-  };
-
-  const handleRepairConfirm = async ({
-    photo_repair,
-    materials_equipment,
-    note,
-  }) => {
-    const leak = repairLeak;
-    if (!leak) return;
-    if (!requireHistoryUser()) return;
-
-    const orphanedPhoto = getOrphanedOriginalPhoto(leak);
-    try {
-      const next = data.map((item) =>
-        item.id === leak.id
-          ? startLeakRepair(
-              item,
-              { photo_repair, materials_equipment, note },
-              { user: profileName },
-            )
-          : item,
-      );
-      await setData(next);
-      setRepairLeak(null);
-      const displacedRepair = getRepairPhoto(leak);
-      if (displacedRepair && displacedRepair !== photo_repair) {
-        await deletePhotoIfUnreferenced(
-          displacedRepair,
-          next,
-          deletePhoto,
-        ).catch(ignoredError("monitoring.photoCleanup"));
-      }
-      await deletePhotoIfUnreferenced(orphanedPhoto, next, deletePhoto).catch(
-        ignoredError("monitoring.photoCleanup"),
-      );
-    } catch (error) {
-      if (photo_repair && photo_repair !== getRepairPhoto(leak)) {
-        deletePhotoIfUnreferenced(photo_repair, data, deletePhoto).catch(
-          ignoredError("monitoring.photoCleanup"),
-        );
-      }
-      throw error;
-    }
-  };
-
-  const handleReopenConfirm = async (draft) => {
-    const leak = reopenLeak;
-    if (!leak) return;
-    if (!requireHistoryUser()) return;
-
-    const orphanedPhoto = getOrphanedOriginalPhoto(leak);
-    const next = data.map((item) =>
-      item.id === leak.id
-        ? buildReopenedLeak({
-            leak: item,
-            draft,
-            vars,
-            user: profileName,
-          })
-        : item,
-    );
-    await setData(next, { optimistic: false });
-    setReopenLeak(null);
-    await deletePhotoIfUnreferenced(orphanedPhoto, next, deletePhoto).catch(
-      ignoredError("monitoring.photoCleanup"),
-    );
-  };
-
   return {
     activeLeak,
     counts,
@@ -703,11 +608,6 @@ export function useMonitoringPage({
     filters,
     finishRound,
     handleMonitoringReopenConfirm,
-    handlePickStatus,
-    handleReopenConfirm,
-    handleRepairConfirm,
-    handleResolveConfirm,
-    handleStatusSelect,
     hasActiveMonitoringRound,
     hasMonitoringRound,
     isSaving,
@@ -726,12 +626,8 @@ export function useMonitoringPage({
     openMonitoringSheet,
     pendingMonitoringReopen,
     photoRequired,
-    pickerLeak,
     projectConfig,
-    reopenLeak,
-    repairLeak,
     repeatConfirmLeak,
-    resolveLeak,
     roundConfirmOpen,
     saveLeak,
     saveRecord,
@@ -743,16 +639,18 @@ export function useMonitoringPage({
     setNotification,
     setPendingMonitoringReopen,
     setPendingRoundLeakId,
-    setPickerLeak,
-    setReopenLeak,
-    setRepairLeak,
     setRepeatConfirmLeak,
-    setResolveLeak,
     setRoundConfirmOpen,
     setSubmitted,
     showCompletion,
     showMonitoringSheet,
     startNewRound,
+    allowNewRounds,
+    allowFinishRounds,
+    allowMergeRounds,
+    mergeRound,
+    mergeConfirmOpen,
+    setMergeConfirmOpen,
     submitted,
     texts,
     updateDraft,

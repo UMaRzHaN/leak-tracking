@@ -13,12 +13,20 @@ import {
   FICTION_FILTER,
   MONITORING_FILTER,
   NEARBY_RADIUS_M,
+  TAG_FILTER,
 } from "@/domain/leakFilters";
-import { isLeakFiction, isMonitoringDue } from "@/utils/monitoring";
+import { MAP_FILTER, mapFiltersFor } from "@/pages/MapPage/mapModuleFilters";
+import {
+  getLastMonitoringFlag,
+  isLeakFiction,
+  isMonitoringDue,
+} from "@/utils/monitoring";
 
 import { useLocationToggles } from "./useLocationToggles";
 
 const NEARBY_RADIUS_OPTIONS = [100, 500, 1000];
+// Один и тот же пустой набор: новый массив на каждый рендер сбивал бы мемо.
+const NO_FILTER = /** @type {string[]} */ ([]);
 
 export function useMapFilters({
   leaks,
@@ -28,6 +36,8 @@ export function useMapFilters({
   activeProjectId,
   open,
   mapCenter,
+  // Отборы модуля: чего на карте модуля нет, то и не действует.
+  filters = mapFiltersFor(),
 }) {
   const distanceCacheRef = useRef(new Map());
   const {
@@ -58,30 +68,40 @@ export function useMapFilters({
   const [localMonitoringFilter, setLocalMonitoringFilter] = useState(
     MONITORING_FILTER.DUE,
   );
+  const [localTagFilter, setLocalTagFilter] = useState(TAG_FILTER.ALL);
   const monitoringRound = useMemo(
     () => readMonitoringRound(activeProjectId),
     [activeProjectId],
   );
   const monitoringRoundId = monitoringRound?.id ?? null;
   const monitoringRoundNumber = monitoringRound?.number ?? null;
-  const hasMonitoringRound = Boolean(monitoringRoundId);
+  const hasMonitoringRound =
+    Boolean(monitoringRoundId) && filters.has(MAP_FILTER.MONITORING);
 
   const nearbyOnly = sharedFilters?.nearbyFilter ?? localNearbyOnly;
   const setNearbyOnly = sharedFilters?.setNearbyFilter ?? setLocalNearbyOnly;
   const nearbyRadius = sharedFilters?.nearbyRadius ?? localNearbyRadius;
   const setNearbyRadius =
     sharedFilters?.setNearbyRadius ?? setLocalNearbyRadius;
-  const priorityFilters = normalizeMultiFilter(
-    sharedFilters?.priorityFilter ?? localPriorityFilter,
-  );
+  const priorityFilters = filters.has(MAP_FILTER.PRIORITY)
+    ? normalizeMultiFilter(sharedFilters?.priorityFilter ?? localPriorityFilter)
+    : NO_FILTER;
   const setPriorityFilter =
     sharedFilters?.setPriorityFilter ?? setLocalPriorityFilter;
-  const statusFilters = normalizeMultiFilter(
-    sharedFilters?.statusFilter ?? localStatusFilter,
-  );
+  const statusFilters = filters.has(MAP_FILTER.STATUS)
+    ? normalizeMultiFilter(sharedFilters?.statusFilter ?? localStatusFilter)
+    : NO_FILTER;
   const setStatusFilter = sharedFilters?.setFilter ?? setLocalStatusFilter;
   // Общий с базой и мониторингом: выбранное там видно здесь.
-  const fictionFilter = sharedFilters?.fictionFilter ?? localFictionFilter;
+  const fictionFilter = filters.has(MAP_FILTER.FICTION)
+    ? (sharedFilters?.fictionFilter ?? localFictionFilter)
+    : FICTION_FILTER.ALL;
+  // Общий с обходом: выбранное в списке видно на карте.
+  const tagFilter = sharedFilters?.tagFilter ?? localTagFilter;
+  const setTagFilter = sharedFilters?.setTagFilter ?? setLocalTagFilter;
+  const activeTagFilter = filters.has(MAP_FILTER.TAG)
+    ? tagFilter
+    : TAG_FILTER.ALL;
   const setFictionFilter =
     sharedFilters?.setFictionFilter ?? setLocalFictionFilter;
   const monitoringFilter =
@@ -124,7 +144,9 @@ export function useMapFilters({
     sharedSearch,
   });
 
-  const filteredLeaks = useMemo(
+  // Всё, кроме тега: от этой выборки считаются и сам отбор, и счётчики его
+  // кнопок — иначе при «тега нет» вторая кнопка показывала бы ноль.
+  const beforeTagLeaks = useMemo(
     () =>
       normalizedLeaks.filter(
         (leak) =>
@@ -156,6 +178,37 @@ export function useMapFilters({
       fictionFilter,
     ],
   );
+
+  // Ответ «Физ. тег есть?» разбирается по ленте осмотров — только на карте,
+  // где отбор по тегу есть.
+  const tagAnswers = useMemo(
+    () =>
+      filters.has(MAP_FILTER.TAG)
+        ? new Map(
+            beforeTagLeaks.map((leak) => [
+              leak,
+              getLastMonitoringFlag(leak, "physicalTag"),
+            ]),
+          )
+        : null,
+    [beforeTagLeaks, filters],
+  );
+
+  const tagCounts = useMemo(() => {
+    const counts = { with: 0, without: 0 };
+    for (const answer of tagAnswers?.values() ?? []) {
+      if (answer === true) counts.with += 1;
+      else if (answer === false) counts.without += 1;
+    }
+    return counts;
+  }, [tagAnswers]);
+
+  const filteredLeaks = useMemo(() => {
+    if (activeTagFilter === TAG_FILTER.ALL || !tagAnswers)
+      return beforeTagLeaks;
+    const want = activeTagFilter === TAG_FILTER.WITH;
+    return beforeTagLeaks.filter((leak) => tagAnswers.get(leak) === want);
+  }, [beforeTagLeaks, tagAnswers, activeTagFilter]);
 
   const togglePriorityFilter = useCallback(
     (priority) => {
@@ -226,7 +279,9 @@ export function useMapFilters({
     const cache = distanceCacheRef.current;
     return monitoringLeaks
       .map((leak) => {
-        const key = `${leak.id}_${roundedLat}_${roundedLng}`;
+        // Координаты самой точки — в ключе: поправленная на месте утечка
+        // сохраняет id, и без них из кэша бралось расстояние до старой точки.
+        const key = `${leak.id}_${leak.lat}_${leak.lng}_${roundedLat}_${roundedLng}`;
         let distance = cache.get(key);
         if (distance === undefined) {
           distance = getDistanceMeters(
@@ -299,6 +354,9 @@ export function useMapFilters({
     statusFilters,
     fictionFilter,
     setFictionFilter,
+    tagFilter: activeTagFilter,
+    setTagFilter,
+    tagCounts,
     hasGps,
     setMonitoringFilter,
     setNearbyOnly,

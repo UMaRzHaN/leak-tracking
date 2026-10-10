@@ -1,5 +1,7 @@
 import { getAllMonitoringRecords } from "@/utils/monitoring";
 import { ABBREV_MAP } from "@/features/search/Autocomplete/smartFilter";
+import { SEARCH_SCOPE } from "@/domain/leakFilters";
+import { LEAK_EVENT_TYPES, getLeakEvents } from "@/domain/leakEvents";
 
 /**
  * Текст записи для поиска: всё, по чему её могут искать, одной строкой.
@@ -42,6 +44,45 @@ const MONITORING_SEARCH_KEYS = [
 ];
 
 const HISTORY_SEARCH_KEYS = ["user", "text", "from", "to"];
+
+const REPAIR_SEARCH_KEYS = ["brigade", "note", "materials_equipment"];
+
+// Поля одной области поиска: свои — у записи, у обхода и у истории.
+const SCOPE_KEYS = {
+  [SEARCH_SCOPE.TAG]: { leak: ["leak_id"] },
+  [SEARCH_SCOPE.PLACE]: {
+    leak: [
+      "subdivision",
+      "deposit",
+      "field",
+      "station",
+      "district",
+      "locality",
+      "address",
+      "location",
+    ],
+  },
+  [SEARCH_SCOPE.OBJECT]: {
+    leak: ["object", "category", "component", "equipmentType", "serial_number"],
+    acronyms: true,
+  },
+  [SEARCH_SCOPE.DESCRIPTION]: {
+    leak: [
+      "leak_description",
+      "leak_cause",
+      "technological_solution",
+      "repair_recommendation",
+      "note",
+    ],
+    monitoring: ["comment"],
+    acronyms: true,
+  },
+  [SEARCH_SCOPE.INSPECTOR]: {
+    leak: ["detectedBy"],
+    monitoring: ["monitoredBy"],
+    history: ["user"],
+  },
+};
 
 export function normalizeLeakSearchText(value) {
   return String(value ?? "")
@@ -109,7 +150,25 @@ function buildSearchAcronyms(values) {
   return [...acronyms].join(" ");
 }
 
-export function buildLeakSearchText(leak) {
+function buildScopedSearchText(leak, keys) {
+  const values = collectValues(leak, keys.leak);
+  if (keys.monitoring) {
+    for (const record of getAllMonitoringRecords(leak)) {
+      values.push(...collectValues(record, keys.monitoring));
+    }
+  }
+  if (keys.history) {
+    for (const entry of leak?.history ?? []) {
+      values.push(...collectValues(entry, keys.history));
+    }
+  }
+  const acronyms = keys.acronyms ? buildSearchAcronyms(values) : "";
+  return normalizeLeakSearchText(`${values.join(" ")} ${acronyms}`);
+}
+
+export function buildLeakSearchText(leak, scope = SEARCH_SCOPE.ALL) {
+  const scopeKeys = SCOPE_KEYS[scope];
+  if (scopeKeys) return buildScopedSearchText(leak, scopeKeys);
   const tag = leak?.leak_id ?? "";
   const values = [
     ...collectValues(leak, SEARCH_KEYS),
@@ -126,6 +185,12 @@ export function buildLeakSearchText(leak) {
   for (const record of getAllMonitoringRecords(leak)) {
     values.push(...collectValues(record, MONITORING_SEARCH_KEYS));
   }
+  // Отметки ремонта: бригаду и замечание из обхода ремонтов ищут так же.
+  for (const event of getLeakEvents(leak)) {
+    if (event?.type === LEAK_EVENT_TYPES.REPAIR_STAGE) {
+      values.push(...collectValues(event, REPAIR_SEARCH_KEYS));
+    }
+  }
   for (const entry of leak?.history ?? []) {
     values.push(...collectValues(entry, HISTORY_SEARCH_KEYS));
     for (const change of entry?.changes ?? []) {
@@ -138,10 +203,10 @@ export function buildLeakSearchText(leak) {
   );
 }
 
-export function matchesLeakSearch(leak, query) {
+export function matchesLeakSearch(leak, query, scope = SEARCH_SCOPE.ALL) {
   const normalizedQuery = normalizeLeakSearchText(query);
   if (!normalizedQuery) return true;
-  const searchText = buildLeakSearchText(leak);
+  const searchText = buildLeakSearchText(leak, scope);
   return normalizedQuery
     .split(" ")
     .every((token) => searchText.includes(token));

@@ -23,8 +23,8 @@
 
 .hintRight {
   left: 0;
-  background: linear-gradient(to right, var(--c-blue-overlay), transparent);
-  color: var(--c-blue-text);
+  background: linear-gradient(to right, var(--c-accent-overlay), transparent);
+  color: var(--c-accent-text);
 }
 
 /* Left hint color changes based on the next status */
@@ -42,18 +42,18 @@
     color: var(--c-resolved-text);
   }
   &[data-next="open"] {
-    background: linear-gradient(to left, var(--c-blue-overlay), transparent);
-    color: var(--c-blue-text);
+    background: linear-gradient(to left, var(--c-accent-overlay), transparent);
+    color: var(--c-accent-text);
   }
 }
 
 .hintIcon {
-  font-size: 16px;
+  font-size: var(--fs-lg);
   line-height: 1;
   font-weight: 700;
 }
 .hintText {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -63,7 +63,10 @@
    CARD
    ══════════════════════════════════════ */
 
-.collapsed .body {
+.collapsed .body,
+/* Без места и компонента тело пустое — без этого под шапкой оставалась
+   полоса из одних отступов. */
+.body:empty {
   display: none;
 }
 
@@ -94,7 +97,8 @@
     z-index: 1;
   }
 
-  /* priority stripe */
+  /* Полоса — приоритет: статус уже написан плашкой в шапке, а срочность
+     читается цветом с края, не разбирая подписи. */
   &[data-priority="critical"]::before {
     background: var(--c-open);
     animation: urgencyPulse 1.8s ease-in-out infinite;
@@ -103,7 +107,7 @@
     background: var(--c-progress);
   }
   &[data-priority="medium"]::before {
-    background: var(--c-blue);
+    background: var(--c-accent);
   }
   &[data-priority="low"]::before {
     background: var(--c-resolved);
@@ -119,7 +123,7 @@
     box-shadow: 0 4px 18px rgba(0, 0, 0, 0.12);
   }
   &.swipeRight {
-    box-shadow: 0 4px 18px rgba(37, 99, 235, 0.18);
+    box-shadow: 0 4px 18px rgba(109, 61, 232, 0.18);
   }
 }
 
@@ -141,32 +145,53 @@
   }
 }
 
-.fictionPill {
-  display: inline-flex;
-  align-items: center;
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  padding: 2px 8px;
-  border-radius: var(--r-pill);
-  border: 1.5px solid var(--c-fiction);
-  color: var(--c-fiction);
-  background: color-mix(in srgb, var(--c-fiction) 14%, transparent);
-  white-space: nowrap;
-  flex-shrink: 0;
-  line-height: 1.4;
+/* Без физ. тега: та же штриховка, но своим жёлтым — тег надо повесить. */
+.card[data-no-tag="true"] {
+  border: 1.5px dashed var(--c-no-tag);
+  background:
+    repeating-linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--c-no-tag) 10%, transparent) 0 8px,
+      transparent 8px 16px
+    ),
+    var(--c-surface);
+
+  &::before {
+    background: var(--c-no-tag);
+    animation: none;
+  }
+}
+
+/* И фикция, и тега нет: полосы чередуют оба цвета, рамка и кромка —
+   переход от фиолетового к жёлтому. */
+.card[data-fiction="true"][data-no-tag="true"] {
+  border: 1.5px solid transparent;
+  background:
+    repeating-linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--c-fiction) 10%, transparent) 0 8px,
+        transparent 8px 16px,
+        color-mix(in srgb, var(--c-no-tag) 12%, transparent) 16px 24px,
+        transparent 24px 32px
+      )
+      padding-box,
+    linear-gradient(var(--c-surface), var(--c-surface)) padding-box,
+    linear-gradient(135deg, var(--c-fiction), var(--c-no-tag)) border-box;
+
+  &::before {
+    background: linear-gradient(180deg, var(--c-fiction), var(--c-no-tag));
+  }
 }
 
 .selected {
-  border-color: rgba(37, 99, 235, 0.38);
+  border-color: rgba(109, 61, 232, 0.38);
   background: linear-gradient(
     180deg,
-    rgba(37, 99, 235, 0.07),
+    rgba(109, 61, 232, 0.07),
     var(--c-surface) 42%
   );
   box-shadow:
-    0 0 0 2px rgba(37, 99, 235, 0.1),
+    0 0 0 2px rgba(109, 61, 232, 0.1),
     var(--shadow-sm);
 }
 
@@ -187,7 +212,7 @@
   border-radius: 5px;
   border: 1px solid var(--c-border);
   background: var(--c-surface2);
-  color: var(--c-blue-text);
+  color: var(--c-accent-text);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -203,7 +228,7 @@
     box-shadow var(--t-fast);
 
   &:hover {
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.08);
+    box-shadow: 0 0 0 2px rgba(109, 61, 232, 0.08);
   }
 
   &:active {
@@ -212,13 +237,13 @@
 }
 
 .selectToggleActive {
-  border-color: var(--c-blue);
-  background: var(--c-blue);
+  border-color: var(--c-accent);
+  background: var(--c-accent);
   color: #fff;
 }
 
 .selectToggleMark {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   line-height: 1;
   font-weight: 800;
   transform: translateY(-0.5px);
@@ -239,7 +264,7 @@
 .statusPill {
   display: inline-flex;
   align-items: center;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -252,7 +277,7 @@
 }
 
 .id {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--c-text);
   letter-spacing: -0.01em;
@@ -264,7 +289,7 @@
 }
 
 .time {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   color: var(--c-text3);
   white-space: nowrap;
   flex-shrink: 0;
@@ -282,14 +307,14 @@
   border-radius: var(--r-pill);
   color: var(--c-text3);
   background: transparent;
-  font-size: 15px;
+  font-size: var(--fs-lg);
   line-height: 1;
   cursor: pointer;
 
   &:hover,
   &:focus-visible {
-    color: var(--c-blue-text);
-    background: var(--c-blue-dim);
+    color: var(--c-accent-text);
+    background: var(--c-accent-dim);
   }
 }
 
@@ -311,7 +336,7 @@
 }
 
 .locationName {
-  font-size: 15px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--c-text);
   line-height: 1.25;
@@ -322,7 +347,7 @@
 }
 
 .objectName {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   color: var(--c-text2);
   overflow: hidden;
@@ -340,13 +365,13 @@
   width: 11px;
   flex-shrink: 0;
   color: var(--c-text3);
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   line-height: 1;
   text-align: center;
 }
 
 .componentName {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--c-text2);
   overflow: hidden;
   white-space: nowrap;
@@ -400,7 +425,7 @@
   width: 11px;
   flex-shrink: 0;
   color: var(--c-text3);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 1;
   text-align: center;
 }
@@ -408,7 +433,7 @@
 .desc {
   min-width: 0;
   flex: 1;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--c-text3);
   line-height: 1.4;
   overflow: hidden;
@@ -440,18 +465,21 @@
 }
 
 .chip {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-weight: 500;
   color: var(--c-text2);
   background: var(--c-bg);
   border: 1px solid var(--c-border);
-  border-radius: var(--r-pill);
+  border-radius: 12px;
   padding: 2px 9px;
-  white-space: nowrap;
+  // Длинный МТР из ремонтов переносится внутри карточки, а не уходит за край.
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .chipCalc {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   color: var(--c-resolved-text);
   background: var(--c-resolved-bg);
@@ -462,11 +490,11 @@
 }
 
 .chipNear {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
-  color: var(--c-blue-text);
-  background: var(--c-blue-dim);
-  border: 1px solid rgba(37, 99, 235, 0.25);
+  color: var(--c-accent-text);
+  background: var(--c-accent-dim);
+  border: 1px solid rgba(109, 61, 232, 0.25);
   border-radius: var(--r-pill);
   padding: 2px 9px;
   white-space: nowrap;
@@ -508,9 +536,9 @@
 }
 
 .photoStackbefore {
-  --photo-accent: var(--c-blue);
-  border-color: color-mix(in srgb, var(--c-blue) 45%, var(--c-border));
-  box-shadow: 3px 0 8px rgba(37, 99, 235, 0.18);
+  --photo-accent: var(--c-accent);
+  border-color: color-mix(in srgb, var(--c-accent) 45%, var(--c-border));
+  box-shadow: 3px 0 8px rgba(109, 61, 232, 0.18);
 }
 
 .photoStackrepair {
@@ -586,7 +614,7 @@
   right: 0;
   padding: 2px 0;
   text-align: center;
-  font-size: 9px;
+  font-size: var(--fs-micro);
   font-weight: 700;
   color: #fff;
   background: rgba(0, 0, 0, 0.48);
@@ -602,7 +630,7 @@
   left: 0;
   padding: 2px 1px;
   text-align: center;
-  font-size: 8px;
+  font-size: var(--fs-micro);
   font-weight: 800;
   color: #fff;
   background: rgba(0, 0, 0, 0.54);
@@ -618,7 +646,7 @@
 
 .photoStackbefore .photoStackLabel,
 .photoStackbefore .photoStackBackLabel {
-  background: color-mix(in srgb, var(--c-blue) 70%, rgba(0, 0, 0, 0.5));
+  background: color-mix(in srgb, var(--c-accent) 70%, rgba(0, 0, 0, 0.5));
 }
 
 .photoStackrepair .photoStackLabel,

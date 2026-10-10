@@ -111,6 +111,31 @@ describe("LeakRepository.saveAll: правки другой вкладки", () 
     expect(stored.map((record) => record.id).sort()).toEqual(["a", "b"]);
   });
 
+  // Превью импорта смотрит в хранилище, но в памяти вкладки остаётся старый
+  // набор. Запомненная им ревизия пропускала этот набор поверх свежего.
+  it("не снимает защиту после взгляда для предпросмотра", async () => {
+    await LeakRepository.saveAll([leak("a")], {
+      projectId: PROJECT,
+      folderName: PROJECT,
+    });
+    const ourRevision = await readWebDataRevision(PROJECT);
+    await writeFromAnotherTab([leak("a"), leak("b")], ourRevision);
+
+    const preview = await LeakRepository.getAll({
+      projectId: PROJECT,
+      folderName: PROJECT,
+      peek: true,
+    });
+    expect(preview.map((record) => record.id).sort()).toEqual(["a", "b"]);
+
+    await expect(
+      LeakRepository.saveAll([leak("a"), leak("c")], {
+        projectId: PROJECT,
+        folderName: PROJECT,
+      }),
+    ).rejects.toMatchObject({ code: "PROJECT_CHANGED_ELSEWHERE" });
+  });
+
   // Перечитал — значит увидел; после этого сохранение обязано пройти, иначе
   // из отказа нет выхода.
   it("пропускает сохранение после перечитывания", async () => {

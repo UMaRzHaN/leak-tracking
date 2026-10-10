@@ -20,15 +20,35 @@ export const database = {
   notSpecified: "Не указано",
   radiusKm: "км",
   radiusM: "м",
-  searchPlaceholder: "Бирка, место, объект, описание, проверяющий...",
+  searchPlaceholder: "Бирка, место, объект…",
   searchLeaks: "Поиск утечек",
   clearSearch: "Очистить поиск",
+  searchScope: "Где искать",
+  searchScopes: {
+    all: "Все поля",
+    tag: "Бирка",
+    place: "Место",
+    object: "Объект",
+    description: "Описание",
+    inspector: "Проверяющий",
+  },
+  // Подсказка в строке поиска, когда выбрано одно поле.
+  searchIn: {
+    tag: "Поиск по бирке...",
+    place: "Поиск по месту...",
+    object: "Поиск по объекту и компоненту...",
+    description: "Поиск по описанию и примечаниям...",
+    inspector: "Поиск по проверяющему...",
+  },
   filters: "Фильтры",
   status: "Статус",
   priority: "Приоритет",
   fiction: "Фикция",
   fictionOnly: "Фикции",
   fictionExclude: "Без фикций",
+  physicalTag: "Физ. тег",
+  tagWith: "Тег есть",
+  tagWithout: "Тега нет",
   all: "Все",
   nearbyRadius: " • в радиусе {{radius}} м",
 
@@ -47,6 +67,7 @@ export const database = {
     noNearby: "Нет утечек в радиусе {{radius}} м",
     noRecords: "Записей нет",
   },
+  hiddenSelected: "ещё {{count}} выбрано, скрыто фильтром",
   selectedOf: "{{selected}} выбрано из {{visible}}",
   nearMe: "Рядом со мной",
 
@@ -65,22 +86,9 @@ export const database = {
 
   fillUserName: "Заполните имя пользователя в профиле",
   paramsAlreadyApplied: "Выбранные параметры уже применены",
+  paramsInvalid: "Параметры расчёта вне допустимых значений",
   paramsUpdated: "Параметры и расчёты обновлены: {{changed}}",
   paramsUpdateFailed: "Не удалось обновить параметры: {{message}}",
-
-  bulk: {
-    statusChanged: "Статус изменён у {{count}} {{records}}",
-    resolved: "Устранено {{count}} {{records}}",
-    saveError: "Ошибка сохранения: {{message}}",
-    // Родительный падеж: строка читается как «у 1 записи», «у 2 записей».
-    // Именительный набор для счётчика лежит отдельно, в database.records.
-    records: {
-      one: "записи",
-      few: "записей",
-      many: "записей",
-      other: "записей",
-    },
-  },
 
   export: {
     hasPhoto: "Да",

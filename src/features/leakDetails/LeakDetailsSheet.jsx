@@ -1,19 +1,18 @@
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { usePhotoSrc } from "@/hooks/usePhotoSrc";
 import { formatLeakDate } from "@/utils/locale";
 import { getLeakDetailsHeroPhotoPath } from "@/utils/monitoring";
 import { useLeakDetailsSheet, MODE } from "./hooks/useLeakDetailsSheet";
 import PhotoBlock from "./components/PhotoBlock";
+import { getLeakHeroPhotoPaths } from "./utils/heroPhotoPaths";
 import ViewBlock from "./components/ViewBlock";
 import EditBlock from "./components/EditBlock";
 import PhotoViewer from "@/features/photos/PhotoViewer/PhotoViewer";
-import ResolveModal from "@/features/resolve/ResolveModal/ResolveModal";
-import ReopenLeakModal from "@/features/status/ReopenLeakModal/ReopenLeakModal";
-import StatusPickerModal from "@/features/status/StatusPickerModal/StatusPickerModal";
 import Notification from "@/components/ui/Notification/Notification";
 import ConfirmSheet from "@/components/ui/ConfirmSheet/ConfirmSheet";
 import { useModalDialog } from "@/hooks/useModalDialog";
+import Icon from "@/components/ui/Icon/Icon";
 import s from "./LeakDetailsSheet.module.scss";
 
 export default function LeakDetailsSheet({
@@ -36,6 +35,8 @@ export default function LeakDetailsSheet({
     setLocalEdit,
     localCalcParams,
     setLocalCalcParams,
+    recordEdits,
+    setRecordEdits,
     saving,
     notification,
     setNotification,
@@ -43,14 +44,6 @@ export default function LeakDetailsSheet({
     setViewerOpen,
     closeConfirmOpen,
     deleteArmed,
-    resolveOpen,
-    setResolveOpen,
-    repairOpen,
-    setRepairOpen,
-    reopenOpen,
-    setReopenOpen,
-    statusPickerOpen,
-    setStatusPickerOpen,
     fileInputRef,
     fileInputAfterRef,
     fileInputRepairRef,
@@ -59,7 +52,6 @@ export default function LeakDetailsSheet({
     srcRepair,
     isNative,
     projectConfig,
-    vars,
     status,
     ago,
     TABS,
@@ -68,11 +60,6 @@ export default function LeakDetailsSheet({
     handleClose,
     confirmClose,
     cancelClose,
-    handleStatusChange,
-    handleStatusSelect,
-    handleResolveConfirm,
-    handleRepairConfirm,
-    handleReopenConfirm,
     handleEdit,
     handleCancel,
     armDelete,
@@ -92,6 +79,9 @@ export default function LeakDetailsSheet({
     userProfile,
   });
   const heroSrc = usePhotoSrc(getLeakDetailsHeroPhotoPath(leak)) || src;
+  // Все снимки записи листаются в шапке; тап открывает тот, что на экране.
+  const heroPaths = useMemo(() => getLeakHeroPhotoPaths(leak), [leak]);
+  const [viewerSrc, setViewerSrc] = useState(/** @type {string|null} */ (null));
   const dialogRef = useModalDialog({
     onClose: handleClose,
     closeDisabled: saving,
@@ -127,13 +117,21 @@ export default function LeakDetailsSheet({
           </h2>
           <PhotoBlock
             src={mode === MODE.EDIT ? null : heroSrc}
+            photoPaths={mode === MODE.EDIT ? [] : heroPaths}
+            counterLabel={(index, total) =>
+              t("leakDetails.photoCounter", { index, total })
+            }
             status={status}
             identityNum={`№ ${leak.leak_id ?? leak.index ?? "—"}`}
             identityTime={ago ?? absoluteDate ?? ""}
-            onStatusChange={handleStatusChange}
+            onBack={handleClose}
+            backLabel={t("leakDetails.back")}
             onView={
-              mode === MODE.VIEW && heroSrc
-                ? () => setViewerOpen(true)
+              mode === MODE.VIEW && (heroSrc || heroPaths.length > 0)
+                ? (shown) => {
+                    setViewerSrc(shown || heroSrc);
+                    setViewerOpen(true);
+                  }
                 : undefined
             }
           />
@@ -164,6 +162,10 @@ export default function LeakDetailsSheet({
               />
             ) : (
               <EditBlock
+                leak={leak}
+                recordEdits={recordEdits}
+                setRecordEdits={setRecordEdits}
+                originalCoords={{ lat: leak.lat, lng: leak.lng }}
                 localEdit={localEdit}
                 setLocalEdit={setLocalEdit}
                 localCalcParams={localCalcParams}
@@ -224,8 +226,9 @@ export default function LeakDetailsSheet({
                     type="button"
                     onClick={armDelete}
                     title={t("leakDetails.deleteLeak")}
+                    aria-label={t("leakDetails.deleteLeak")}
                   >
-                    🗑
+                    <Icon name="trash" size={22} />
                   </button>
                 ))}
               <button className={s.btnPrimary} onClick={handleEdit}>
@@ -296,41 +299,10 @@ export default function LeakDetailsSheet({
         onCancel={cancelClose}
       />
 
-      {viewerOpen && heroSrc && (
-        <PhotoViewer src={heroSrc} onClose={() => setViewerOpen(false)} />
-      )}
-
-      {statusPickerOpen && (
-        <StatusPickerModal
-          current={status}
-          onSelect={handleStatusSelect}
-          onClose={() => setStatusPickerOpen(false)}
-        />
-      )}
-
-      {resolveOpen && (
-        <ResolveModal
-          leak={leak}
-          onConfirm={handleResolveConfirm}
-          onClose={() => setResolveOpen(false)}
-        />
-      )}
-
-      {repairOpen && (
-        <ResolveModal
-          leak={leak}
-          mode="repair"
-          onConfirm={handleRepairConfirm}
-          onClose={() => setRepairOpen(false)}
-        />
-      )}
-
-      {reopenOpen && (
-        <ReopenLeakModal
-          leak={leak}
-          vars={vars}
-          onConfirm={handleReopenConfirm}
-          onClose={() => setReopenOpen(false)}
+      {viewerOpen && (viewerSrc || heroSrc) && (
+        <PhotoViewer
+          src={viewerSrc || heroSrc}
+          onClose={() => setViewerOpen(false)}
         />
       )}
     </>

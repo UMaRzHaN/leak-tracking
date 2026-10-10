@@ -2,33 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import {
   PROJECT_SETTINGS_UPDATED_EVENT,
+  emitSettingsUpdated,
+  normalizePhotoRequirements as normalizeSettings,
   touchProjectSettings,
+  usesDefaultPhotoRequirements,
 } from "@/app/project/projectSettings";
-
-const DEFAULTS = Object.freeze({
-  leakPhotoRequired: true,
-  monitoringPhotoRequired: true,
-  componentPhotoRequired: true,
-});
-
-function normalizeSettings(value) {
-  return {
-    leakPhotoRequired:
-      typeof value?.leakPhotoRequired === "boolean"
-        ? value.leakPhotoRequired
-        : DEFAULTS.leakPhotoRequired,
-    monitoringPhotoRequired:
-      typeof value?.monitoringPhotoRequired === "boolean"
-        ? value.monitoringPhotoRequired
-        : typeof value?.photoRequired === "boolean"
-          ? value.photoRequired
-          : DEFAULTS.monitoringPhotoRequired,
-    componentPhotoRequired:
-      typeof value?.componentPhotoRequired === "boolean"
-        ? value.componentPhotoRequired
-        : DEFAULTS.componentPhotoRequired,
-  };
-}
 
 function readJson(key) {
   if (!key) return null;
@@ -78,15 +56,13 @@ export function usePhotoRequirements(projectId) {
     (next) => {
       if (!keys.current) return;
       const normalized = normalizeSettings(next);
-      const usesDefaults =
-        normalized.leakPhotoRequired === DEFAULTS.leakPhotoRequired &&
-        normalized.monitoringPhotoRequired ===
-          DEFAULTS.monitoringPhotoRequired &&
-        normalized.componentPhotoRequired === DEFAULTS.componentPhotoRequired;
-      if (usesDefaults) localStorage.removeItem(keys.current);
-      else localStorage.setItem(keys.current, JSON.stringify(normalized));
+      if (usesDefaultPhotoRequirements(normalized)) {
+        localStorage.removeItem(keys.current);
+      } else localStorage.setItem(keys.current, JSON.stringify(normalized));
       if (keys.legacy) localStorage.removeItem(keys.legacy);
       touchProjectSettings(projectId);
+      // Свою копию обновляет ревизия ниже, чужие экземпляры хука — событие.
+      emitSettingsUpdated(projectId);
       setRevision((value) => value + 1);
     },
     [keys, projectId],
@@ -108,10 +84,23 @@ export function usePhotoRequirements(projectId) {
     [save, settings],
   );
 
+  const setRepairPhotoRequired = useCallback(
+    (required) => save({ ...settings, repairPhotoRequired: Boolean(required) }),
+    [save, settings],
+  );
+
+  const setReconcilePhotoRequired = useCallback(
+    (required) =>
+      save({ ...settings, reconcilePhotoRequired: Boolean(required) }),
+    [save, settings],
+  );
+
   return {
     ...settings,
+    setReconcilePhotoRequired,
     setLeakPhotoRequired,
     setMonitoringPhotoRequired,
     setComponentPhotoRequired,
+    setRepairPhotoRequired,
   };
 }

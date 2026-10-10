@@ -1,12 +1,15 @@
+import i18next from "i18next";
+import { monitoringPlaceField } from "@/services/archive/archiveLayout";
 import { notifyComponentRegistryChanged } from "@/repositories/componentRegistrySignal";
 import { mergeComponentRegistries } from "@/domain/componentMerge";
 import { liveComponents } from "@/domain/componentTombstones";
+import { readArchiveEntry } from "@/utils/importLimits";
 import { logger } from "@/utils/logger";
+import { openZip } from "@/utils/openZip";
 import {
   buildComponentPhotoArchive,
   restoreComponentPhotos,
 } from "./componentPhotoArchive";
-import { getJSZip } from "./runtime";
 
 /**
  * The component registry travelling in a project archive.
@@ -63,7 +66,14 @@ export async function buildComponentArchiveEntry(project, options = {}) {
     const { components, entries, paths } = await buildComponentPhotoArchive(
       stored,
       idbGet,
-      photoDir ? { dir: photoDir } : {},
+      {
+        ...(photoDir ? { dir: photoDir } : {}),
+        // Снимки реестра делятся по первому уровню места, как у LDAR.
+        place: {
+          placeField: monitoringPlaceField(project.type),
+          noPlace: i18next.t("excelExport.photo.noPlace"),
+        },
+      },
     );
 
     return {
@@ -124,16 +134,19 @@ function unwrap(parsed) {
  */
 export async function previewArchiveComponents(file, project) {
   try {
-    const JSZip = (await getJSZip()).default;
-    const zip = await new JSZip().loadAsync(file);
+    const zip = await openZip(file);
     const entry = zip.file(COMPONENT_ARCHIVE_FILE);
     if (!entry) return null;
 
-    const incoming = unwrap(JSON.parse(await entry.async("string")));
+    const incoming = unwrap(
+      JSON.parse(await readArchiveEntry(zip, entry, "string")),
+    );
     if (!Array.isArray(incoming) || incoming.length === 0) return null;
 
     const local = project
-      ? await (await componentRepository()).load(project)
+      ? // Взгляд, а не чтение: реестр в памяти вкладки остаётся прежним, и
+        // запомненная здесь свежая ревизия отключила бы страж второй вкладки.
+        await (await componentRepository()).load(project, { peek: true })
       : [];
     const { added, updated, removed } = mergeComponentRegistries(
       local,
@@ -161,12 +174,11 @@ export async function restoreComponentsFromArchive(file, project) {
 
   let incoming;
   try {
-    const JSZip = (await getJSZip()).default;
-    const zip = await new JSZip().loadAsync(file);
+    const zip = await openZip(file);
     const entry = zip.file(COMPONENT_ARCHIVE_FILE);
     if (!entry) return nothing;
 
-    incoming = unwrap(JSON.parse(await entry.async("string")));
+    incoming = unwrap(JSON.parse(await readArchiveEntry(zip, entry, "string")));
     // Before the merge, not after: the merge decides which card wins, and a
     // card that won with a path into another device's storage would show an
     // empty frame where a photograph is.

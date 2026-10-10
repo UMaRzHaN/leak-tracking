@@ -23,13 +23,24 @@ const SOURCE_PROJECT = {
 
 const SETTINGS = {
   hiddenFields: ["component", "note"],
+  // Поля карточки компонента едут в архиве рядом с полями утечки.
+  hiddenComponentFields: ["note"],
   excelMonitoringExportMode: "latest_per_round",
+  excelRepairLogExportMode: "full",
+  excelReconcileExportMode: "full",
   photoRequirements: {
     leakPhotoRequired: false,
     monitoringPhotoRequired: false,
     componentPhotoRequired: true,
+    repairPhotoRequired: true,
+    reconcilePhotoRequired: true,
   },
   voiceCorrections: [],
+  allowNewRounds: true,
+  allowFinishRounds: true,
+  allowMergeRounds: true,
+  reconcile: { allowNew: true, allowFinish: true, allowMerge: true },
+  repairs: { allowNew: true, allowFinish: true, allowMerge: true },
   updatedAt: 200,
 };
 
@@ -176,13 +187,23 @@ describe("project settings backup and synchronization", () => {
 
     expect(readProjectSettings(SOURCE_PROJECT.id)).toEqual({
       hiddenFields: [],
+      hiddenComponentFields: [],
       excelMonitoringExportMode: "full",
+      excelRepairLogExportMode: "full",
+      excelReconcileExportMode: "full",
       photoRequirements: {
         leakPhotoRequired: true,
         monitoringPhotoRequired: true,
         componentPhotoRequired: true,
+        repairPhotoRequired: true,
+        reconcilePhotoRequired: true,
       },
       voiceCorrections: [],
+      allowNewRounds: true,
+      allowFinishRounds: true,
+      allowMergeRounds: true,
+      reconcile: { allowNew: true, allowFinish: true, allowMerge: true },
+      repairs: { allowNew: true, allowFinish: true, allowMerge: true },
       updatedAt: 0,
     });
   });

@@ -1,3 +1,4 @@
+import { validateRoundsMeta } from "./backupRoundsSchema";
 import { isValidLatitude, isValidLongitude } from "@/utils/coordinates";
 import {
   validateHistoryEntry,
@@ -379,34 +380,70 @@ export function validateProjectBackupMeta(parsed) {
     pushIssue(issues, ["vars"], "Expected object");
   }
 
+  if (parsed.survey !== undefined && !isPlainObject(parsed.survey)) {
+    pushIssue(issues, ["survey"], "Expected object");
+  }
+
+  if (parsed.acceptances !== undefined && !Array.isArray(parsed.acceptances)) {
+    pushIssue(issues, ["acceptances"], "Expected array");
+  }
+
   if (parsed.settings !== undefined) {
     if (!isPlainObject(parsed.settings)) {
       pushIssue(issues, ["settings"], "Expected object");
     } else {
-      if (
-        parsed.settings.hiddenFields !== undefined &&
-        (!Array.isArray(parsed.settings.hiddenFields) ||
-          parsed.settings.hiddenFields.some(
-            (key) => typeof key !== "string" || key.length === 0,
-          ))
-      ) {
-        pushIssue(
-          issues,
-          ["settings", "hiddenFields"],
-          "Expected string array",
-        );
+      for (const field of ["hiddenFields", "hiddenComponentFields"]) {
+        if (
+          parsed.settings[field] !== undefined &&
+          (!Array.isArray(parsed.settings[field]) ||
+            parsed.settings[field].some(
+              (key) => typeof key !== "string" || key.length === 0,
+            ))
+        ) {
+          pushIssue(issues, ["settings", field], "Expected string array");
+        }
       }
-      if (
-        parsed.settings.excelMonitoringExportMode !== undefined &&
-        !["full", "latest_per_round"].includes(
-          parsed.settings.excelMonitoringExportMode,
-        )
-      ) {
-        pushIssue(
-          issues,
-          ["settings", "excelMonitoringExportMode"],
-          "Invalid Excel monitoring export mode",
-        );
+      for (const field of [
+        "excelMonitoringExportMode",
+        "excelRepairLogExportMode",
+        "excelReconcileExportMode",
+      ]) {
+        if (
+          parsed.settings[field] !== undefined &&
+          !["full", "latest_per_round"].includes(parsed.settings[field])
+        ) {
+          pushIssue(
+            issues,
+            ["settings", field],
+            "Invalid Excel monitoring export mode",
+          );
+        }
+      }
+      for (const field of [
+        "allowNewRounds",
+        "allowFinishRounds",
+        "allowMergeRounds",
+      ]) {
+        if (
+          parsed.settings[field] !== undefined &&
+          typeof parsed.settings[field] !== "boolean"
+        ) {
+          pushIssue(issues, ["settings", field], "Expected boolean");
+        }
+      }
+      for (const kind of ["reconcile", "repairs"]) {
+        const permissions = parsed.settings[kind];
+        if (permissions === undefined) continue;
+        if (!isPlainObject(permissions)) {
+          pushIssue(issues, ["settings", kind], "Expected object");
+          continue;
+        }
+        for (const field of ["allowNew", "allowFinish", "allowMerge"]) {
+          const value = permissions[field];
+          if (value !== undefined && typeof value !== "boolean") {
+            pushIssue(issues, ["settings", kind, field], "Expected boolean");
+          }
+        }
       }
       if (parsed.settings.photoRequirements !== undefined) {
         if (!isPlainObject(parsed.settings.photoRequirements)) {
@@ -416,7 +453,13 @@ export function validateProjectBackupMeta(parsed) {
             "Expected object",
           );
         } else {
-          for (const key of ["leakPhotoRequired", "monitoringPhotoRequired"]) {
+          for (const key of [
+            "leakPhotoRequired",
+            "monitoringPhotoRequired",
+            "componentPhotoRequired",
+            "repairPhotoRequired",
+            "reconcilePhotoRequired",
+          ]) {
             if (
               parsed.settings.photoRequirements[key] !== undefined &&
               typeof parsed.settings.photoRequirements[key] !== "boolean"
@@ -439,6 +482,8 @@ export function validateProjectBackupMeta(parsed) {
       }
     }
   }
+
+  issues.push(...validateRoundsMeta(parsed.rounds));
 
   if (parsed.monitoringRound !== undefined) {
     if (!isPlainObject(parsed.monitoringRound)) {

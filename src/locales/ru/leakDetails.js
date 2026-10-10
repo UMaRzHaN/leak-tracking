@@ -4,6 +4,8 @@ export const leakDetails = {
   deleteLeak: "Удалить утечку",
   edit: "Редактировать",
   close: "Закрыть",
+  back: "Назад",
+  photoCounter: "{{index}} / {{total}}",
   cancel: "Отмена",
   saving: "Сохранение...",
   save: "Сохранить",
@@ -32,17 +34,44 @@ export const leakDetails = {
   noMonitoringChecks: "Проверки мониторинга пока не добавлены",
   coordsAccuracy: "Точность координат",
   coordsAccuracyValue: "±{{count}} м",
+  fromYou: "От вас",
+  distanceM: "{{count}} м",
+  distanceKm: "{{count}} км",
+  showOnMap: "Показать на карте",
   repairEvents: {
     repair_started: "Начат ремонт",
     repair_done: "Ремонт завершён",
     photo: "Фото ремонта",
   },
   user: "Пользователь",
+  recordEdit: {
+    inspection: "Осмотр",
+    repair: "Ремонт",
+    result: "Итог осмотра",
+    status: "Статус",
+  },
+  flags: {
+    tagPresent: "Физ. тег есть",
+    tagMissing: "Физ. тега нет",
+    fiction: "Фикция",
+  },
+  repairLog: {
+    started: "Начат ремонт",
+    done: "Ремонт принят",
+    returned: "Вернули: ожидает МТР",
+    brigade: "Бригада",
+    materials: "МТР",
+    note: "Комментарий",
+    photoBefore: "Фото до ремонта",
+    empty: "Ремонтов по этой утечке не было",
+  },
 
   historyDamaged: "История записи повреждена и не может быть показана",
   removed: "Удалено",
 
   enterSerialNumber: "Укажите серийный номер оборудования",
+  calcParamsInvalid: "Параметры расчёта вне допустимых значений",
+  fieldInvalid: "{{field}}: {{reason}}",
   saveError: "Ошибка сохранения",
   fillUserName: "Заполните имя пользователя в профиле",
 
@@ -53,6 +82,7 @@ export const leakDetails = {
     parameters: "Параметры",
     coordinates: "Координаты",
     monitoring: "Мониторинг",
+    repairs: "Ремонты",
     log: "Лог",
   },
 
@@ -64,6 +94,7 @@ export const leakDetails = {
     edited: "Данные изменены",
     comment: "Комментарий",
     monitoring: "Мониторинг",
+    repair_check: "Проверка ремонта",
   },
 
   statuses: {

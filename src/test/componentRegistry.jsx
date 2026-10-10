@@ -8,7 +8,8 @@ import { ComponentRegistryContext } from "@/features/componentRegistry/Component
  * Сам провайдер проверяется отдельно, в ComponentRegistryContext.test.jsx.
  *
  * @param {Partial<{
- *   enabled: boolean, components: any[], loading: boolean, error: any,
+ *   enabled: boolean, components: any[], loading: boolean, loaded: boolean,
+ *   error: any,
  *   requestLoad: () => void, reload: () => void,
  *   persist: (recompute: (current: any[]) => any[], options?: any) => Promise<any[]>,
  * }>} [value]
@@ -18,6 +19,7 @@ export function componentRegistryWrapper(value = {}) {
     enabled: true,
     components: [],
     loading: false,
+    loaded: true,
     error: null,
     requestLoad: () => {},
     reload: () => {},

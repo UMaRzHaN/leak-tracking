@@ -1,6 +1,7 @@
 import { createRecordId } from "@/utils/createRecordId";
 import { nextSyncTimestamp } from "@/services/sync/syncClock";
 import { parseDateValue } from "@/services/import/cellDates";
+import { toNullableNumber } from "@/utils/normalize/toNullableNumber";
 
 /**
  * Rules for the component registry.
@@ -63,12 +64,10 @@ export function compareComponentsByUid(a, b) {
   return left - right;
 }
 
-function normalizeNumeric(value) {
-  if (value == null || value === "") return null;
-  const parsed =
-    typeof value === "number" ? value : Number(String(value).trim());
-  return Number.isFinite(parsed) ? parsed : null;
-}
+// Через общий разбор, а не Number(): «1,6» из книги инвентаризации — число,
+// а Number() давал NaN и пустое поле. Чистит его каждое сохранение реестра, и
+// одна правка карточки обнуляла давление у всех.
+const normalizeNumeric = toNullableNumber;
 
 /**
  * Приводит карточку к нынешней форме полей.

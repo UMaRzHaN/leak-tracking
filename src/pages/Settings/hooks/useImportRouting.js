@@ -84,7 +84,18 @@ export function useImportRouting({
         const result = await importInventoryFile(file, activeProject, registry);
 
         if (!result.added && !result.updated) {
-          notify("warning", t("settings.inventoryImportEmpty"));
+          // Архив, привёзший только удаления или чертежи, — не пустой файл.
+          if (result.removed || result.schemas) {
+            notify(
+              "success",
+              t("settings.inventoryImportedRemovedAndSchemas", {
+                v1: result.removed ?? 0,
+                v2: result.schemas ?? 0,
+              }),
+            );
+          } else {
+            notify("warning", t("settings.inventoryImportEmpty"));
+          }
           return;
         }
         notify(

@@ -1,4 +1,20 @@
 export const projectSetup = {
+  back: "Back",
+  welcomeTitle: "Leak Tracking",
+  welcomeLead: "An app for identifying, quantifying and monitoring leaks",
+  begin: "Get started",
+  nameTitle: "What is your name?",
+  nameLead:
+    "Your name signs records and checks. You can change it in the menu.",
+  nameLabel: "Your name",
+  namePlaceholder: "First and last name",
+  namePreviewCaption: "This is how it looks on a record",
+  namePreview: "Checked by: {{name}}",
+  continue: "Continue",
+  skip: "Skip",
+  doneTitle: "All set!",
+  doneLead: "The project is ready. You can start working.",
+  goToWork: "Start working",
   title: "Leak Tracking",
   subtitle: "Create your first project to get started",
 
@@ -32,7 +48,7 @@ export const projectSetup = {
     "A ZIP backup, an XLSX or an inventory archive — the app works out which",
 
   importError: "Import error",
-  languageToggle: "RU",
+  languageToggle: "Russian",
   projectTypes: {
     upstream: {
       title: "Upstream",

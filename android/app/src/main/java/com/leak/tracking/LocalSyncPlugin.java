@@ -34,7 +34,6 @@ import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.math.BigInteger;
 import java.security.KeyPairGenerator;
@@ -94,6 +93,8 @@ public class LocalSyncPlugin extends Plugin {
     private static final long MAX_PROTOCOL_DURATION_MS = TimeUnit.MINUTES.toMillis(15);
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final int MAX_FAILED_AUTH_ATTEMPTS = 5;
+    // Та же очередь, что у серверного сокета, открытого без адреса.
+    private static final int SERVER_BACKLOG = 50;
     private static final int MAX_CONCURRENT_HANDSHAKES = 4;
     private static final String TLS_KEY_ALIAS_PREFIX = "local-sync-";
     private static final long DEFAULT_SESSION_DURATION_MS = TimeUnit.MINUTES.toMillis(3);
@@ -407,6 +408,11 @@ public class LocalSyncPlugin extends Plugin {
         try {
             assertArchiveSize(preparedArchive.length());
             TempFilePolicy.touch(preparedArchive, System.currentTimeMillis());
+            // Адрес выбирается до сокета: сервер слушает только его, а не все
+            // интерфейсы сразу. Иначе тот же порт открыт и в мобильной сети, и
+            // в VPN, хотя объявлен лишь локальный адрес. Нет подходящей сети —
+            // ошибка, как и раньше, а не сервер на всех интерфейсах.
+            InetAddress bindAddress = findLocalIpv4Address();
             TlsHostContext tlsHost = createTlsHostContext();
 
             synchronized (sessionLock) {
@@ -424,7 +430,7 @@ public class LocalSyncPlugin extends Plugin {
                 hostCertificateFingerprint = tlsHost.fingerprint;
                 SSLServerSocket tlsServerSocket = (SSLServerSocket) tlsHost.context
                     .getServerSocketFactory()
-                    .createServerSocket(0);
+                    .createServerSocket(0, SERVER_BACKLOG, bindAddress);
                 SyncTlsProtocols.enable(tlsServerSocket);
                 serverSocket = tlsServerSocket;
                 serverSocket.setReuseAddress(true);
@@ -441,7 +447,7 @@ public class LocalSyncPlugin extends Plugin {
             }
 
             JSObject result = new JSObject();
-            result.put("host", findLocalIpv4Address());
+            result.put("host", bindAddress.getHostAddress());
             result.put("port", activeServer.getLocalPort());
             result.put("code", sessionCode);
             result.put("fingerprint", hostCertificateFingerprint);
@@ -580,11 +586,13 @@ public class LocalSyncPlugin extends Plugin {
     }
 
     private void acceptClient(ServerSocket activeServer) {
+        AcceptFailureStreak failures = new AcceptFailureStreak();
         try {
             while (!activeServer.isClosed()) {
                 Socket socket = null;
                 try {
                     socket = activeServer.accept();
+                    failures.success();
                     String peerKey = peerKey(socket);
                     if (!connectionGuard.tryAcquire(peerKey)) {
                         closeSocket(socket);
@@ -603,20 +611,31 @@ public class LocalSyncPlugin extends Plugin {
                         closeSocket(acceptedSocket);
                         notifySyncError(new Exception("Local sync service is busy", error));
                     }
-                } catch (SocketException error) {
-                    if (!activeServer.isClosed()) notifySyncError(error);
                 } catch (Exception error) {
-                    if (!activeServer.isClosed()) notifySyncError(error);
+                    if (activeServer.isClosed()) continue;
+                    notifySyncError(error);
+                    // Выход из цикла закрывает сеанс в finally ниже — с
+                    // причиной error, как любой обрыв приёма.
+                    if (failures.failure()) break;
                 } finally {
                     closeSocket(socket);
                 }
             }
         } finally {
+            // Сюда цикл доходит и сам по себе — сервер закрылся не через
+            // остановку сеанса или вылетела ошибка, которую catch не ловит.
+            // Тогда сеанс закрывается здесь, и WebView должно об этом узнать:
+            // иначе экран так и показывает QR, по которому уже не подключиться.
+            int transferCount = 0;
+            boolean stopped = false;
             synchronized (sessionLock) {
                 if (serverSocket == activeServer) {
+                    transferCount = hostCompletedTransfers;
                     stopHostInternal();
+                    stopped = true;
                 }
             }
+            if (stopped) notifyHostSessionEnded(HostSessionEnd.ERROR, transferCount);
         }
     }
 
@@ -666,16 +685,26 @@ public class LocalSyncPlugin extends Plugin {
             // cannot return its shouldStop flag, but the session must still
             // close after the configured authentication budget.
             boolean stopped = false;
-            if (outcome.shouldStop || connectionGuard.isFailureLimitReached()) {
+            boolean failureLimitReached = connectionGuard.isFailureLimitReached();
+            int transferCount = outcome.transferCount;
+            if (outcome.shouldStop || failureLimitReached) {
                 synchronized (sessionLock) {
                     if (serverSocket == activeServer) {
+                        // Сеанс, закрытый по лимиту кодов, мог до того уже
+                        // отдать базу нескольким устройствам.
+                        transferCount = Math.max(transferCount, hostCompletedTransfers);
                         stopHostInternal();
                         stopped = true;
                     }
                 }
             }
-            if (stopped && outcome.endReason != null) {
-                notifyHostSessionEnded(outcome.endReason, outcome.transferCount);
+            String endReason = HostSessionEnd.afterClient(
+                outcome.endReason,
+                outcome.shouldStop,
+                failureLimitReached
+            );
+            if (stopped && endReason != null) {
+                notifyHostSessionEnded(endReason, transferCount);
             }
         }
     }
@@ -723,7 +752,7 @@ public class LocalSyncPlugin extends Plugin {
                 boolean shouldStop = registerFailedAuthAttempt();
                 connectionGuard.registerPreAuthFailure(peerKey);
                 rejectPeer(output, LocalSyncFailure.INVALID_CODE, "Неверный код подключения");
-                return shouldStop ? ClientOutcome.STOP : ClientOutcome.CONTINUE;
+                return shouldStop ? ClientOutcome.AUTH_LIMIT : ClientOutcome.CONTINUE;
             }
             connectionDeadline.markAuthenticated();
             connectionGuard.markAuthenticated(peerKey);
@@ -832,7 +861,7 @@ public class LocalSyncPlugin extends Plugin {
             boolean shouldStop = registerFailedAuthAttempt();
             connectionGuard.registerPreAuthFailure(peerKey);
             rejectPeer(output, LocalSyncFailure.INVALID_CODE, "Неверный код подключения");
-            return shouldStop ? ClientOutcome.STOP : ClientOutcome.CONTINUE;
+            return shouldStop ? ClientOutcome.AUTH_LIMIT : ClientOutcome.CONTINUE;
         }
         connectionDeadline.markAuthenticated();
         connectionGuard.markAuthenticated(peerKey);
@@ -1286,7 +1315,7 @@ public class LocalSyncPlugin extends Plugin {
         return value.toString();
     }
 
-    private String findLocalIpv4Address() throws Exception {
+    private InetAddress findLocalIpv4Address() throws Exception {
         ConnectivityManager connectivityManager = (ConnectivityManager) getContext().getSystemService(
             Context.CONNECTIVITY_SERVICE
         );
@@ -1297,13 +1326,13 @@ public class LocalSyncPlugin extends Plugin {
                 for (LinkAddress linkAddress : properties.getLinkAddresses()) {
                     InetAddress address = linkAddress.getAddress();
                     if (address instanceof Inet4Address && address.isSiteLocalAddress()) {
-                        return address.getHostAddress();
+                        return address;
                     }
                 }
             }
         }
 
-        String fallback = null;
+        InetAddress fallback = null;
         int fallbackScore = Integer.MIN_VALUE;
         for (NetworkInterface network : Collections.list(NetworkInterface.getNetworkInterfaces())) {
             if (!network.isUp() || network.isLoopback()) continue;
@@ -1311,9 +1340,8 @@ public class LocalSyncPlugin extends Plugin {
             if (score < 0) continue;
             for (InetAddress address : Collections.list(network.getInetAddresses())) {
                 if (!(address instanceof Inet4Address) || address.isLoopbackAddress()) continue;
-                String host = address.getHostAddress();
                 if (address.isSiteLocalAddress() && score > fallbackScore) {
-                    fallback = host;
+                    fallback = address;
                     fallbackScore = score;
                 }
             }
@@ -1362,7 +1390,7 @@ public class LocalSyncPlugin extends Plugin {
                         expired = true;
                     }
                 }
-                if (expired) notifyHostSessionEnded("expired", transferCount);
+                if (expired) notifyHostSessionEnded(HostSessionEnd.EXPIRED, transferCount);
             },
             durationMs,
             TimeUnit.MILLISECONDS
@@ -1558,6 +1586,11 @@ public class LocalSyncPlugin extends Plugin {
     private static final class ClientOutcome {
         private static final ClientOutcome CONTINUE = new ClientOutcome(false, null, 0);
         private static final ClientOutcome STOP = new ClientOutcome(true, null, 0);
+        private static final ClientOutcome AUTH_LIMIT = new ClientOutcome(
+            true,
+            HostSessionEnd.AUTH_LIMIT,
+            0
+        );
 
         private final boolean shouldStop;
         private final String endReason;
@@ -1570,7 +1603,7 @@ public class LocalSyncPlugin extends Plugin {
         }
 
         private static ClientOutcome completedImport(int transferCount) {
-            return new ClientOutcome(true, "completed", transferCount);
+            return new ClientOutcome(true, HostSessionEnd.COMPLETED, transferCount);
         }
     }
 

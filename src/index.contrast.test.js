@@ -100,7 +100,8 @@ const BADGES = [
   ["приоритет medium", "--c-medium", "--c-medium-bg"],
   ["приоритет low", "--c-low", "--c-low-bg"],
   ["опасность как надпись", "--c-danger-text", "--c-danger-bg"],
-  ["синий на голубой плашке", "--c-blue-text", "--c-blue-dim"],
+  ["акцент на своей плашке", "--c-accent-text", "--c-accent-dim"],
+  ["акцент на выбранной строке", "--c-accent-text", "--c-accent-surface"],
 ];
 
 // Токены, которые в SCSS стоят заливкой под `color: #fff`.
@@ -109,17 +110,18 @@ const WHITE_ON_FILL = [
   "--c-progress",
   "--c-resolved",
   "--c-danger",
-  "--c-blue",
+  "--c-accent",
 ];
 
 // Надписи на обычных поверхностях. Светлых поверхностей три, и на самой
 // тёмной из них контраст ниже — раньше палитру сверяли только с белым.
-const SURFACES = ["--c-surface", "--c-bg", "--c-surface2"];
+const SURFACES = ["--c-surface", "--c-bg", "--c-surface2", "--c-surface-soft"];
 const TEXT_TOKENS = [
   "--c-text",
+  "--c-ink",
   "--c-text2",
   "--c-text3",
-  "--c-blue-text",
+  "--c-accent-text",
   "--c-success",
   "--c-warning",
   "--c-red",

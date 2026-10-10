@@ -34,4 +34,13 @@ describe("useExcelExportMode", () => {
 
     expect(result.current.monitoringExportMode).toBe("latest_per_round");
   });
+  it("смена режима видна всем копиям хука на экране", () => {
+    // Экран экспорта читает режим и в подписи листа, и в самой выгрузке.
+    const chooser = renderHook(() => useExcelExportMode("p1"));
+    const exporter = renderHook(() => useExcelExportMode("p1"));
+
+    act(() => chooser.result.current.setMode("latest_per_round"));
+
+    expect(exporter.result.current.mode).toBe("latest_per_round");
+  });
 });

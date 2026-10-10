@@ -6,6 +6,14 @@ export function getProjectMobileDir(project) {
   return `projects/${project?.id ?? "unknown"}`;
 }
 
+/**
+ * Общий префикс всех ключей проекта в localStorage. Его держат не только
+ * STORAGE_KEYS ниже, но и модули со своими ключами — маршрут обхода, черновики
+ * форм, история выгрузок, обходы, накладные, обследование. Удаление проекта
+ * чистит по нему, а не по списку: список отставал от каждого нового ключа.
+ */
+export const projectKeyPrefix = (projectId) => `${APP_PREFIX}:${projectId}:`;
+
 export const STORAGE_KEYS = {
   /* =========================
      GLOBAL
@@ -33,10 +41,28 @@ export const STORAGE_KEYS = {
     `${APP_PREFIX}:${projectId}:hidden_component_fields_${VERSION}`,
   PROJECT_EXCEL_EXPORT_MODE: (projectId) =>
     `${APP_PREFIX}:${projectId}:excel_export_mode_${VERSION}`,
+  // «Последняя в обходе» для журнала ремонтов и истории сверки — свои
+  // переключатели, как у листа мониторинга.
+  PROJECT_EXCEL_REPAIR_LOG_EXPORT_MODE: (projectId) =>
+    `${APP_PREFIX}:${projectId}:excel_repair_log_export_mode_${VERSION}`,
+  PROJECT_EXCEL_RECONCILE_EXPORT_MODE: (projectId) =>
+    `${APP_PREFIX}:${projectId}:excel_reconcile_export_mode_${VERSION}`,
   PROJECT_MONITORING_SETTINGS: (projectId) =>
     `${APP_PREFIX}:${projectId}:monitoring_settings_${VERSION}`,
   PROJECT_PHOTO_REQUIREMENTS: (projectId) =>
     `${APP_PREFIX}:${projectId}:photo_requirements_${VERSION}`,
+  // Можно ли заводить новые обходы мониторинга. Хранится только «нельзя»:
+  // по умолчанию обходы заводят, как и раньше.
+  PROJECT_ROUNDS_LOCKED: (projectId) =>
+    `${APP_PREFIX}:${projectId}:rounds_locked_${VERSION}`,
+  PROJECT_ROUND_FINISH_LOCKED: (projectId) =>
+    `${APP_PREFIX}:${projectId}:round_finish_locked_${VERSION}`,
+  PROJECT_ROUND_MERGE_LOCKED: (projectId) =>
+    `${APP_PREFIX}:${projectId}:round_merge_locked_${VERSION}`,
+  PROJECT_RECONCILE_SETTINGS: (projectId) =>
+    `${APP_PREFIX}:${projectId}:reconcile_settings_${VERSION}`,
+  PROJECT_REPAIR_ROUND_SETTINGS: (projectId) =>
+    `${APP_PREFIX}:${projectId}:repair_round_settings_${VERSION}`,
   // Поправки к распознанной речи живут при проекте, а не при устройстве:
   // ошибки распознавателя одинаковы у всей бригады, и найденную пару разумнее
   // раздать обменом архива, чем заводить на каждом телефоне заново.

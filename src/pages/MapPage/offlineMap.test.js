@@ -61,6 +61,7 @@ vi.mock("leaflet", () => {
   const api = {
     Layer,
     TileLayer,
+    DomEvent: { stopPropagation: vi.fn() },
     DomUtil: {
       create: vi.fn(() => {
         const canvas = document.createElement("canvas");
@@ -163,6 +164,10 @@ describe("offline map adapter", () => {
     expect(leaflet.map.setView).toHaveBeenCalledWith([41, 69], 13);
     expect(geolocation.watchPosition).not.toHaveBeenCalled();
     expect(leaflet.markers[0].latlng).toEqual([41.1, 69.1]);
+    // Подпись маркера — через i18n и на момент открытия, а не зашитой строкой.
+    expect(leaflet.markers[0].bindPopup.mock.calls[0][0]()).toBe(
+      "map.youAreHere",
+    );
 
     adapter.locateMe();
     expect(leaflet.map.setView).toHaveBeenLastCalledWith([41.1, 69.1], 17, {
@@ -218,6 +223,16 @@ describe("offline map adapter", () => {
     expect(leaflet.map.setView).toHaveBeenCalledWith([41, 69], 18, {
       animate: true,
     });
+  });
+
+  it("тап по компоненту открывает карточку снизу, как у утечки", () => {
+    const onSelect = vi.fn();
+    const component = { id: "c1", kind: "component", lat: 41, lng: 69 };
+    addMarkers(leaflet.cluster, [component], leaflet.map, onSelect);
+
+    expect(leaflet.markers[0].bindPopup).not.toHaveBeenCalled();
+    leaflet.markers[0].handlers.click({});
+    expect(onSelect).toHaveBeenCalledWith(component);
   });
 
   it("обводит кругом погрешности только раскрытую точку", () => {

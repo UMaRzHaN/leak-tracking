@@ -1,0 +1,421 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useLanguage } from "@/app/hooks/useLanguage";
+import ComponentCardCompact from "@/features/componentRegistry/ComponentCardCompact";
+import { useComponentCheck } from "@/features/componentRegistry/useComponentCheck";
+import { useComponentDetails } from "@/features/componentRegistry/useComponentDetails";
+import { errorText } from "@/utils/appError";
+import { useComponentRegistry } from "@/features/componentRegistry/useComponentRegistry";
+import Notification from "@/components/ui/Notification/Notification";
+import ConfirmSheet from "@/components/ui/ConfirmSheet/ConfirmSheet";
+import Icon from "@/components/ui/Icon/Icon";
+import { canWriteRegistry } from "@/domain/componentHistory";
+import { matchesLeakLocationFilter } from "@/utils/locationFilter";
+import { activeRoundNumber } from "@/utils/projectRound";
+import { formatMonitoringDate } from "@/utils/monitoring";
+import { useRoundPermissions } from "@/app/project/hooks/useAllowNewRounds";
+import MonitoringRoundOverview from "@/pages/Monitoring/MonitoringRoundOverview";
+import {
+  finishReconcileRound,
+  isReconciled,
+  mergeReconcileRoundWithChecks,
+  readReconcileRound,
+  startReconcileRound,
+} from "./reconcileRound";
+import s from "@/pages/Repairs/Repairs.module.scss";
+
+const FILTER = Object.freeze({ DUE: "due", DONE: "done", ALL: "all" });
+
+function matches(component, query) {
+  if (!query) return true;
+  return [
+    component.component_uid,
+    component.scheme_tag,
+    component.component,
+    component.location,
+    component.object,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLocaleLowerCase()
+    .includes(query);
+}
+
+/**
+ * Сверка реестра (6b): карточка компонента и полоса с датой инспекции и
+ * кнопкой «Сверить». Сверить — это осмотр: подтвердить или поправить
+ * состояние, и в карточке встанет отметка времени и подпись.
+ */
+export default function Reconcile({
+  project,
+  sharedFilters,
+  userProfile,
+  // Осмотр, позванный с другого экрана (булавка на карте), — как проверка
+  // мониторинга: открыть его сразу, а по сохранению или крестику вернуть
+  // туда. `onLeaveCheck` отвечает, увело ли приложение с экрана.
+  requestedComponentId = /** @type {any} */ (null),
+  onRequestedComponentConsumed = /** @type {(() => void)|undefined} */ (
+    undefined
+  ),
+  onLeaveCheck = /** @type {((event?: {saved?: string, warning?: string}) => boolean)|null} */ (
+    null
+  ),
+}) {
+  const { t, lang } = useLanguage();
+  const {
+    components,
+    fields,
+    updateComponent,
+    removeComponent,
+    rewriteComponents,
+    loading,
+  } = useComponentRegistry(project);
+  const [round, setRound] = useState(() => readReconcileRound(project?.id));
+  const [filter, setFilter] = useState(/** @type {string} */ (FILTER.DUE));
+  const [search, setSearch] = useState("");
+  const [confirmNew, setConfirmNew] = useState(false);
+  // Повторная сверка уже сверенного — с подтверждением, как в мониторинге;
+  // «Новая сверка» из него открывает осмотр после старта.
+  const [repeatCard, setRepeatCard] = useState(/** @type {any} */ (null));
+  const [pendingCard, setPendingCard] = useState(/** @type {any} */ (null));
+  const [confirmMerge, setConfirmMerge] = useState(false);
+  // Разрешения сверки из настроек проекта — как у обходов мониторинга.
+  const [allowed] = useRoundPermissions(project?.id ?? null, "reconcile");
+  const [notification, setNotification] = useState(/** @type {any} */ (null));
+  const canWrite = canWriteRegistry(userProfile);
+
+  const scoped = useMemo(
+    () =>
+      components.filter(
+        (component) =>
+          matchesLeakLocationFilter(
+            component,
+            sharedFilters?.mainLocationFilter,
+          ) &&
+          matchesLeakLocationFilter(component, sharedFilters?.locationFilter) &&
+          matchesLeakLocationFilter(
+            component,
+            sharedFilters?.lastLocationFilter,
+          ),
+      ),
+    [components, sharedFilters],
+  );
+  const counts = useMemo(() => {
+    const done = scoped.filter((component) =>
+      isReconciled(component, round),
+    ).length;
+    return { due: scoped.length - done, done, all: scoped.length };
+  }, [scoped, round]);
+  const items = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase();
+    return scoped.filter((component) => {
+      const done = isReconciled(component, round);
+      if (filter === FILTER.DUE && done) return false;
+      if (filter === FILTER.DONE && !done) return false;
+      return matches(component, query);
+    });
+  }, [scoped, filter, search, round]);
+
+  // Осмотр пришёл с другого экрана: его конец — сохранение, крестик или
+  // отказ в подтверждении — возвращает туда.
+  const returningRef = useRef(false);
+  /** @param {{saved?: string, warning?: string}} [event] */
+  const leave = (event) => {
+    if (!returningRef.current) return false;
+    returningRef.current = false;
+    return Boolean(onLeaveCheck?.(event));
+  };
+
+  // Осмотр — экраном, как проверка в обходе мониторинга.
+  const check = useComponentCheck({
+    project,
+    updateComponent,
+    userProfile,
+    // Сверку осмотр уже не начинает: её начинают подтверждением до него.
+    roundNumber: () => activeRoundNumber(round),
+    onSaved: () => {
+      if (leave({ saved: t("reconcile.saved") })) return;
+      setNotification({ type: "success", message: t("reconcile.saved") });
+    },
+    onClose: () => leave(),
+    onError: (error) =>
+      setNotification({
+        type: "error",
+        message: t("common.saveError", { message: errorText(error, t) }),
+      }),
+  });
+  // Свайп вправо открывает карточку целиком, как в базе компонентов.
+  const details = useComponentDetails({
+    fields,
+    canEdit: canWrite,
+    userProfile,
+    updateComponent,
+    removeComponent,
+  });
+  // Как проверка в мониторинге: без идущей сверки осмотр сначала спрашивает,
+  // начинать ли новую, а не начинает её молча.
+  const openCheck = (component) => {
+    const active = round && !round.completedAt;
+    if (!active) {
+      if (!allowed.allowNew) {
+        const warning = t("reconcile.disabled");
+        if (!leave({ warning })) {
+          setNotification({ type: "warning", message: warning });
+        }
+        return;
+      }
+      setPendingCard(component);
+      setConfirmNew(true);
+      return;
+    }
+    if (isReconciled(component, round)) setRepeatCard(component);
+    else check.open(component);
+  };
+
+  const openCheckRef = useRef(openCheck);
+  openCheckRef.current = openCheck;
+  // Один запрос — один осмотр, даже если список перерисуется до того, как
+  // приложение запрос снимет.
+  const handledRequestRef = useRef(/** @type {any} */ (null));
+  useEffect(() => {
+    if (requestedComponentId == null) {
+      handledRequestRef.current = null;
+      return;
+    }
+    if (loading || handledRequestRef.current === requestedComponentId) return;
+    handledRequestRef.current = requestedComponentId;
+    const component = components.find(
+      (item) => item?.id === requestedComponentId,
+    );
+    onRequestedComponentConsumed?.();
+    if (!component) return;
+    returningRef.current = true;
+    openCheckRef.current(component);
+  }, [requestedComponentId, loading, components, onRequestedComponentConsumed]);
+
+  return (
+    <div className={`${s.page} content`}>
+      <Notification
+        notification={notification}
+        onClose={() => setNotification(null)}
+      />
+
+      {/* Шапка — та же, что у обхода мониторинга: номер, период,
+          «Объединить с № N», «Новая сверка» и карточка завершения. */}
+      <MonitoringRoundOverview
+        round={round}
+        lang={lang}
+        badge={t("reconcile.badge")}
+        mergeLabel={(number) => t("reconcile.mergeAction", { number })}
+        texts={{
+          noActiveRound: t("reconcile.noRound"),
+          newRound: t("reconcile.newRound"),
+          startRound: t("reconcile.startRound"),
+          finishRound: t("reconcile.finishRound"),
+          roundReady: t("reconcile.roundReady"),
+          roundCompleted: t("reconcile.roundCompleted"),
+        }}
+        summary={{ checked: counts.done, total: counts.all }}
+        stats={[
+          {
+            key: "done",
+            label: t("reconcile.done"),
+            value: counts.done,
+            tone: "resolved",
+          },
+          {
+            key: "due",
+            label: t("reconcile.due"),
+            value: counts.due,
+            tone: "open",
+          },
+        ]}
+        showCompletion={Boolean(
+          round && (round.completedAt || (counts.all > 0 && counts.due === 0)),
+        )}
+        hasRound={Boolean(round)}
+        onStartRound={() => setConfirmNew(true)}
+        onFinishRound={() => {
+          setRound(finishReconcileRound(project?.id));
+          setNotification({
+            type: "success",
+            message: t("reconcile.finished"),
+          });
+        }}
+        canStartRound={allowed.allowNew}
+        canFinishRound={allowed.allowFinish}
+        onMergeRound={
+          allowed.allowMerge && round?.previous
+            ? () => setConfirmMerge(true)
+            : null
+        }
+      />
+
+      <div className={s.search}>
+        <Icon name="search" size={18} />
+        <input
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder={t("reconcile.search")}
+          aria-label={t("reconcile.search")}
+        />
+      </div>
+
+      <div className={s.filters}>
+        {[
+          [FILTER.DUE, t("reconcile.due"), counts.due],
+          [FILTER.DONE, t("reconcile.done"), counts.done],
+          [FILTER.ALL, t("reconcile.all"), counts.all],
+        ].map(([id, label, count]) => (
+          <button
+            key={id}
+            type="button"
+            className={`${s.filterBtn} ${filter === id ? s.filterBtnActive : ""}`}
+            aria-pressed={filter === id}
+            aria-label={`${label} ${count}`}
+            onClick={() => setFilter(String(id))}
+          >
+            <span>{label}</span>
+            <strong>{count}</strong>
+          </button>
+        ))}
+      </div>
+
+      {!canWrite && (
+        <p className={s.hint} role="status">
+          {t("components.nameRequired")}
+        </p>
+      )}
+
+      <section className={s.list}>
+        {loading ? null : items.length === 0 ? (
+          <p className={s.empty}>
+            {search ? t("reconcile.searchEmpty") : t("reconcile.empty")}
+          </p>
+        ) : (
+          items.map((component) => {
+            const done = isReconciled(component, round);
+            const inspected = component.inspected_at;
+            return (
+              <article key={component.id} className={s.item}>
+                <div className={s.card}>
+                  <ComponentCardCompact
+                    component={component}
+                    onOpenDetails={details.open}
+                    onInspect={canWrite ? openCheck : undefined}
+                  />
+                </div>
+                <div className={s.bar}>
+                  <div className={s.barText}>
+                    {done ? (
+                      <span className={s.tone_ok}>
+                        ✓{" "}
+                        {t("reconcile.reconciledAt", {
+                          date: formatMonitoringDate(inspected, lang),
+                        })}
+                      </span>
+                    ) : (
+                      <span className={inspected ? s.tone_warn : ""}>
+                        {inspected
+                          ? t("reconcile.inspectedAt", {
+                              date: formatMonitoringDate(inspected, lang),
+                            })
+                          : t("reconcile.never")}
+                      </span>
+                    )}
+                    <span className={s.barMeta}>
+                      {[component.component_status, component.createdBy]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                  </div>
+                  {canWrite && (
+                    <button
+                      type="button"
+                      className={s.acceptBtn}
+                      onClick={() => openCheck(component)}
+                    >
+                      {t("reconcile.check")}
+                    </button>
+                  )}
+                </div>
+              </article>
+            );
+          })
+        )}
+      </section>
+
+      {details.element}
+      {check.element}
+
+      <ConfirmSheet
+        open={confirmNew}
+        title={t("reconcile.newRoundTitle")}
+        description={t("reconcile.newRoundDescription")}
+        confirmLabel={t("reconcile.newRoundConfirm")}
+        onConfirm={() => {
+          setRound(startReconcileRound(project?.id));
+          setFilter(FILTER.DUE);
+          setConfirmNew(false);
+          if (pendingCard) check.open(pendingCard);
+          setPendingCard(null);
+        }}
+        onCancel={() => {
+          setConfirmNew(false);
+          if (pendingCard) leave();
+          setPendingCard(null);
+        }}
+      />
+
+      <ConfirmSheet
+        open={Boolean(repeatCard)}
+        title={t("reconcile.repeatTitle")}
+        description={t("reconcile.repeatDescription")}
+        confirmLabel={t("reconcile.repeatConfirm")}
+        secondaryActionLabel={allowed.allowNew ? t("reconcile.newRound") : null}
+        onSecondaryAction={() => {
+          setPendingCard(repeatCard);
+          setRepeatCard(null);
+          setConfirmNew(true);
+        }}
+        onConfirm={() => {
+          check.open(repeatCard);
+          setRepeatCard(null);
+        }}
+        onCancel={() => {
+          setRepeatCard(null);
+          leave();
+        }}
+      />
+
+      <ConfirmSheet
+        open={confirmMerge}
+        title={t("reconcile.mergeTitle", {
+          number: (round?.number ?? 1) - 1,
+        })}
+        description={t("reconcile.mergeDescription")}
+        confirmLabel={t("reconcile.mergeConfirm")}
+        onConfirm={async () => {
+          setConfirmMerge(false);
+          // Осмотры ошибочной сверки уходят в предыдущую вместе с ней.
+          const merged = await mergeReconcileRoundWithChecks(
+            project?.id,
+            rewriteComponents,
+          ).catch((error) => {
+            setNotification({
+              type: "error",
+              message: t("common.saveError", { message: errorText(error, t) }),
+            });
+            return null;
+          });
+          if (!merged) return;
+          setRound(merged);
+          setNotification({
+            type: "success",
+            message: t("reconcile.merged", { number: merged.number }),
+          });
+        }}
+        onCancel={() => setConfirmMerge(false)}
+      />
+    </div>
+  );
+}

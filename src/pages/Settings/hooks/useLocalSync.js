@@ -242,6 +242,12 @@ export function useLocalSync({
                 v1: transferCount ?? 1,
               }),
             );
+          } else if (reason === "auth-limit") {
+            // Сервер уже закрыт: без сообщения экран просто погас бы, и
+            // никто не понял бы, что QR больше не действует и почему.
+            notify("error", t("settings.hostStoppedAuthLimit"));
+          } else if (reason === "error") {
+            notify("error", t("settings.hostStoppedError"));
           }
         },
         onArchive: async (file) => {

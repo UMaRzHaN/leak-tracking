@@ -1,4 +1,8 @@
-import { calculations } from "@/utils/calculations/calculations";
+import {
+  calculations,
+  getLeakCalculationFieldErrors,
+  hasValidCalculationParameters,
+} from "@/utils/calculations/calculations";
 import { buildLeakHistoryChanges } from "@/utils/historyChanges";
 
 export const CALCULATION_PARAMS_VERSION = 1;
@@ -47,6 +51,27 @@ export function buildLeakCalculationParams(leak = {}, projectVars = {}) {
 
 export function calculationParamsEqual(left = {}, right = {}) {
   return CALCULATION_PARAM_KEYS.every((key) => left[key] === right[key]);
+}
+
+/**
+ * Почему выбросы записи с этими данными не пересчитать.
+ *
+ * `calculations` на неверном входе молча возвращает запись как есть — с
+ * выбросами от прежних замеров. Пути правки (карточка, переоткрытие, массовый
+ * пересчёт) спрашивают здесь заранее, чтобы не сохранить новую скорость рядом
+ * со старыми выбросами.
+ *
+ * @returns {{key: string, code: string}|null} key — поле замера или "params"
+ */
+export function findCalculationBlocker(leak, projectVars, calculationParams) {
+  const source =
+    calculationParams === undefined ? leak : { ...leak, calculationParams };
+  const params = buildLeakCalculationParams(source, projectVars);
+  if (!hasValidCalculationParameters(params)) {
+    return { key: "params", code: "invalid" };
+  }
+  const [entry] = Object.entries(getLeakCalculationFieldErrors(leak, params));
+  return entry ? { key: entry[0], code: entry[1] } : null;
 }
 
 export function calculateLeakWithSnapshot(

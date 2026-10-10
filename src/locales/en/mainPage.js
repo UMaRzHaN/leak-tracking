@@ -1,13 +1,30 @@
 export const mainPage = {
-  total: "Total",
-  open: "Open",
-  inProgress: "Under Repair",
-  resolved: "Resolved",
-
-  recentRecords: "Last {{count}} records",
   showAll: "All {{count}} →",
 
-  shownRecent: "showing the latest {{count}}",
+  chips: {
+    label: "Status filter",
+    all: "All",
+    open: "Open",
+    inProgress: "Repair",
+    resolved: "Resolved",
+  },
+
+  groups: {
+    today: "Today",
+    yesterday: "Yesterday",
+    earlier: "Earlier",
+  },
+
+  coverage: {
+    title: "Survey coverage",
+    estimated: "{{surveyed}} of ~{{total}} · {{percent}}%",
+    value: "{{surveyed}} of {{total}} · {{percent}}%",
+    hint: "Sites with leak records",
+    open: "By site category",
+    projectWide: "Whole project — no location is set on the survey",
+    noRegistry:
+      "Sites with leak records. The total appears with the component registry",
+  },
 
   repairs: {
     title: "Repairs",

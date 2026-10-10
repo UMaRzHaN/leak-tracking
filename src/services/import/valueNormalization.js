@@ -1,4 +1,5 @@
 import { isValidPortablePhotoPath } from "@/repositories/backupSchema";
+import { cleanFloat } from "@/utils/normalize/cleanFloat";
 import { priorityFromSpeed } from "@/utils/priority";
 import {
   combineDateAndTime,
@@ -55,13 +56,16 @@ export function isPhotoCellKey(key) {
   return PHOTO_KEYS.has(key);
 }
 
+// Число из файла — без хвоста погрешности чужой арифметики (см. cleanFloat).
 export function parseNumberValue(value) {
   if (value == null || value === "") return null;
-  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? cleanFloat(value) : null;
+  }
   const normalized = String(value).trim().replace(/\s+/g, "").replace(",", ".");
   if (!normalized) return null;
   const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? parsed : null;
+  return Number.isFinite(parsed) ? cleanFloat(parsed) : null;
 }
 
 export function isRecognizedStatus(value) {

@@ -2,8 +2,17 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const actionsState = vi.hoisted(() => ({ current: null }));
+// Правило обхода ремонтов проверяется у себя (repairRoundDomain); здесь —
+// что карточка слушается его ответа.
+const repairGate = vi.hoisted(() => ({ canCheck: () => true }));
+vi.mock("@/pages/Repairs/useCanCheckRepair", () => ({
+  useCanCheckRepair: () => (leak) => repairGate.canCheck(leak),
+}));
 vi.mock("./hooks/useMainPageActions", () => ({
-  useMainPageActions: () => actionsState.current,
+  useMainPageActions: (args) => {
+    actionsState.args = args;
+    return actionsState.current;
+  },
 }));
 vi.mock("@/app/hooks/useLanguage", () => ({
   useLanguage: () => ({
@@ -11,21 +20,19 @@ vi.mock("@/app/hooks/useLanguage", () => ({
       `${key}${options?.count == null ? "" : `:${options.count}`}`,
   }),
 }));
-vi.mock("./components/StatCard", () => ({
-  default: ({ label, onClick }) => <button onClick={onClick}>{label}</button>,
-}));
 vi.mock("./components/EmptyState", () => ({
-  default: ({ setPage, hasFilter }) => (
-    <button onClick={() => setPage("add")}>empty:{String(hasFilter)}</button>
+  default: ({ setPage, canAdd }) => (
+    <button onClick={() => setPage("add")}>empty:{String(canAdd)}</button>
   ),
 }));
 vi.mock("@/features/leakList/LeakCardCompact/LeakCardCompact", () => ({
-  default: ({ leak, onOpenDetails, onPickStatus, onMonitor }) => (
+  default: ({ leak, onOpenDetails, onMonitor }) => (
     <div>
       <span>{leak.id}</span>
       <button onClick={() => onOpenDetails(leak)}>open-leak</button>
-      <button onClick={() => onPickStatus(leak)}>pick-status</button>
-      <button onClick={() => onMonitor(leak)}>monitor-leak</button>
+      {onMonitor && (
+        <button onClick={() => onMonitor(leak)}>monitor-leak</button>
+      )}
     </div>
   ),
 }));
@@ -41,31 +48,6 @@ vi.mock("@/features/leakDetails/LeakDetailsSheet", () => ({
     </div>
   ),
 }));
-vi.mock("@/features/status/StatusPickerModal/StatusPickerModal", () => ({
-  default: ({ onSelect, onClose }) => (
-    <div>
-      <button onClick={() => onSelect("resolved")}>select-status</button>
-      <button onClick={onClose}>close-status</button>
-    </div>
-  ),
-}));
-vi.mock("@/features/resolve/ResolveModal/ResolveModal", () => ({
-  default: ({ mode, onConfirm, onClose }) => (
-    <div>
-      <button onClick={onConfirm}>confirm-{mode ?? "resolve"}</button>
-      <button onClick={onClose}>close-{mode ?? "resolve"}</button>
-    </div>
-  ),
-}));
-vi.mock("@/features/status/ReopenLeakModal/ReopenLeakModal", () => ({
-  default: ({ onConfirm, onClose }) => (
-    <div>
-      <button onClick={onConfirm}>confirm-reopen</button>
-      <button onClick={onClose}>close-reopen</button>
-    </div>
-  ),
-}));
-
 import MainPage from "./MainPage";
 
 function createActions(overrides = {}) {
@@ -73,29 +55,14 @@ function createActions(overrides = {}) {
   return {
     activeLeak: leak,
     setActiveLeak: vi.fn(),
-    statusFilter: "all",
-    setStatusFilter: vi.fn(),
-    pickerLeak: leak,
-    setPickerLeak: vi.fn(),
-    resolveLeak: leak,
-    setResolveLeak: vi.fn(),
-    repairLeak: leak,
-    setRepairLeak: vi.fn(),
-    reopenLeak: leak,
-    setReopenLeak: vi.fn(),
-    vars: {},
     notification: { message: "ready" },
     setNotification: vi.fn(),
     stats: { total: 6, open: 2, inProgress: 2, resolved: 2 },
     recent: [leak],
     RECENT_COUNT: 5,
+    statusFilter: "all",
+    setStatusFilter: vi.fn(),
     ALL: "all",
-    toggleFilter: vi.fn(),
-    handlePickStatus: vi.fn(),
-    handleStatusSelect: vi.fn(),
-    handleResolveConfirm: vi.fn(),
-    handleRepairConfirm: vi.fn(),
-    handleReopenConfirm: vi.fn(),
     handleSaveLeak: vi.fn(),
     handleDeleteLeak: vi.fn(),
     ...overrides,
@@ -107,7 +74,7 @@ describe("MainPage", () => {
     actionsState.current = createActions();
   });
 
-  it("wires statistics, recent leaks, navigation, and lifecycle modals", async () => {
+  it("wires recent leaks, navigation, and the details sheet", async () => {
     const setPage = vi.fn();
     const onMonitorLeak = vi.fn();
     render(
@@ -120,26 +87,13 @@ describe("MainPage", () => {
     );
 
     for (const label of [
-      "mainPage.total",
-      "mainPage.open",
-      "mainPage.inProgress",
-      "mainPage.resolved",
       "mainPage.showAll:6",
       "notification",
       "open-leak",
-      "pick-status",
       "monitor-leak",
       "close-details",
       "save-details",
       "delete-details",
-      "select-status",
-      "close-status",
-      "confirm-resolve",
-      "close-resolve",
-      "confirm-repair",
-      "close-repair",
-      "confirm-reopen",
-      "close-reopen",
     ])
       fireEvent.click(await screen.findByText(label));
 
@@ -148,28 +102,85 @@ describe("MainPage", () => {
       id: "leak-1",
       status: "open",
     });
-    expect(actionsState.current.handleResolveConfirm).toHaveBeenCalled();
-    expect(actionsState.current.handleRepairConfirm).toHaveBeenCalled();
-    expect(actionsState.current.handleReopenConfirm).toHaveBeenCalled();
+    expect(actionsState.current.handleSaveLeak).toHaveBeenCalled();
+    expect(actionsState.current.handleDeleteLeak).toHaveBeenCalled();
   });
 
-  it("renders filtered empty state and clears the active filter", () => {
+  it("offers the first leak when the location has no records", () => {
     actionsState.current = createActions({
-      statusFilter: "resolved",
       recent: [],
       activeLeak: null,
-      pickerLeak: null,
-      resolveLeak: null,
-      repairLeak: null,
-      reopenLeak: null,
     });
     const setPage = vi.fn();
     render(<MainPage setPage={setPage} data={[]} setData={vi.fn()} />);
 
-    fireEvent.click(screen.getByText("✕"));
     fireEvent.click(screen.getByText("empty:true"));
-    expect(actionsState.current.setStatusFilter).toHaveBeenCalledWith("all");
     expect(setPage).toHaveBeenCalledWith("add");
+  });
+
+  it("groups recent records by day under their own headings", () => {
+    const now = Date.now();
+    actionsState.current = createActions({
+      recent: [
+        { id: "fresh", createdAt: now },
+        { id: "old", createdAt: now - 10 * 24 * 60 * 60 * 1000 },
+      ],
+      activeLeak: null,
+    });
+    render(<MainPage setPage={vi.fn()} data={[]} setData={vi.fn()} />);
+
+    const headings = screen
+      .getAllByRole("heading", { level: 2 })
+      .map((heading) => heading.textContent);
+    expect(headings).toEqual([
+      "mainPage.groups.today",
+      "mainPage.groups.earlier",
+    ]);
+    // «Все →» стоит один раз — у первой группы.
+    expect(screen.getAllByText(/mainPage\.showAll/)).toHaveLength(1);
+  });
+
+  it("shows coverage with a bar only when the total is known", () => {
+    const { rerender } = render(
+      <MainPage
+        setPage={vi.fn()}
+        data={[]}
+        setData={vi.fn()}
+        coverage={{ surveyed: 3, total: 10, percent: 30 }}
+      />,
+    );
+    expect(screen.getByRole("progressbar").getAttribute("aria-valuenow")).toBe(
+      "30",
+    );
+
+    rerender(
+      <MainPage
+        setPage={vi.fn()}
+        data={[]}
+        setData={vi.fn()}
+        coverage={{ surveyed: 3, total: null, percent: null }}
+      />,
+    );
+    expect(screen.queryByRole("progressbar")).toBeNull();
+    expect(screen.getByText("mainPage.coverage.noRegistry")).toBeTruthy();
+  });
+
+  it("says a survey-based coverage covers the whole project, not the place", () => {
+    render(
+      <MainPage
+        setPage={vi.fn()}
+        data={[]}
+        setData={vi.fn()}
+        coverage={{
+          surveyed: 3,
+          total: 10,
+          percent: 30,
+          estimated: true,
+          projectWide: true,
+        }}
+      />,
+    );
+    expect(screen.getByText("mainPage.coverage.projectWide")).toBeTruthy();
   });
 
   it("counts the selected location on the show-all button, not the project", () => {
@@ -205,5 +216,138 @@ describe("MainPage", () => {
     );
 
     expect(screen.queryByText(/mainPage\.showAll/)).toBeNull();
+  });
+
+  it("filters by status chips in the monitoring module and offers no adding", () => {
+    actionsState.current = createActions({
+      recent: [],
+      activeLeak: null,
+    });
+    render(
+      <MainPage
+        setPage={vi.fn()}
+        data={[]}
+        setData={vi.fn()}
+        module="monitoring"
+        coverage={{ surveyed: 1, total: 2, percent: 50 }}
+      />,
+    );
+
+    // Охват — на главной LDAR; в мониторинге на его месте чипы.
+    expect(screen.queryByRole("progressbar")).toBeNull();
+    fireEvent.click(screen.getByText("mainPage.chips.open"));
+    expect(actionsState.current.setStatusFilter).toHaveBeenCalledWith("open");
+    expect(screen.getByText("empty:false")).toBeTruthy();
+  });
+
+  it("chips every leak by repair stage in the repairs module", () => {
+    const repair = {
+      id: "r1",
+      status: "in_progress",
+      events: [{ id: "s", type: "repair_started", date: "2026-10-01" }],
+    };
+    actionsState.current = createActions({
+      recent: [],
+      activeLeak: null,
+    });
+    render(
+      <MainPage
+        setPage={vi.fn()}
+        data={[repair, { id: "x1", status: "resolved", events: [] }]}
+        setData={vi.fn()}
+        module="repairs"
+      />,
+    );
+
+    // Чипы стадий вместо статусов: ожидает МТР, в ремонте, устранена.
+    expect(screen.getByText("repairs.stages.in_repair")).toBeTruthy();
+    expect(screen.getByText("repairs.stages.resolved")).toBeTruthy();
+    expect(screen.queryByText("repairs.stages.ready")).toBeNull();
+    expect(
+      screen.getByRole("button", { name: /repairs\.all/ }).textContent,
+    ).toContain("2");
+    expect(screen.getByText("empty:false")).toBeTruthy();
+  });
+
+  it("свайп по принятому ремонту тоже ведёт в проверку", () => {
+    const resolved = { id: "x1", status: "resolved", events: [] };
+    const onMonitorLeak = vi.fn();
+    actionsState.current = createActions({
+      recent: [resolved],
+      activeLeak: null,
+    });
+    render(
+      <MainPage
+        setPage={vi.fn()}
+        data={[resolved]}
+        setData={vi.fn()}
+        module="repairs"
+        onMonitorLeak={onMonitorLeak}
+      />,
+    );
+
+    fireEvent.click(screen.getByText("monitor-leak"));
+    expect(onMonitorLeak).toHaveBeenCalledWith(resolved);
+  });
+
+  it("в идущем обходе не ведёт в проверку ремонт, принятый до него", () => {
+    const resolved = { id: "x1", status: "resolved", events: [] };
+    repairGate.canCheck = () => false;
+    actionsState.current = createActions({
+      recent: [resolved],
+      activeLeak: null,
+    });
+    render(
+      <MainPage
+        setPage={vi.fn()}
+        data={[resolved]}
+        setData={vi.fn()}
+        module="repairs"
+        onMonitorLeak={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText("monitor-leak")).toBeNull();
+    repairGate.canCheck = () => true;
+  });
+
+  it("чип стадии отбирает ремонты этой стадии", () => {
+    const inRepair = {
+      id: "r1",
+      status: "in_progress",
+      events: [{ id: "s", type: "repair_started", date: "2026-10-01" }],
+    };
+    const resolved = { id: "x1", status: "resolved", events: [] };
+    actionsState.current = createActions({ recent: [], activeLeak: null });
+    render(
+      <MainPage
+        setPage={vi.fn()}
+        data={[inRepair, resolved]}
+        setData={vi.fn()}
+        module="repairs"
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /repairs\.stages\.resolved/ }),
+    );
+
+    expect(actionsState.args.scopedData).toEqual([resolved]);
+  });
+
+  it("ведёт с карточки покрытия на экран покрытия", () => {
+    const setPage = vi.fn();
+    render(
+      <MainPage
+        setPage={setPage}
+        data={[]}
+        setData={vi.fn()}
+        coverage={{ surveyed: 3, total: 10, percent: 30 }}
+      />,
+    );
+
+    fireEvent.click(screen.getByText(/mainPage\.coverage\.open/));
+
+    expect(setPage).toHaveBeenCalledWith("coverage");
   });
 });

@@ -1,8 +1,8 @@
-import { getRepairDonePhoto, getRepairPhoto } from "@/domain/leakEvents";
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { STATUS } from "@/utils/status";
 import { useBulkActions } from "./useBulkActions";
+import { VAR_DEFAULTS } from "@/data/variables";
 
 vi.mock("@/app/hooks/useLanguage", async () => {
   const { englishLanguageHook } = await import("@/test/translate");
@@ -13,124 +13,14 @@ vi.mock("@/utils/haptics", () => ({
   hapticSuccess: vi.fn(),
 }));
 
-const modes = [
-  {
-    label: "resolve",
-    status: STATUS.RESOLVED,
-    photoKey: "photo_after",
-    readPhoto: getRepairDonePhoto,
-    queueKey: "resolveQueue",
-    confirmKey: "handleSequentialResolveConfirm",
-  },
-  {
-    label: "repair",
-    status: STATUS.IN_PROGRESS,
-    photoKey: "photo_repair",
-    readPhoto: getRepairPhoto,
-    queueKey: "repairQueue",
-    confirmKey: "handleSequentialRepairConfirm",
-  },
-];
-
-function renderBulkActions({
-  setData,
-  deletePhoto,
-  photoKey,
-  oldPath,
-  status,
-}) {
-  const data = [
-    {
-      id: "leak-1",
-      leak_id: "1001",
-      status,
-      [photoKey]: oldPath,
-    },
-  ];
-  const notify = vi.fn();
-  const hook = renderHook(() =>
-    useBulkActions({
-      data,
-      setData,
-      displayed: data,
-      notify,
-      deletePhoto,
-      userProfile: { name: "Inspector" },
-    }),
-  );
-  return { ...hook, notify };
-}
-
-describe.each(modes)("bulk sequential $label photo lifecycle", (mode) => {
-  it("rolls back the newly saved photo when project persistence fails", async () => {
-    const oldPath = `photos/old-${mode.label}.jpg`;
-    const newPath = `photos/new-${mode.label}.jpg`;
-    const setData = vi.fn().mockRejectedValue(new Error("database locked"));
-    const deletePhoto = vi.fn().mockResolvedValue(undefined);
-    const { result, notify } = renderBulkActions({
-      setData,
-      deletePhoto,
-      photoKey: mode.photoKey,
-      oldPath,
-      status:
-        mode.status === STATUS.RESOLVED ? STATUS.IN_PROGRESS : STATUS.OPEN,
-    });
-
-    act(() => result.current.toggleSelected("leak-1"));
-    await act(async () => {
-      await result.current.handleBulkStatusChange(mode.status);
-    });
-    await act(async () => {
-      await result.current[mode.confirmKey]({
-        [mode.photoKey]: newPath,
-      });
-    });
-
-    expect(deletePhoto).toHaveBeenCalledWith(newPath);
-    expect(deletePhoto).not.toHaveBeenCalledWith(oldPath);
-    expect(result.current[mode.queueKey]).toHaveLength(1);
-    expect(notify).toHaveBeenCalledWith(
-      "error",
-      expect.stringContaining("database locked"),
-    );
-  });
-
-  it("deletes the superseded photo only after a successful commit", async () => {
-    const oldPath = `photos/old-${mode.label}.jpg`;
-    const newPath = `photos/new-${mode.label}.jpg`;
-    const setData = vi.fn().mockResolvedValue(undefined);
-    const deletePhoto = vi.fn().mockResolvedValue(undefined);
-    const { result } = renderBulkActions({
-      setData,
-      deletePhoto,
-      photoKey: mode.photoKey,
-      oldPath,
-      status:
-        mode.status === STATUS.RESOLVED ? STATUS.IN_PROGRESS : STATUS.OPEN,
-    });
-
-    act(() => result.current.toggleSelected("leak-1"));
-    await act(async () => {
-      await result.current.handleBulkStatusChange(mode.status);
-    });
-    await act(async () => {
-      await result.current[mode.confirmKey]({
-        [mode.photoKey]: newPath,
-      });
-    });
-
-    expect(setData).toHaveBeenCalledOnce();
-    // Снимок лежит в событии: веха гасится, забрав своё значение в ленту.
-    expect(mode.readPhoto(setData.mock.calls[0][0][0])).toBe(newPath);
-    expect(deletePhoto).toHaveBeenCalledWith(oldPath);
-    expect(deletePhoto).not.toHaveBeenCalledWith(newPath);
-    expect(result.current[mode.queueKey]).toHaveLength(0);
-  });
-});
-
 function renderWith(
   data,
-  { userProfile = { name: "Inspector" }, setData, projectVars } = {},
+  {
+    userProfile = { name: "Inspector" },
+    setData,
+    projectVars,
+    displayed = data,
+  } = {},
 ) {
   const notify = vi.fn();
   const deletePhoto = vi.fn().mockResolvedValue(undefined);
@@ -138,7 +28,7 @@ function renderWith(
     useBulkActions({
       data,
       setData: setData ?? vi.fn().mockResolvedValue(undefined),
-      displayed: data,
+      displayed,
       notify,
       deletePhoto,
       userProfile,
@@ -194,183 +84,13 @@ describe("bulk selection", () => {
   });
 });
 
-describe("bulk status change", () => {
-  it("does nothing without a selection", async () => {
-    const setData = vi.fn().mockResolvedValue(undefined);
-    const { result } = renderWith([leak("a")], { setData });
-
-    await act(async () => {
-      await result.current.handleBulkStatusChange(STATUS.IN_PROGRESS);
-    });
-
-    expect(setData).not.toHaveBeenCalled();
-  });
-
-  it("refuses without a user name and says why", async () => {
-    const setData = vi.fn().mockResolvedValue(undefined);
-    const { result, notify } = renderWith([leak("a")], {
-      setData,
-      userProfile: { name: "  " },
-    });
-
-    act(() => result.current.toggleSelected("a"));
-    await act(async () => {
-      await result.current.handleBulkStatusChange(STATUS.IN_PROGRESS);
-    });
-
-    expect(setData).not.toHaveBeenCalled();
-    expect(notify).toHaveBeenCalledWith(
-      "error",
-      "Fill in the user name in the profile",
-    );
-  });
-
-  it("clears the selection when every picked leak is already in that status", async () => {
-    const setData = vi.fn().mockResolvedValue(undefined);
-    const { result } = renderWith([leak("a", STATUS.IN_PROGRESS)], { setData });
-
-    act(() => result.current.toggleSelected("a"));
-    await act(async () => {
-      await result.current.handleBulkStatusChange(STATUS.IN_PROGRESS);
-    });
-
-    expect(setData).not.toHaveBeenCalled();
-    expect(result.current.selectedIds.size).toBe(0);
-  });
-
-  it("queues resolve and repair one leak at a time", async () => {
-    const { result } = renderWith([
-      leak("a", STATUS.IN_PROGRESS),
-      leak("b", STATUS.IN_PROGRESS),
-    ]);
-
-    act(() => result.current.selectDisplayed());
-    await act(async () => {
-      await result.current.handleBulkStatusChange(STATUS.RESOLVED);
-    });
-
-    expect(result.current.resolveQueue).toHaveLength(2);
-    expect(result.current.resolveTotal).toBe(2);
-  });
-
-  it("reopens resolved leaks in one write and reports the count", async () => {
-    const setData = vi.fn().mockResolvedValue(undefined);
-    const { result, notify } = renderWith(
-      [leak("a", STATUS.RESOLVED), leak("b", STATUS.RESOLVED)],
-      { setData },
-    );
-
-    act(() => result.current.selectDisplayed());
-    await act(async () => {
-      await result.current.handleBulkStatusChange(STATUS.OPEN);
-    });
-
-    expect(setData).toHaveBeenCalledOnce();
-    expect(setData.mock.calls[0][0].every((l) => l.status === "open")).toBe(
-      true,
-    );
-    expect(notify).toHaveBeenCalledWith(
-      "success",
-      "Status changed for 2 records",
-    );
-    expect(result.current.selectedIds.size).toBe(0);
-  });
-
-  it("uses the singular form for a single record", async () => {
-    const { result, notify } = renderWith([leak("a", STATUS.RESOLVED)]);
-
-    act(() => result.current.toggleSelected("a"));
-    await act(async () => {
-      await result.current.handleBulkStatusChange(STATUS.OPEN);
-    });
-
-    expect(notify).toHaveBeenCalledWith(
-      "success",
-      "Status changed for 1 record",
-    );
-  });
-
-  it("reports a failed write and keeps the selection", async () => {
-    const setData = vi.fn().mockRejectedValue(new Error("db locked"));
-    const { result, notify } = renderWith([leak("a", STATUS.RESOLVED)], {
-      setData,
-    });
-
-    act(() => result.current.toggleSelected("a"));
-    await act(async () => {
-      await result.current.handleBulkStatusChange(STATUS.OPEN);
-    });
-
-    expect(notify).toHaveBeenCalledWith("error", "Save error: db locked");
-    expect(result.current.selectedIds.size).toBe(1);
-  });
-});
-
-describe("the sequential queues", () => {
-  it("announces the total once the last one is confirmed", async () => {
-    const { result, notify } = renderWith([
-      leak("a", STATUS.IN_PROGRESS),
-      leak("b", STATUS.IN_PROGRESS),
-    ]);
-
-    act(() => result.current.selectDisplayed());
-    await act(async () => {
-      await result.current.handleBulkStatusChange(STATUS.RESOLVED);
-    });
-
-    await act(async () => {
-      await result.current.handleSequentialResolveConfirm({});
-    });
-    expect(result.current.resolveQueue).toHaveLength(1);
-    expect(notify).not.toHaveBeenCalledWith(
-      "success",
-      expect.stringContaining("Resolved"),
-    );
-
-    await act(async () => {
-      await result.current.handleSequentialResolveConfirm({});
-    });
-    expect(result.current.resolveQueue).toHaveLength(0);
-    expect(notify).toHaveBeenCalledWith("success", "Resolved 2 records");
-  });
-
-  it("does nothing when the queue is empty", async () => {
-    const setData = vi.fn().mockResolvedValue(undefined);
-    const { result } = renderWith([leak("a")], { setData });
-
-    await act(async () => {
-      await result.current.handleSequentialResolveConfirm({});
-      await result.current.handleSequentialRepairConfirm({});
-    });
-
-    expect(setData).not.toHaveBeenCalled();
-  });
-
-  it("abandons a queue on cancel", async () => {
-    const { result } = renderWith([leak("a", STATUS.IN_PROGRESS)]);
-
-    act(() => result.current.toggleSelected("a"));
-    await act(async () => {
-      await result.current.handleBulkStatusChange(STATUS.RESOLVED);
-    });
-    act(() => result.current.cancelBulkResolve());
-
-    expect(result.current.resolveQueue).toHaveLength(0);
-    expect(result.current.resolveTotal).toBe(0);
-
-    act(() => result.current.toggleSelected("a"));
-    await act(async () => {
-      await result.current.handleBulkStatusChange(STATUS.IN_PROGRESS);
-    });
-    act(() => result.current.cancelBulkRepair());
-
-    expect(result.current.repairQueue).toHaveLength(0);
-    expect(result.current.repairTotal).toBe(0);
-  });
-});
-
 describe("bulk recalculation", () => {
-  const projectVars = { gasType: "methane", GWP: 28, Operating_mode: 365 };
+  const projectVars = {
+    ...VAR_DEFAULTS,
+    gasType: "methane",
+    GWP: 28,
+    Operating_mode: 365,
+  };
 
   it("offers the first selected leak's parameters as the starting point", () => {
     const { result } = renderWith(
@@ -426,6 +146,30 @@ describe("bulk recalculation", () => {
 
   // Applying the values a leak already has is a no-op, not an error — the
   // selection still clears, so the sheet closes.
+  it("refuses out-of-range parameters instead of keeping old emissions", async () => {
+    const setData = vi.fn().mockResolvedValue(undefined);
+    const { result, notify } = renderWith(
+      [{ id: "a", status: STATUS.OPEN, leak_speed: 5, ...projectVars }],
+      { setData, projectVars },
+    );
+
+    act(() => result.current.toggleSelected("a"));
+    let saved;
+    await act(async () => {
+      saved = await result.current.handleBulkCalculationSave({
+        ...result.current.bulkCalculationVars,
+        Operating_mode: 400,
+      });
+    });
+
+    expect(saved).toBe(false);
+    expect(setData).not.toHaveBeenCalled();
+    expect(notify).toHaveBeenCalledWith(
+      "error",
+      "Calculation parameters are out of range",
+    );
+  });
+
   it("says so and writes nothing when the parameters already match", async () => {
     const setData = vi.fn().mockResolvedValue(undefined);
     const { result, notify } = renderWith(
@@ -505,5 +249,59 @@ describe("bulk recalculation", () => {
       "Failed to update parameters: db locked",
     );
     expect(result.current.selectedIds.size).toBe(1);
+  });
+});
+
+describe("выбор, скрытый фильтром", () => {
+  const projectVars = {
+    ...VAR_DEFAULTS,
+    gasType: "methane",
+    GWP: 28,
+    Operating_mode: 365,
+  };
+
+  it("действует только на видимые, а скрытый выбор оставляет", async () => {
+    const data = [
+      { id: "a", status: STATUS.OPEN, ...projectVars },
+      { id: "b", status: STATUS.OPEN, ...projectVars },
+    ];
+    const setData = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderWith(data, {
+      setData,
+      projectVars,
+      displayed: [data[0]],
+    });
+
+    act(() => result.current.toggleSelected("a"));
+    act(() => result.current.toggleSelected("b"));
+    expect(result.current.selectedCount).toBe(1);
+    expect(result.current.hiddenSelectedCount).toBe(1);
+    expect(result.current.actionableSelected.map((item) => item.id)).toEqual([
+      "a",
+    ]);
+
+    await act(async () => {
+      await result.current.handleBulkCalculationSave({
+        ...projectVars,
+        GWP: 82,
+      });
+    });
+
+    const [written] = setData.mock.calls[0];
+    expect(written[0].calculationParams.GWP).toBe(82);
+    // Скрытая фильтром запись не пересчитана и осталась выбранной.
+    expect(written[1]).toBe(data[1]);
+    expect([...result.current.selectedIds]).toEqual(["b"]);
+  });
+
+  it("после проверки снимает с выбора только видимые", () => {
+    const data = [leak("a"), leak("b")];
+    const { result } = renderWith(data, { displayed: [data[0]] });
+
+    act(() => result.current.toggleSelected("a"));
+    act(() => result.current.toggleSelected("b"));
+    act(() => result.current.clearActionable());
+
+    expect([...result.current.selectedIds]).toEqual(["b"]);
   });
 });

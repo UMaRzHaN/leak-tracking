@@ -28,95 +28,22 @@ export function useInventoryExport({ project, notify }) {
       setIsExporting(true);
       notify?.("info", t("components.export.inProgress"), { autoCloseMs: 0 });
 
-      const [
-        {
-          buildInventoryArchive,
-          buildInventoryFileStem,
-          INVENTORY_PHOTO_DIR,
-          INVENTORY_SCHEMA_DIR,
-        },
-        { buildComponentSheetSpec },
-        { buildComponentArchiveEntry },
-        { buildSchemaArchiveEntries },
-        { SchemaRepository },
-        { buildExcelExportTexts },
-      ] = await Promise.all([
-        import("@/services/inventory/inventoryArchive"),
-        import("@/services/excelExport/componentSheetSpec"),
-        import("@/services/backup/componentArchive"),
-        import("@/services/backup/schemaArchive"),
-        import("@/repositories/SchemaRepository"),
-        import("@/services/excelExport/exportTexts"),
-      ]);
-
-      const sheetSpec = await buildComponentSheetSpec(project);
-      if (!sheetSpec) {
+      const [{ prepareInventoryExport }, { buildInventoryArchive }] =
+        await Promise.all([
+          import("@/services/inventory/inventoryExportParts"),
+          import("@/services/inventory/inventoryArchive"),
+        ]);
+      const parts = await prepareInventoryExport(project, {
+        idbGet: idbGetPhoto,
+        t,
+      });
+      if (!parts) {
         notify?.("warning", t("components.export.empty"));
         return;
       }
 
-      const registryEntry = await buildComponentArchiveEntry(project, {
-        idbGet: idbGetPhoto,
-        photoDir: INVENTORY_PHOTO_DIR,
-      });
-      const schemaEntries = await buildSchemaArchiveEntries(
-        project,
-        await SchemaRepository.readIndex(project).catch(() => []),
-        (target, schema) => SchemaRepository.readSchemaFile(target, schema),
-        { dir: INVENTORY_SCHEMA_DIR },
-      );
-
-      const fileStem = buildInventoryFileStem(project.name);
-      const blob = await buildInventoryArchive({
-        fileStem,
-        sheetSpec,
-        registryEntry,
-        schemaEntries,
-        texts: {
-          ...buildExcelExportTexts(t),
-          // Служебный лист подписан своими словами: реестр — не резервная
-          // копия проекта, а то, что этот архив и есть.
-          inventoryBackup: {
-            sheet: t("components.export.inventoryBackup.sheet"),
-            note: t("components.export.inventoryBackup.note"),
-            fieldColumn: t("components.export.inventoryBackup.fieldColumn"),
-            valueColumn: t("components.export.inventoryBackup.valueColumn"),
-            summary: {
-              components: t(
-                "components.export.inventoryBackup.summary.components",
-              ),
-              withPhoto: t(
-                "components.export.inventoryBackup.summary.withPhoto",
-              ),
-              version: t("components.export.inventoryBackup.summary.version"),
-            },
-          },
-          // Лист истории подписан своими словами: у железа заводят карточку и
-          // осматривают, а не открывают и устраняют.
-          componentHistory: {
-            sheet: t("components.export.historySheet.sheet"),
-            unknownUser: t("components.export.historySheet.unknownUser"),
-            emptyValue: t("components.export.historySheet.emptyValue"),
-            actions: {
-              created: t("components.export.historySheet.actions.created"),
-              edited: t("components.export.historySheet.actions.edited"),
-              inspected: t("components.export.historySheet.actions.inspected"),
-            },
-            headers: {
-              index: t("components.export.historySheet.headers.index"),
-              component_uid: t(
-                "components.export.historySheet.headers.component_uid",
-              ),
-              date: t("components.export.historySheet.headers.date"),
-              time: t("components.export.historySheet.headers.time"),
-              action: t("components.export.historySheet.headers.action"),
-              user: t("components.export.historySheet.headers.user"),
-              to: t("components.export.historySheet.headers.to"),
-              changes: t("components.export.historySheet.headers.changes"),
-            },
-          },
-        },
-      });
+      const { fileStem } = parts;
+      const blob = await buildInventoryArchive(parts);
       const fileName = `${fileStem}.zip`;
 
       if (isNative) {

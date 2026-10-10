@@ -1,4 +1,3 @@
-import { getRepairDonePhoto } from "@/domain/leakEvents";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -69,7 +68,7 @@ vi.mock("@/utils/calculationParams", () => ({
   calculationParamsEqual: () => true,
 }));
 
-import { MODE, useLeakDetailsSheet } from "./useLeakDetailsSheet";
+import { useLeakDetailsSheet } from "./useLeakDetailsSheet";
 
 const leak = {
   id: "leak-1",
@@ -241,6 +240,16 @@ describe("useLeakDetailsSheet", () => {
     expect(event.defaultPrevented).toBe(false);
   });
 
+  it("в правке открывает осмотры и ремонты, а лог — только в просмотре", () => {
+    const { result } = renderDetails();
+
+    act(() => result.current.handleEdit());
+
+    const ids = result.current.TABS.map((tab) => tab.id);
+    expect(ids).toEqual(expect.arrayContaining(["monitoring", "repairs"]));
+    expect(ids).not.toContain("log");
+  });
+
   it("returns to viewing on cancel, dropping the draft", () => {
     const { result } = renderDetails();
 
@@ -280,48 +289,6 @@ describe("useLeakDetailsSheet", () => {
     vi.useRealTimers();
   });
 
-  it("cleans up a newly captured resolution photo after a failed save", async () => {
-    const onSave = vi.fn().mockRejectedValue(new Error("database failed"));
-    const { result } = renderDetails({ onSave });
-
-    await act(() =>
-      result.current.handleResolveConfirm({
-        photo_after: "idb://new-after",
-        materials_equipment: "Seal replaced",
-        note: "Resolved",
-      }),
-    );
-
-    expect(mocks.deletePhoto).toHaveBeenCalledWith("idb://new-after");
-    expect(result.current.notification).toEqual({
-      type: "error",
-      message: "Save error",
-    });
-    expect(result.current.mode).toBe(MODE.VIEW);
-  });
-
-  it("keeps a failed resolution photo that is already referenced elsewhere", async () => {
-    const onSave = vi.fn().mockRejectedValue(new Error("database failed"));
-    const sharedLeak = {
-      id: "leak-2",
-      monitoringRecords: [{ previousPhoto: "idb://new-after" }],
-    };
-    const { result } = renderDetails({
-      onSave,
-      allLeaks: [leak, sharedLeak],
-    });
-
-    await act(() =>
-      result.current.handleResolveConfirm({
-        photo_after: "idb://new-after",
-        materials_equipment: "Seal replaced",
-        note: "Resolved",
-      }),
-    );
-
-    expect(mocks.deletePhoto).not.toHaveBeenCalledWith("idb://new-after");
-  });
-
   it("rejects invalid coordinates before writing photos or project data", async () => {
     const { result, props } = renderDetails();
 
@@ -336,51 +303,5 @@ describe("useLeakDetailsSheet", () => {
     expect(result.current.notification.message).toContain(
       "Latitude 91 is outside the allowed range",
     );
-  });
-
-  it("keeps a superseded after-photo shared by another leak", async () => {
-    mocks.photoDirty = false;
-    const activeLeak = { ...leak, status: "in_progress" };
-    const sharedLeak = { id: "leak-2", photo: "idb://old-after" };
-    const { result } = renderDetails({
-      leak: activeLeak,
-      allLeaks: [activeLeak, sharedLeak],
-    });
-
-    await act(() =>
-      result.current.handleResolveConfirm({
-        photo_after: "idb://new-after",
-        materials_equipment: "Seal replaced",
-        note: "Resolved",
-      }),
-    );
-
-    expect(mocks.deletePhoto).not.toHaveBeenCalledWith("idb://old-after");
-  });
-
-  it("commits a resolution before removing the superseded after-photo", async () => {
-    mocks.photoDirty = false;
-    const order = [];
-    const onSave = vi.fn(async () => order.push("saved"));
-    mocks.deletePhoto.mockImplementation(async () => order.push("deleted"));
-    const { result } = renderDetails({
-      onSave,
-      leak: { ...leak, status: "in_progress" },
-    });
-
-    await act(() =>
-      result.current.handleResolveConfirm({
-        photo_after: "idb://new-after",
-        materials_equipment: "Seal replaced",
-        note: "Resolved",
-      }),
-    );
-
-    const saved = onSave.mock.calls[0][0];
-    expect(saved).toMatchObject({ status: "resolved" });
-    // Снимок лежит в событии: веха гасится, забрав своё значение в ленту.
-    expect(getRepairDonePhoto(saved)).toBe("idb://new-after");
-    expect(mocks.deletePhoto).toHaveBeenCalledWith("idb://old-after");
-    expect(order).toEqual(["saved", "deleted"]);
   });
 });

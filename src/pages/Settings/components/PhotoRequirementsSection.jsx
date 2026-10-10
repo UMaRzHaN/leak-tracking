@@ -1,36 +1,20 @@
 import s from "../Settings.module.scss";
+import RequirementToggle from "./SettingsToggle";
 import { useLanguage } from "@/app/hooks/useLanguage";
-
-function RequirementToggle({ label, hint, checked, onChange }) {
-  return (
-    <div className={s.photoRequirementRow}>
-      <div className={s.themeInfo}>
-        <span className={s.themeLabel}>{label}</span>
-        <span className={s.themeHint}>{hint}</span>
-      </div>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        aria-label={label}
-        className={`${s.themeToggle} ${checked ? s.themeToggleDark : ""}`}
-        onClick={() => onChange(!checked)}
-      >
-        <span className={s.themeThumb} />
-      </button>
-    </div>
-  );
-}
 
 export default function PhotoRequirementsSection({
   activeProject,
   leakPhotoRequired,
   monitoringPhotoRequired,
   componentPhotoRequired,
+  repairPhotoRequired,
+  reconcilePhotoRequired,
   hasComponentRegistry = false,
   onLeakPhotoRequiredChange,
   onMonitoringPhotoRequiredChange,
   onComponentPhotoRequiredChange,
+  onRepairPhotoRequiredChange,
+  onReconcilePhotoRequiredChange,
 }) {
   const { t } = useLanguage();
 
@@ -57,16 +41,30 @@ export default function PhotoRequirementsSection({
           checked={monitoringPhotoRequired}
           onChange={onMonitoringPhotoRequiredChange}
         />
+        <RequirementToggle
+          label={t("settings.photoWhenRepair")}
+          hint={repairPhotoRequired ? requiredHint : optionalHint}
+          checked={repairPhotoRequired}
+          onChange={onRepairPhotoRequiredChange}
+        />
         {/* Offered only where a registry exists, the same way the tab itself
             appears — a switch for a screen this project type does not have
             would be a promise the app cannot keep. */}
         {hasComponentRegistry && (
-          <RequirementToggle
-            label={t("settings.photoWhenComponent")}
-            hint={componentPhotoRequired ? requiredHint : optionalHint}
-            checked={componentPhotoRequired}
-            onChange={onComponentPhotoRequiredChange}
-          />
+          <>
+            <RequirementToggle
+              label={t("settings.photoWhenComponent")}
+              hint={componentPhotoRequired ? requiredHint : optionalHint}
+              checked={componentPhotoRequired}
+              onChange={onComponentPhotoRequiredChange}
+            />
+            <RequirementToggle
+              label={t("settings.photoWhenReconcile")}
+              hint={reconcilePhotoRequired ? requiredHint : optionalHint}
+              checked={reconcilePhotoRequired}
+              onChange={onReconcilePhotoRequiredChange}
+            />
+          </>
         )}
       </div>
     </section>

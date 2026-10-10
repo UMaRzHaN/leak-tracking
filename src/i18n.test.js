@@ -23,7 +23,7 @@ describe("i18n", () => {
     expect(i18n.hasResourceBundle("en", "translation")).toBe(true);
     // The other language stays unfetched — the whole point of the split.
     expect(i18n.hasResourceBundle("ru", "translation")).toBe(false);
-    expect(i18n.t("header.settings")).toBe("Settings");
+    expect(i18n.t("header.menu")).toBe("Menu");
   });
 
   it("defaults to Russian when nothing is stored", async () => {
@@ -31,7 +31,7 @@ describe("i18n", () => {
     await ready;
 
     expect(i18n.language).toBe("ru");
-    expect(i18n.t("header.settings")).toBe("Настройки");
+    expect(i18n.t("header.menu")).toBe("Меню");
   });
 
   // A stored language the build no longer ships must not leave the interface
@@ -42,7 +42,7 @@ describe("i18n", () => {
     await ready;
 
     expect(i18n.language).toBe("ru");
-    expect(i18n.t("header.settings")).toBe("Настройки");
+    expect(i18n.t("header.menu")).toBe("Меню");
   });
 
   it("adds a language on demand and reports what became available", async () => {

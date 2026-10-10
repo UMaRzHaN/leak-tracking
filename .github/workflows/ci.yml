@@ -6,6 +6,10 @@ name: CI
 # is narrowed to main, so branch work is covered by the pull_request trigger
 # alone and every commit is built exactly once.
 on:
+  # Только main: ветки проверяются через pull_request. Пара
+  # `push: "**"` + `pull_request` прогоняла каждый коммит в PR дважды,
+  # а задач семь — на приватном репозитории это удвоенный расход
+  # бесплатных минут.
   push:
     branches:
       - main
@@ -17,15 +21,14 @@ on:
   # пользуются, и позволяет проверить любую ветку, ничего никуда не вливая.
   workflow_dispatch:
 
-# Superseded runs are cancelled on branches, where only the newest commit is
-# interesting. main is exempt: its runs are the release record, and cancelling
-# one would leave a commit on the release branch with no verdict.
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
-
 permissions:
   contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  # На main отменять нельзя: у каждого коммита должен остаться свой
+  # зелёный прогон. В PR устаревший прогон никому не нужен.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   quality:
@@ -292,6 +295,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      # gradle-wrapper.jar исполняется до любой другой проверки: подменённый
+      # JAR в PR выполнил бы код ещё до сборки. Сверяется с опубликованными
+      # Gradle контрольными суммами.
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -346,7 +355,6 @@ jobs:
             android/app/build/reports/lint-results-release.html
             android/app/build/reports/tests/
             android/app/build/outputs/apk/
-            android/app/build/outputs/bundle/
             .artifacts/
           if-no-files-found: warn
           include-hidden-files: true

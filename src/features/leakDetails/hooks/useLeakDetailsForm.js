@@ -4,6 +4,7 @@ import {
   calculationParamsEqual,
 } from "@/utils/calculationParams";
 import { fromEntries } from "@/utils/fromEntries";
+import { hasRecordEdits } from "@/domain/recordEdits";
 
 export function useLeakDetailsForm({
   leak,
@@ -22,12 +23,17 @@ export function useLeakDetailsForm({
   } = photoActions;
   const [localEdit, setLocalEdit] = useState({});
   const [localCalcParams, setLocalCalcParams] = useState({});
+  // Правки записанных осмотров и ремонтов — по ключу записи.
+  const [recordEdits, setRecordEdits] = useState(
+    /** @type {Record<string, Record<string, any>>} */ ({}),
+  );
   const previousRevisionRef = useRef(/** @type {any} */ (null));
 
   const resetDraft = useCallback(() => {
     const keys = editFields.map((field) => field.key);
     setLocalEdit(fromEntries(keys.map((keyName) => [keyName, leak[keyName]])));
     setLocalCalcParams(buildLeakCalculationParams(leak, vars));
+    setRecordEdits({});
   }, [editFields, leak, vars]);
 
   useEffect(() => {
@@ -63,7 +69,12 @@ export function useLeakDetailsForm({
     localCalcParams,
     originalCalcParams,
   );
+  const recordsDirty = useMemo(
+    () => hasRecordEdits(leak, recordEdits),
+    [leak, recordEdits],
+  );
   const isDirty =
+    recordsDirty ||
     isPhotoDirty ||
     isAfterDirty ||
     isRepairDirty ||
@@ -79,6 +90,8 @@ export function useLeakDetailsForm({
     dirtyFields,
     calcParamsDirty,
     isDirty,
+    recordEdits,
+    setRecordEdits,
     resetDraft,
   };
 }

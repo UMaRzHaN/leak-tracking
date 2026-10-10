@@ -58,23 +58,49 @@ export async function buildInventoryArchive({
 }) {
   const JSZip = (await getJSZip()).default;
   const zip = new JSZip();
+  await addInventoryFiles(zip, {
+    fileStem,
+    sheetSpec,
+    registryEntry,
+    schemaEntries,
+    texts,
+  });
+  return zip.generateAsync({ type: "blob" });
+}
 
+/**
+ * Кладёт книгу инвентаризации, снимки и чертежи в уже открытый архив — свой
+ * или отчёта по утечкам (8a), там под папкой `prefix`. Ссылки на снимки в
+ * книге относительные, поэтому папка у книги и снимков общая.
+ *
+ * @param {any} zip
+ * @param {{fileStem: string, sheetSpec: any, registryEntry: any, schemaEntries?: {path: string, blob: Blob}[], texts?: Record<string, any>}} parts
+ * @param {string} [prefix]
+ */
+export async function addInventoryFiles(
+  zip,
+  { fileStem, sheetSpec, registryEntry, schemaEntries = [], texts = {} },
+  prefix = "",
+) {
+  const at = (path) => (prefix ? `${prefix}/${path}` : path);
   // Колонка «Фото» ссылается в ту же папку Photos, что лежит рядом: открыв
   // книгу из распакованного архива, снимок открывают нажатием на ячейку.
   zip.file(
-    `${fileStem}.xlsx`,
+    at(`${fileStem}.xlsx`),
     await buildInventoryWorkbookBufferInWorker(sheetSpec, {
       photoPaths: registryEntry?.photoPaths ?? {},
       backup: registryEntry?.components ?? [],
+      // Лист «Сверка» ссылается только на то, что легло рядом.
+      archivedPhotos: (registryEntry?.photoEntries ?? []).map(
+        (entry) => entry.path,
+      ),
       texts,
     }),
   );
 
   for (const entry of registryEntry?.photoEntries ?? []) {
-    zip.file(entry.path, entry.blob);
+    zip.file(at(entry.path), entry.blob);
   }
 
-  for (const entry of schemaEntries) zip.file(entry.path, entry.blob);
-
-  return zip.generateAsync({ type: "blob" });
+  for (const entry of schemaEntries) zip.file(at(entry.path), entry.blob);
 }

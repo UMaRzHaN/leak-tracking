@@ -4,6 +4,8 @@ export const leakDetails = {
   deleteLeak: "Delete leak",
   edit: "Edit",
   close: "Close",
+  back: "Back",
+  photoCounter: "{{index}} / {{total}}",
   cancel: "Cancel",
   saving: "Saving...",
   save: "Save",
@@ -32,17 +34,44 @@ export const leakDetails = {
   noMonitoringChecks: "No monitoring checks yet",
   coordsAccuracy: "Coordinate accuracy",
   coordsAccuracyValue: "±{{count}} m",
+  fromYou: "From you",
+  distanceM: "{{count}} m",
+  distanceKm: "{{count}} km",
+  showOnMap: "Show on map",
   repairEvents: {
     repair_started: "Repair started",
     repair_done: "Repair finished",
     photo: "Repair photo",
   },
   user: "User",
+  recordEdit: {
+    inspection: "Inspection",
+    repair: "Repair",
+    result: "Inspection result",
+    status: "Status",
+  },
+  flags: {
+    tagPresent: "Physical tag in place",
+    tagMissing: "No physical tag",
+    fiction: "Fiction",
+  },
+  repairLog: {
+    started: "Repair started",
+    done: "Repair accepted",
+    returned: "Back to awaiting materials",
+    brigade: "Crew",
+    materials: "Materials",
+    note: "Comment",
+    photoBefore: "Photo before repair",
+    empty: "This leak has had no repairs",
+  },
 
   historyDamaged: "This record history is damaged and cannot be displayed",
   removed: "Removed",
 
   enterSerialNumber: "Enter the equipment serial number",
+  calcParamsInvalid: "Calculation parameters are out of range",
+  fieldInvalid: "{{field}}: {{reason}}",
   saveError: "Save error",
   fillUserName: "Fill in the user name in the profile",
 
@@ -53,6 +82,7 @@ export const leakDetails = {
     parameters: "Parameters",
     coordinates: "Coordinates",
     monitoring: "Monitoring",
+    repairs: "Repairs",
     log: "Log",
   },
 
@@ -64,6 +94,7 @@ export const leakDetails = {
     edited: "Data updated",
     comment: "Comment",
     monitoring: "Monitoring",
+    repair_check: "Repair check",
   },
 
   statuses: {

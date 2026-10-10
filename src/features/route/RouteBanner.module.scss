@@ -1,0 +1,78 @@
+/* Плашка стоит в верхнем ряду карты на месте строки поиска и повторяет её
+   размеры: та же высота, тот же радиус и тень. */
+.banner {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  border-radius: 16px;
+  background: var(--c-surface);
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.14);
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  padding: 6px 0 8px 14px;
+  border: none;
+  background: none;
+  color: inherit;
+  line-height: 1.25;
+  text-align: left;
+}
+
+.title,
+.meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.title {
+  color: var(--c-text);
+  font-size: var(--fs-md);
+  font-weight: 800;
+}
+
+.meta {
+  color: var(--c-text3);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+
+/* Завершение — редкое действие, поэтому только значок. */
+.end {
+  flex: none;
+  width: 34px;
+  align-self: stretch;
+  display: grid;
+  place-items: center;
+  border: none;
+  background: none;
+  color: var(--c-text3);
+}
+
+/* Прогресс — тонкая линия по нижнему краю: отдельный ряд под неё делал
+   плашку на треть выше. */
+.bar {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: var(--c-border);
+
+  span {
+    display: block;
+    height: 100%;
+    background: var(--c-accent);
+  }
+}

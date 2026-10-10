@@ -17,24 +17,26 @@
 
 .searchIcon {
   position: absolute;
-  left: 12px;
-  font-size: 15px;
+  left: 14px;
+  display: flex;
+  color: var(--c-text3);
   pointer-events: none;
 }
 
 .searchInput {
   width: 100%;
-  padding: 11px 40px;
-  border: 1.5px solid var(--c-border);
-  border-radius: var(--r-lg);
+  min-height: 44px;
+  padding: 0 42px 0 44px;
+  border: 1px solid var(--c-border);
+  border-radius: 14px;
   background: var(--c-surface);
-  font-size: 14px;
+  font-size: var(--fs-md);
   color: var(--c-text);
   outline: none;
   transition: border-color var(--t-fast);
 
   &:focus {
-    border-color: var(--c-blue);
+    border-color: var(--c-accent);
   }
   &::placeholder {
     color: var(--c-text3);
@@ -43,14 +45,15 @@
 
 .clearSearch {
   position: absolute;
-  right: 10px;
+  right: 2px;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
   background: none;
   border: none;
-  font-size: 16px;
   color: var(--c-text3);
   cursor: pointer;
-  padding: 4px;
-  line-height: 1;
   &:hover {
     color: var(--c-text2);
   }
@@ -72,13 +75,13 @@
 .filterToggleBtn {
   flex-shrink: 0;
   position: relative;
-  width: 40px;
-  height: 40px;
-  border: 1.5px solid var(--c-border);
-  border-radius: var(--r-lg);
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--c-border);
+  border-radius: 14px;
   background: var(--c-surface);
-  color: var(--c-text2);
-  font-size: 16px;
+  color: var(--c-accent);
+  font-size: var(--fs-lg);
   cursor: pointer;
   transition: all var(--t-fast);
   display: flex;
@@ -87,17 +90,17 @@
 
   @media (hover: hover) {
     &:hover {
-      border-color: var(--c-blue);
-      color: var(--c-blue-text);
-      background: var(--c-blue-dim);
+      border-color: var(--c-accent);
+      color: var(--c-accent-text);
+      background: var(--c-accent-dim);
     }
   }
 }
 
 .filterToggleBtnOpen {
-  border-color: var(--c-blue);
-  color: var(--c-blue-text);
-  background: var(--c-blue-dim);
+  border-color: var(--c-accent);
+  color: var(--c-accent-text);
+  background: var(--c-accent-dim);
 }
 
 .filterBadge {
@@ -107,16 +110,32 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--c-blue);
+  background: var(--c-accent);
   border: 1.5px solid var(--c-surface);
 }
 
 /* ── Filters panel ── */
+// Страницы базы и обходов не прокручиваются — прокручивается список внутри
+// них. Раскрытая панель выше экрана обрезалась под нижней панелью, и до её
+// низа было не добраться: теперь она сжимается до места, оставшегося на
+// странице, и прокручивается сама; на высоком экране — не выше половины,
+// чтобы под ней оставался список.
 .filtersPanel {
   display: flex;
   flex-direction: column;
+  flex: 0 1 auto;
+  min-height: 0;
   gap: 10px;
+  max-height: 50vh;
+  max-height: 50dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 12px;
+
+  // Разделы держат свою высоту: иначе колонка ужала бы их, а не прокрутилась.
+  > * {
+    flex-shrink: 0;
+  }
   background: var(--c-surface);
   border: 1px solid var(--c-border);
   border-radius: var(--r-lg);
@@ -130,7 +149,7 @@
 }
 
 .filterLabel {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -164,15 +183,15 @@
   border-radius: 20px;
   background: var(--c-bg);
   color: var(--c-text2);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   cursor: pointer;
   transition: all var(--t-fast);
   white-space: nowrap;
 
   &:hover {
-    background: var(--c-blue-dim);
-    color: var(--c-blue-text);
+    background: var(--c-accent-dim);
+    color: var(--c-accent-text);
   }
 }
 
@@ -182,13 +201,13 @@
   // Цвет здесь, а не только в инлайновом стиле страницы базы: реестр берёт
   // эту же таблицу стилей, и без него включённый отбор отличался от
   // выключенного одной жирностью — на кнопке в 12 пикселей это незаметно.
-  border-color: var(--c-blue);
-  background: var(--c-blue-dim);
-  color: var(--c-blue-text);
+  border-color: var(--c-accent);
+  background: var(--c-accent-dim);
+  color: var(--c-accent-text);
 
   .filterCount {
-    background: var(--c-blue-overlay);
-    color: var(--c-blue-text);
+    background: var(--c-accent-overlay);
+    color: var(--c-accent-text);
   }
 }
 
@@ -201,7 +220,7 @@
   padding: 0 5px;
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.1);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   line-height: 1;
 }
@@ -220,15 +239,15 @@
   border-radius: 20px;
   background: var(--c-bg);
   color: var(--c-text2);
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-weight: 500;
   cursor: pointer;
   transition: all var(--t-fast);
   white-space: nowrap;
 
   &:hover {
-    background: var(--c-blue-dim);
-    color: var(--c-blue-text);
+    background: var(--c-accent-dim);
+    color: var(--c-accent-text);
   }
 }
 
@@ -253,16 +272,16 @@
   transition: all var(--t-fast);
 
   &:hover {
-    border-color: var(--c-blue-light);
-    color: var(--c-blue-text);
-    background: var(--c-blue-dim);
+    border-color: var(--c-accent-light);
+    color: var(--c-accent-text);
+    background: var(--c-accent-dim);
   }
 }
 
 .nearbyToggleActive {
-  border-color: var(--c-blue);
-  color: var(--c-blue-text);
-  background: var(--c-blue-dim);
+  border-color: var(--c-accent);
+  color: var(--c-accent-text);
+  background: var(--c-accent-dim);
 }
 
 .nearbyLeft {
@@ -273,13 +292,13 @@
 }
 
 .nearbyIcon {
-  font-size: 14px;
+  font-size: var(--fs-md);
   line-height: 1;
   flex-shrink: 0;
 }
 
 .nearbyLabel {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 500;
 }
 
@@ -291,9 +310,9 @@
   height: 18px;
   padding: 0 6px;
   border-radius: 9px;
-  background: var(--c-blue);
+  background: var(--c-accent);
   color: #fff;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   line-height: 1;
 }
@@ -309,7 +328,7 @@
 }
 
 .nearbyTrackOn {
-  background: var(--c-blue);
+  background: var(--c-accent);
 }
 
 .nearbyThumb {
@@ -341,22 +360,22 @@
   border-radius: var(--r-md);
   background: var(--c-bg);
   color: var(--c-text2);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   cursor: pointer;
   transition: all var(--t-fast);
 
   &:hover {
-    border-color: var(--c-blue);
-    color: var(--c-blue-text);
-    background: var(--c-blue-dim);
+    border-color: var(--c-accent);
+    color: var(--c-accent-text);
+    background: var(--c-accent-dim);
   }
 }
 
 .nearbyRadiusBtnActive {
-  border-color: var(--c-blue);
-  color: var(--c-blue-text);
-  background: var(--c-blue-dim);
+  border-color: var(--c-accent);
+  color: var(--c-accent-text);
+  background: var(--c-accent-dim);
 }
 
 /* ── Results row ── */
@@ -375,7 +394,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--c-text2);
   white-space: nowrap;
 }
@@ -387,16 +406,16 @@
   border-radius: 10px;
   background: var(--c-surface);
   color: var(--c-text2);
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   cursor: pointer;
   transition: all var(--t-fast);
   vertical-align: middle;
 
   &:hover {
-    border-color: var(--c-blue);
-    color: var(--c-blue-text);
-    background: var(--c-blue-dim);
+    border-color: var(--c-accent);
+    color: var(--c-accent-text);
+    background: var(--c-accent-dim);
   }
   &:active {
     transform: scale(0.95);
@@ -420,53 +439,19 @@
   border-radius: var(--r-md);
   background: var(--c-surface);
   color: var(--c-text2);
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   cursor: pointer;
   transition: all var(--t-fast);
   white-space: nowrap;
 
   &:hover {
-    border-color: var(--c-blue);
-    color: var(--c-blue-text);
-    background: var(--c-blue-dim);
+    border-color: var(--c-accent);
+    color: var(--c-accent-text);
+    background: var(--c-accent-dim);
   }
   &:active {
     transform: scale(0.96);
-  }
-}
-
-.exportBtn {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 6px 10px;
-  border: 1.5px solid var(--c-border);
-  border-radius: var(--r-md);
-  background: var(--c-surface);
-  color: var(--c-text2);
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all var(--t-fast);
-  white-space: nowrap;
-
-  &:hover {
-    background: var(--c-resolved-bg);
-    border-color: var(--c-resolved-border);
-    color: var(--c-resolved-text);
-  }
-
-  &:disabled {
-    opacity: 0.65;
-    cursor: wait;
-  }
-
-  &:disabled:hover {
-    background: var(--c-surface);
-    border-color: var(--c-border);
-    color: var(--c-text2);
   }
 }
 
@@ -483,7 +468,7 @@
 
   padding: 8px 10px;
   background: var(--c-surface2);
-  border: 1px solid var(--c-blue-overlay);
+  border: 1px solid var(--c-accent-overlay);
   border-radius: var(--r-lg);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
   z-index: 40;
@@ -514,22 +499,38 @@
   width: 32px;
   height: 32px;
   border-radius: var(--r-md);
-  background: var(--c-blue-dim);
-  border: 1.5px solid var(--c-blue-overlay);
-  color: var(--c-blue-text);
-  font-size: 15px;
+  background: var(--c-accent-dim);
+  border: 1.5px solid var(--c-accent-overlay);
+  color: var(--c-accent-text);
+  font-size: var(--fs-lg);
   font-weight: 700;
 }
 
 .bulkCount {
   flex: 1;
   min-width: 0;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--c-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.bulkHidden {
+  display: block;
+  font-weight: 500;
+  color: var(--c-text3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// Всё выбранное скрыто фильтром: применять не к чему.
+.bulkMonitorBtn:disabled,
+.bulkCalcBtn:disabled {
+  opacity: 0.45;
+  cursor: default;
+  pointer-events: none;
 }
 
 .bulkBtns {
@@ -547,7 +548,7 @@
   border-radius: var(--r-md);
   background: var(--c-surface);
   color: var(--c-text2);
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   cursor: pointer;
   transition: all var(--t-fast);
@@ -567,19 +568,19 @@
   align-items: center;
   gap: 5px;
   padding: 7px 12px;
-  border: 1.5px solid var(--c-blue-overlay);
+  border: 1.5px solid var(--c-accent-overlay);
   border-radius: var(--r-md);
-  background: var(--c-blue-dim);
-  color: var(--c-blue-text);
-  font-size: 12px;
+  background: var(--c-accent-dim);
+  color: var(--c-accent-text);
+  font-size: var(--fs-xs);
   font-weight: 700;
   cursor: pointer;
   transition: all var(--t-fast);
   white-space: nowrap;
 
   &:hover {
-    border-color: var(--c-blue);
-    background: var(--c-blue-bg, rgba(37, 99, 235, 0.12));
+    border-color: var(--c-accent);
+    background: var(--c-accent-bg, rgba(109, 61, 232, 0.12));
   }
   &:active {
     transform: scale(0.96);
@@ -598,13 +599,13 @@
   border-radius: var(--r-md);
   background: var(--c-surface);
   color: var(--c-text);
-  font-size: 16px;
+  font-size: var(--fs-lg);
   cursor: pointer;
   transition: all var(--t-fast);
 
   &:hover {
-    border-color: var(--c-blue);
-    color: var(--c-blue-text);
+    border-color: var(--c-accent);
+    color: var(--c-accent-text);
   }
 
   &:active {
@@ -630,7 +631,7 @@
   padding: 48px 20px;
   color: var(--c-text2);
   text-align: center;
-  font-size: 15px;
+  font-size: var(--fs-lg);
 
   span {
     font-size: 36px;

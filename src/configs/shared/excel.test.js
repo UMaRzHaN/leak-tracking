@@ -80,3 +80,19 @@ describe("колонки времени у починки", () => {
     expect(headers[keysOrder.indexOf("resolvedTime")]).toBe("Время устранения");
   });
 });
+
+describe("план устранения в выгрузке", () => {
+  it.each(["upstream", "midstream", "downstream"])(
+    "у %s есть колонка, сразу за технологическим решением",
+    async (type) => {
+      const { default: config } = await import(`../${type}/${type}.config.js`);
+      const keys = config.export.excel.keysOrder;
+      const at = keys.indexOf("repair_recommendation");
+      expect(at).toBeGreaterThan(-1);
+      expect(
+        keys.filter((key) => key === "repair_recommendation"),
+      ).toHaveLength(1);
+      expect(config.export.excel.headers[at]).toBe("Решение / План устранения");
+    },
+  );
+});

@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
+import { pluralRecords } from "@/pages/DataBase/pluralRecords";
 import s from "@/pages/DataBase/DataBase.module.scss";
 
 /**
@@ -12,33 +13,34 @@ import s from "@/pages/DataBase/DataBase.module.scss";
  */
 function ComponentResultsBar({
   visibleCount,
-  totalCount,
   sortAsc,
   onSortToggle,
   selectedCount = 0,
+  hiddenSelectedCount = 0,
   allDisplayedSelected = false,
   onSelectDisplayed,
   onClearSelection,
   onInspectSelected,
-  onExport,
-  isExporting = false,
 }) {
-  const { t } = useLanguage();
+  const { intlLocale, t } = useLanguage();
 
   return (
     <>
       <div className={s.resultsRow}>
         <span className={s.resultsInfo}>
-          {/* Счётчик отсюда убран: сколько карточек заведено, сказано выше в
-              шапке, а при отборе там же появляется и сколько показано. */}
+          {/* Счётчик — как у базы утечек: сколько показано сейчас, с учётом
+              отборов. Своей шапки у экрана нет, как и у базы. */}
           {visibleCount > 0 && (
-            <button
-              className={s.sortToggle}
-              onClick={onSortToggle}
-              title={t("components.changeSortOrder")}
-            >
-              {sortAsc ? t("components.uidAsc") : t("components.uidDesc")}
-            </button>
+            <>
+              {`${visibleCount} ${pluralRecords(visibleCount, t, intlLocale)}`}
+              <button
+                className={s.sortToggle}
+                onClick={onSortToggle}
+                title={t("components.changeSortOrder")}
+              >
+                {sortAsc ? t("components.uidAsc") : t("components.uidDesc")}
+              </button>
+            </>
           )}
         </span>
 
@@ -55,16 +57,6 @@ function ComponentResultsBar({
                 : t("database.selectAll")}
             </button>
           )}
-          {totalCount > 0 && (
-            <button
-              className={s.exportBtn}
-              onClick={onExport}
-              disabled={isExporting}
-              title={t("components.export.button")}
-            >
-              {isExporting ? t("database.exporting") : "📥 XLSX"}
-            </button>
-          )}
         </div>
       </div>
 
@@ -72,7 +64,7 @@ function ComponentResultsBar({
           длинного списка, а выбирают как раз прокручивая. Действие одно и то
           же по смыслу — отметить обойдённое, только у железа это его
           состояние, а не проверка утечки. */}
-      {selectedCount > 0 && (
+      {(selectedCount > 0 || hiddenSelectedCount > 0) && (
         <div className={s.bulkBar}>
           <span className={s.bulkCheck}>✓</span>
           <span className={s.bulkCount}>
@@ -80,12 +72,21 @@ function ComponentResultsBar({
               selected: selectedCount,
               visible: visibleCount,
             })}
+            {hiddenSelectedCount > 0 && (
+              <span className={s.bulkHidden}>
+                {t("database.hiddenSelected", { count: hiddenSelectedCount })}
+              </span>
+            )}
           </span>
           <div className={s.bulkBtns}>
             <button className={s.bulkClearBtn} onClick={onClearSelection}>
               {t("database.clearSelection")}
             </button>
-            <button className={s.bulkMonitorBtn} onClick={onInspectSelected}>
+            <button
+              className={s.bulkMonitorBtn}
+              onClick={onInspectSelected}
+              disabled={selectedCount === 0}
+            >
               {t("components.bulkStatus")}
             </button>
           </div>

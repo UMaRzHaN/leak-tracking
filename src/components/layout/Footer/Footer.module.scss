@@ -10,110 +10,89 @@
   display: flex;
   align-items: center;
   justify-content: space-around;
+  padding: 0 8px;
 
   background: var(--c-surface);
-  border-top: 1px solid var(--c-border);
-  box-shadow: var(--shadow-nav);
+  border-top: 1px solid var(--c-border-soft);
 
-  padding-bottom: 0;
+  @supports (padding-bottom: env(safe-area-inset-bottom)) {
+    height: calc(var(--app-footer) + env(safe-area-inset-bottom));
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }
 
 /* ── Regular tab ── */
 .item {
   flex: 1;
-  position: relative;
+  min-height: 52px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
-  padding: 7px 4px 5px;
+  justify-content: center;
+  gap: 5px;
+  padding: 4px;
   background: none;
   border: none;
   color: var(--c-text3);
   transition: color var(--t-fast);
 
   &.active {
-    color: var(--c-blue-text);
+    color: var(--c-accent-text);
+
+    .label {
+      font-weight: 700;
+    }
   }
 }
 
 .iconWrap {
   position: relative;
   display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.icon {
-  font-size: 18px;
-  line-height: 1;
-  font-style: normal;
 }
 
 /* ── Open leaks badge ── */
 .badge {
   position: absolute;
-  top: -6px;
-  right: -8px;
-  min-width: 16px;
-  height: 16px;
+  top: -5px;
+  right: -9px;
+  min-width: 17px;
+  height: 17px;
   padding: 0 4px;
   border-radius: 10px;
   background: var(--c-open);
   color: #fff;
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   font-weight: 800;
-  line-height: 16px;
+  line-height: 17px;
   text-align: center;
   pointer-events: none;
 }
 
 .label {
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.02em;
+  font-size: var(--fs-2xs);
+  font-weight: 600;
 }
 
-.dot {
-  position: absolute;
-  bottom: 3px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--c-blue);
-}
-
-/* ── FAB add button ── */
+/* ── Центральная кнопка ── */
 .fab {
-  flex-shrink: 0;
-  width: 48px;
-  height: 48px;
-  margin-bottom: 4px;
+  flex: none;
+  width: 56px;
+  height: 56px;
+  margin: 0 4px;
 
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
 
-  background: linear-gradient(135deg, var(--c-blue), #1a3ac0);
+  background: var(--c-accent);
+  color: #fff;
   border: none;
-  border-radius: var(--r-lg);
-  box-shadow: var(--shadow-fab);
+  border-radius: var(--r-xl);
+  box-shadow: 0 8px 20px rgba(109, 61, 232, 0.36);
 
-  transition:
-    transform var(--t-fast),
-    box-shadow var(--t-fast);
+  transition: transform var(--t-fast);
 
   &:active {
-    transform: scale(0.92);
-    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
+    transform: scale(0.94);
+    filter: brightness(0.88);
   }
-}
-
-.fabIcon {
-  font-size: 26px;
-  color: #fff;
-  line-height: 1;
-  font-weight: 300;
 }

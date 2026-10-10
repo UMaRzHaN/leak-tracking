@@ -1,0 +1,216 @@
+.root {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.36);
+  animation: fade 0.2s ease;
+}
+
+.sheet {
+  position: relative;
+  max-height: calc(100dvh - 40px);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 10px 20px 20px;
+  border-radius: 24px 24px 0 0;
+  background: var(--c-surface);
+  box-shadow: 0 -8px 30px rgba(15, 23, 42, 0.18);
+  outline: none;
+  animation: up 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+
+  @supports (padding-bottom: env(safe-area-inset-bottom)) {
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  }
+}
+
+.handle {
+  align-self: center;
+  width: 38px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--c-border);
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.headText {
+  flex: 1;
+  min-width: 0;
+
+  h2 {
+    color: var(--c-text);
+    font-size: var(--fs-xl);
+    font-weight: 800;
+    letter-spacing: -0.025em;
+  }
+
+  p {
+    margin-top: 2px;
+    color: var(--c-text3);
+    font-size: var(--fs-sm);
+    font-weight: 600;
+  }
+}
+
+.close {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  background: var(--c-surface2);
+  color: var(--c-text2);
+}
+
+/* Точек может быть больше сотни — список прокручивается сам, а кнопки
+   остаются под пальцем. */
+.stops {
+  min-height: 0;
+  overflow-y: auto;
+  list-style: none;
+  overscroll-behavior: contain;
+}
+
+.origin,
+.stop {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.origin {
+  padding-bottom: 10px;
+}
+
+.stop {
+  padding: 10px 0;
+  border-top: 1px solid var(--c-border);
+}
+
+.originDot {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border: 1.5px solid var(--c-success);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    var(--c-success) 0 4px,
+    var(--c-resolved-bg) 4.5px
+  );
+}
+
+.badge {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--c-open);
+  color: #fff;
+  font-size: var(--fs-xs);
+  font-weight: 800;
+}
+
+.stopText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.stopName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--c-text);
+  font-size: var(--fs-md);
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stopSub {
+  overflow: hidden;
+  color: var(--c-text3);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stopDistance {
+  flex: none;
+  color: var(--c-text);
+  font-size: var(--fs-sm);
+  font-weight: 800;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+}
+
+.secondary,
+.primary {
+  min-height: 54px;
+  border-radius: 16px;
+  font-size: var(--fs-lg);
+  font-weight: 800;
+}
+
+.secondary {
+  flex: none;
+  padding: 0 18px;
+  border: 1px solid var(--c-border);
+  background: var(--c-surface);
+  color: var(--c-accent-text);
+}
+
+.primary {
+  flex: 1;
+  border: none;
+  background: var(--c-accent);
+  color: #fff;
+  font-size: var(--fs-lg);
+
+  &:disabled {
+    opacity: 0.5;
+  }
+}
+
+@keyframes up {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet,
+  .backdrop {
+    animation: none;
+  }
+}

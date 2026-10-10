@@ -3,6 +3,7 @@ import {
   createLeak,
   createProject,
   openLeakDetails,
+  openMap,
   setUserProfile,
 } from "./helpers";
 
@@ -46,4 +47,61 @@ test("точность координат сохраняется и снимае
   await page.getByRole("button", { name: "Координаты", exact: true }).click();
   await expect(page.getByText("41.400000")).toBeVisible();
   await expect(page.getByText(/Точность координат/)).toHaveCount(0);
+});
+
+test("«Показать на карте» из записи, открытой на карте, закрывает её", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await createProject(page, "Show On Map");
+  await setUserProfile(page);
+  await createLeak(page, "7701");
+  await openMap(page);
+
+  await page.locator(".leaflet-marker-icon", { hasText: "7701" }).click();
+  await page.getByRole("button", { name: "Открыть запись" }).click();
+  const coords = page.getByRole("button", { name: "Координаты", exact: true });
+  await coords.click();
+  await page.getByRole("button", { name: "Показать на карте" }).click();
+
+  // Карточка закрылась, карта на месте.
+  await expect(coords).toHaveCount(0);
+  await expect(
+    page.locator(".leaflet-marker-icon", { hasText: "7701" }),
+  ).toBeVisible();
+});
+
+test("обновляет координаты карточки по GPS одной кнопкой", async ({
+  page,
+  context,
+}) => {
+  test.setTimeout(120_000);
+  await context.grantPermissions(["geolocation"]);
+  await context.setGeolocation({ latitude: 41.311081, longitude: 69.240562 });
+  await createProject(page, "GPS Update");
+  await setUserProfile(page);
+  await createLeak(page, "7801");
+
+  // Человек отошёл туда, где утечка на самом деле.
+  await context.setGeolocation({ latitude: 41.3115, longitude: 69.240562 });
+  await page
+    .getByRole("contentinfo")
+    .getByRole("button", { name: "База" })
+    .click();
+  await openLeakDetails(page);
+  await page.getByRole("button", { name: "Редактировать" }).click();
+  await page.getByRole("button", { name: "Координаты", exact: true }).click();
+  await page.getByRole("button", { name: "Обновить", exact: true }).click();
+  await expect(page.getByText("Координаты обновятся по GPS")).toBeVisible();
+  await page.getByRole("button", { name: "Сохранить", exact: true }).click();
+
+  // Сохранение закрывает карточку — открываем заново и смотрим, что записано.
+  await expect(page.getByRole("button", { name: "Редактировать" })).toHaveCount(
+    0,
+  );
+  // Окно ещё уезжает — свайп по карточке под ним читался бы как тап.
+  await page.waitForTimeout(600);
+  await openLeakDetails(page);
+  await page.getByRole("button", { name: "Координаты", exact: true }).click();
+  await expect(page.getByText("41.311500")).toBeVisible();
 });

@@ -12,7 +12,18 @@ export function getSchemaDir(folderName) {
   return `LeakReports/${folderName}/schemas`;
 }
 
+/**
+ * Идентификатор чертежа становится именем файла, а приходит он и из чужого
+ * архива: «../../другой_проект/photos/…» вывел бы запись за папку схем.
+ */
+export function isSafeSchemaId(id) {
+  return typeof id === "string" && /^[A-Za-z0-9_-]{1,128}$/.test(id);
+}
+
 export function getNativeSchemaPath(folderName, schema) {
+  if (!isSafeSchemaId(schema?.id)) {
+    throw new Error("Unsafe schema id");
+  }
   const extension = getSchemaExtension(schema?.name);
   return `${getSchemaDir(folderName)}/${schema.id}${
     extension ? `.${extension}` : ""

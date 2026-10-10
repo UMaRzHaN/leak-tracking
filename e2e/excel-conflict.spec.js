@@ -1,7 +1,5 @@
 import { expect, test } from "@playwright/test";
 import {
-  attachModalPhoto,
-  chooseDetailsStatus,
   createLeak,
   createProject,
   exportExcelArchive,
@@ -9,9 +7,10 @@ import {
   leaveSettings,
   openDatabase,
   openHome,
-  openLeakDetails,
+  openMenuItem,
   setUserProfile,
 } from "./helpers.js";
+import { startRepairByCheck } from "./repairSteps.js";
 
 // app.smoke.spec.js covers the "create a copy" branch of the import conflict.
 // The other two branches decide what happens to data that already exists, so
@@ -30,14 +29,11 @@ test("overwriting an Excel import restores the state held in the archive", async
   await openDatabase(page);
   const archivePath = await exportExcelArchive(page, testInfo);
 
-  // Diverge from the archive: the leak goes into repair after the export.
-  await openLeakDetails(page);
-  await chooseDetailsStatus(page, "В ремонте");
-  await expect(
-    page.getByRole("heading", { name: "Утечка в ремонте" }),
-  ).toBeVisible();
-  await attachModalPhoto(page);
-  await page.getByRole("button", { name: "Подтвердить" }).click();
+  // Diverge from the archive: the leak goes into repair after the export,
+  // through a repair check — status has no manual control any more.
+  await startRepairByCheck(page);
+  await openMenuItem(page, /^LDAR/);
+  await openDatabase(page);
   await expect(page.getByText(/^В ремонте$/i).first()).toBeVisible();
 
   await importExcelArchive(page, archivePath);

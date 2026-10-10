@@ -4,7 +4,7 @@
 .voiceHint {
   margin: 0 0 10px;
   color: var(--c-text2);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   line-height: 1.4;
 }
 
@@ -23,7 +23,7 @@
 
 .voiceLabel {
   color: var(--c-text2);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
 }
 
@@ -34,16 +34,16 @@
   border-radius: var(--r-md);
   background: var(--c-surface2);
   color: var(--c-text);
-  font-size: 14px;
+  font-size: var(--fs-md);
 }
 
 .voiceAdd {
   min-height: 40px;
   border: none;
   border-radius: var(--r-md);
-  background: var(--c-blue);
+  background: var(--c-accent);
   color: #fff;
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 700;
   cursor: pointer;
 
@@ -56,7 +56,7 @@
 .voiceEmpty {
   margin: 0;
   color: var(--c-text2);
-  font-size: 12px;
+  font-size: var(--fs-xs);
 }
 
 .voiceList {
@@ -81,7 +81,7 @@
   min-width: 0;
   overflow: hidden;
   color: var(--c-text);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   text-overflow: ellipsis;
 }
 

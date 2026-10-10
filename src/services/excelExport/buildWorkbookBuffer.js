@@ -8,9 +8,12 @@ import {
 } from "@/services/excelExport/cellValues";
 import {
   buildHistorySheet,
+  buildMaterialsSheet,
+  buildAcceptanceSheet,
   buildMonitoringSheet,
   buildRepairSheet,
 } from "@/services/excelExport/auxiliarySheets";
+import { buildRepairLogSheet } from "@/services/excelExport/repairLogSheet";
 import {
   addStructuredTable,
   getColumnWidth,
@@ -55,78 +58,107 @@ async function buildWorkbook({
   texts,
   ExcelJS,
   monitoringExportMode,
+  repairLogExportMode,
   archivePayload,
+  // Какие листы класть в книгу (8a). «История» ходит с «Утечками»: она
+  // объясняет, откуда взялись их значения. Служебный лист резервной копии —
+  // всегда: без него файл не загрузить обратно.
+  sheets = /** @type {{leaks?:boolean, monitoring?:boolean, repairs?:boolean, materials?:boolean, acceptance?:boolean}} */ ({}),
+  // Строки приёмки оборудования готовит вызывающий: накладные живут вне
+  // записей утечек, а в воркер передаются только данные.
+  acceptanceRows = /** @type {any[]} */ ([]),
 }) {
   const photoColumnIndexes = PHOTO_KEYS.map((key) =>
     keysOrder.indexOf(key),
   ).filter((index) => index !== -1);
 
   const workbook = new ExcelJS.Workbook();
-  const sheet = workbook.addWorksheet(texts.sheets.leaks);
+  if (sheets.leaks !== false) {
+    const sheet = workbook.addWorksheet(texts.sheets.leaks);
 
-  const tableRows = orderedRows.map((row, leakIndex) =>
-    keysOrder.map((key) => {
-      if (PHOTO_KEYS.includes(key) && photoMap[`${leakIndex}:${key}`]) {
-        return "";
-      }
+    const tableRows = orderedRows.map((row, leakIndex) =>
+      keysOrder.map((key) => {
+        if (PHOTO_KEYS.includes(key) && photoMap[`${leakIndex}:${key}`]) {
+          return "";
+        }
 
-      return toExcelCellValue(key, row[key]);
-    }),
-  );
-
-  addStructuredTable(sheet, {
-    name: "Leaks",
-    headers,
-    rows: tableRows,
-    theme: LEAKS_TABLE_THEME,
-  });
-  styleHeaderRow(sheet, "FF1F4E78");
-  await styleBodyRows(sheet, orderedRows.length);
-
-  for (const [leakIndex, row] of orderedRows.entries()) {
-    if (leakIndex > 0 && leakIndex % EXPORT_YIELD_EVERY === 0) {
-      await yieldToMainThread();
-    }
-
-    for (const columnIndex of photoColumnIndexes) {
-      const key = keysOrder[columnIndex];
-      const mapKey = `${leakIndex}:${key}`;
-      const photoFile = photoMap[mapKey];
-      const cell = sheet.getRow(leakIndex + 2).getCell(columnIndex + 1);
-
-      if (photoFile) {
-        cell.value = { text: texts.photo.open, hyperlink: photoFile };
-        cell.font = { color: { argb: "FF1155CC" }, underline: true };
-      } else {
-        cell.value = row[key] ? texts.photo.missing : "";
-      }
-    }
-  }
-
-  applyColumnFormats(sheet, keysOrder);
-
-  headers.forEach((header, index) => {
-    const key = keysOrder[index];
-    const isPhoto = PHOTO_KEYS.includes(key);
-    sheet.getColumn(index + 1).width = getColumnWidth(
-      header,
-      key,
-      orderedRows,
-      {
-        isPhoto,
-      },
+        return toExcelCellValue(key, row[key]);
+      }),
     );
-  });
 
-  await buildMonitoringSheet(
-    workbook,
-    orderedLeaks,
-    texts,
-    photoMap,
-    monitoringExportMode,
-  );
-  await buildRepairSheet(workbook, orderedLeaks, texts, photoMap);
-  await buildHistorySheet(workbook, orderedLeaks, texts);
+    addStructuredTable(sheet, {
+      name: "Leaks",
+      headers,
+      rows: tableRows,
+      theme: LEAKS_TABLE_THEME,
+    });
+    styleHeaderRow(sheet, "FF1F4E78");
+    await styleBodyRows(sheet, orderedRows.length);
+
+    for (const [leakIndex, row] of orderedRows.entries()) {
+      if (leakIndex > 0 && leakIndex % EXPORT_YIELD_EVERY === 0) {
+        await yieldToMainThread();
+      }
+
+      for (const columnIndex of photoColumnIndexes) {
+        const key = keysOrder[columnIndex];
+        const mapKey = `${leakIndex}:${key}`;
+        const photoFile = photoMap[mapKey];
+        const cell = sheet.getRow(leakIndex + 2).getCell(columnIndex + 1);
+
+        if (photoFile) {
+          cell.value = { text: texts.photo.open, hyperlink: photoFile };
+          cell.font = { color: { argb: "FF1155CC" }, underline: true };
+        } else {
+          cell.value = row[key] ? texts.photo.missing : "";
+        }
+      }
+    }
+
+    applyColumnFormats(sheet, keysOrder);
+
+    headers.forEach((header, index) => {
+      const key = keysOrder[index];
+      const isPhoto = PHOTO_KEYS.includes(key);
+      sheet.getColumn(index + 1).width = getColumnWidth(
+        header,
+        key,
+        orderedRows,
+        {
+          isPhoto,
+        },
+      );
+    });
+
+    // Порядок — как на экране экспорта (8a): сам отчёт, откуда он взялся,
+    // затем разделы, которые человек мог выключить.
+    await buildHistorySheet(workbook, orderedLeaks, texts);
+  }
+  if (sheets.repairs !== false) {
+    await buildRepairSheet(workbook, orderedLeaks, texts, photoMap);
+    await buildRepairLogSheet(
+      workbook,
+      orderedLeaks,
+      texts,
+      repairLogExportMode,
+      photoMap,
+    );
+  }
+  if (sheets.monitoring !== false) {
+    await buildMonitoringSheet(
+      workbook,
+      orderedLeaks,
+      texts,
+      photoMap,
+      monitoringExportMode,
+    );
+  }
+  if (sheets.materials !== false) {
+    await buildMaterialsSheet(workbook, orderedLeaks, texts);
+  }
+  if (sheets.acceptance !== false) {
+    await buildAcceptanceSheet(workbook, acceptanceRows, texts);
+  }
   addBackupSheet(workbook, archivePayload, texts);
 
   return workbook;

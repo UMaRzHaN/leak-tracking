@@ -1,3 +1,5 @@
+import { useLanguage } from "@/app/hooks/useLanguage";
+import ConfirmSheet from "@/components/ui/ConfirmSheet/ConfirmSheet";
 import { useRenderMetric } from "@/utils/renderMetrics";
 import MonitoringRoundOverview from "./MonitoringRoundOverview";
 import MonitoringDialogs from "./components/MonitoringDialogs";
@@ -22,11 +24,6 @@ export default function Monitoring(props) {
     filters,
     finishRound,
     handleMonitoringReopenConfirm,
-    handlePickStatus,
-    handleReopenConfirm,
-    handleRepairConfirm,
-    handleResolveConfirm,
-    handleStatusSelect,
     hasActiveMonitoringRound,
     hasMonitoringRound,
     isSaving,
@@ -45,11 +42,7 @@ export default function Monitoring(props) {
     openMonitoringSheet,
     pendingMonitoringReopen,
     photoRequired,
-    pickerLeak,
-    reopenLeak,
-    repairLeak,
     repeatConfirmLeak,
-    resolveLeak,
     roundConfirmOpen,
     saveLeak,
     saveRecord,
@@ -61,21 +54,24 @@ export default function Monitoring(props) {
     setNotification,
     setPendingMonitoringReopen,
     setPendingRoundLeakId,
-    setPickerLeak,
-    setReopenLeak,
-    setRepairLeak,
     setRepeatConfirmLeak,
-    setResolveLeak,
     setRoundConfirmOpen,
     setSubmitted,
     showCompletion,
     showMonitoringSheet,
     startNewRound,
+    allowNewRounds,
+    allowFinishRounds,
+    allowMergeRounds,
+    mergeRound,
+    mergeConfirmOpen,
+    setMergeConfirmOpen,
     submitted,
     texts,
     updateDraft,
     vars,
   } = useMonitoringPage(props);
+  const { t } = useLanguage();
   const { userProfile } = props;
 
   return (
@@ -92,6 +88,11 @@ export default function Monitoring(props) {
           setRoundConfirmOpen(true);
         }}
         onFinishRound={finishRound}
+        canStartRound={allowNewRounds}
+        canFinishRound={allowFinishRounds}
+        onMergeRound={
+          allowMergeRounds ? () => setMergeConfirmOpen(true) : undefined
+        }
       />
 
       <MonitoringLeakList
@@ -108,7 +109,6 @@ export default function Monitoring(props) {
         monitoringRoundNumber={monitoringRoundNumber}
         onMonitor={openMonitoringSheet}
         onOpenDetails={setActiveLeak}
-        onPickStatus={handlePickStatus}
         setMonitoringFilter={setMonitoringFilter}
         texts={texts}
       />
@@ -136,17 +136,11 @@ export default function Monitoring(props) {
           setMonitorLeak(null);
           setMonitorQueueIds([]);
           setMonitorQueueTotal(0);
+          props.onLeaveCheck?.();
         }}
         onCloseNotification={() => setNotification(null)}
         onClosePendingReopen={() => setPendingMonitoringReopen(null)}
-        onClosePicker={() => setPickerLeak(null)}
-        onCloseReopen={() => setReopenLeak(null)}
-        onCloseRepair={() => setRepairLeak(null)}
-        onCloseResolve={() => setResolveLeak(null)}
         onConfirmMonitoringReopen={handleMonitoringReopenConfirm}
-        onConfirmReopen={handleReopenConfirm}
-        onConfirmRepair={handleRepairConfirm}
-        onConfirmResolve={handleResolveConfirm}
         onDeleteLeak={deleteLeak}
         onRepeatConfirm={() => {
           const leak = repeatConfirmLeak;
@@ -154,29 +148,44 @@ export default function Monitoring(props) {
           if (leak) showMonitoringSheet(leak);
         }}
         onRepeatCancel={() => setRepeatConfirmLeak(null)}
-        onRepeatNewRound={() => {
-          const leak = repeatConfirmLeak;
-          setRepeatConfirmLeak(null);
-          setPendingRoundLeakId(leak?.id ?? null);
-          setRoundConfirmOpen(true);
-        }}
+        onRepeatNewRound={
+          allowNewRounds
+            ? () => {
+                const leak = repeatConfirmLeak;
+                setRepeatConfirmLeak(null);
+                setPendingRoundLeakId(leak?.id ?? null);
+                setRoundConfirmOpen(true);
+              }
+            : null
+        }
         onSaveLeak={saveLeak}
         onSaveRecord={saveRecord}
-        onSelectStatus={handleStatusSelect}
         onStartRound={startNewRound}
         onUpdateDraft={updateDraft}
         pendingMonitoringReopen={pendingMonitoringReopen}
         photoRequired={photoRequired}
-        pickerLeak={pickerLeak}
-        reopenLeak={reopenLeak}
-        repairLeak={repairLeak}
         repeatConfirmLeak={repeatConfirmLeak}
-        resolveLeak={resolveLeak}
         roundConfirmOpen={roundConfirmOpen}
         submitted={submitted}
         texts={texts}
         userProfile={userProfile}
         vars={vars}
+      />
+
+      <ConfirmSheet
+        open={mergeConfirmOpen}
+        title={t("monitoring.mergeTitle", {
+          number: monitoringRound?.number ?? 1,
+          target: (monitoringRound?.number ?? 2) - 1,
+        })}
+        description={t("monitoring.mergeDescription", {
+          number: monitoringRound?.number ?? 1,
+          target: (monitoringRound?.number ?? 2) - 1,
+        })}
+        confirmLabel={t("monitoring.mergeConfirm")}
+        cancelLabel={t("monitoring.cancel")}
+        onConfirm={mergeRound}
+        onCancel={() => setMergeConfirmOpen(false)}
       />
     </div>
   );

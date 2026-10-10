@@ -3,7 +3,10 @@ import { readProjectSettings } from "@/app/project/projectSettings";
 import { readProjectSyncStateAsync } from "@/services/sync/projectSyncState";
 import i18next from "i18next";
 import { allocateUniqueLeakArchiveSegments } from "@/services/archive/archivePaths";
-import { toLdarFolders } from "@/services/archive/archiveLayout";
+import {
+  monitoringPlaceField,
+  toLdarFolders,
+} from "@/services/archive/archiveLayout";
 import { getMonitoringResultLabel } from "@/utils/monitoring";
 
 /**
@@ -14,7 +17,18 @@ import { getMonitoringResultLabel } from "@/utils/monitoring";
 function monitoringFolderLabel(result) {
   return getMonitoringResultLabel(result, i18next.language).toLowerCase();
 }
+
+/** Папка места первого уровня — у LDAR и в обходе — по типу проекта. */
+function monitoringPlace(project) {
+  return {
+    placeField: monitoringPlaceField(project?.type),
+    noPlace: i18next.t("excelExport.photo.noPlace"),
+  };
+}
 import { readMonitoringRound } from "@/utils/monitoringRound";
+import { readProjectRounds } from "@/app/project/projectRounds";
+import { readAcceptances } from "@/utils/acceptanceStorage";
+import { readStoredSurvey } from "@/utils/surveyStorage";
 import { assertImportFileSize, IMPORT_LIMITS } from "@/utils/importLimits";
 import { withPortablePhotoValues } from "@/utils/photoValues";
 import { RECOVERY_RECORDS_FILE } from "./constants";
@@ -113,7 +127,11 @@ export async function streamProjectBackupZip({
     ? parseRecoveryValidation(recoveryRecords)
     : [];
   const tagSegments = allocateUniqueLeakArchiveSegments(leaks);
-  const leakSegments = toLdarFolders(tagSegments);
+  const leakSegments = toLdarFolders(
+    tagSegments,
+    leaks,
+    monitoringPlace(project),
+  );
   const recoveryLeakSegments = allocateUniqueLeakArchiveSegments(
     validatedRecovery,
     { prefix: "recovery", reservedSegments: tagSegments },
@@ -125,6 +143,7 @@ export async function streamProjectBackupZip({
     {
       leakSegments,
       monitoringFolderLabel,
+      monitoringPlace: monitoringPlace(project),
     },
   );
   await zip.add("backup.json", JSON.stringify(exportedLeaks, null, 2));
@@ -155,6 +174,9 @@ export async function streamProjectBackupZip({
     vars,
     settings: readProjectSettings(project?.id),
     monitoringRound: readMonitoringRound(project?.id),
+    rounds: readProjectRounds(project?.id ?? null),
+    acceptances: readAcceptances(project?.id),
+    survey: readStoredSurvey(project?.id),
     syncState: await readProjectSyncStateAsync(project?.id),
   });
   if (meta) await zip.add("project.json", JSON.stringify(meta, null, 2));
@@ -174,7 +196,11 @@ export async function buildProjectBackupZip({
     ? parseRecoveryValidation(recoveryRecords)
     : [];
   const tagSegments = allocateUniqueLeakArchiveSegments(leaks);
-  const leakSegments = toLdarFolders(tagSegments);
+  const leakSegments = toLdarFolders(
+    tagSegments,
+    leaks,
+    monitoringPlace(project),
+  );
   const recoveryLeakSegments = allocateUniqueLeakArchiveSegments(
     validatedRecovery,
     { prefix: "recovery", reservedSegments: tagSegments },
@@ -183,7 +209,11 @@ export async function buildProjectBackupZip({
     await withPortablePhotoValues(leaks),
     zip,
     idbGet,
-    { leakSegments, monitoringFolderLabel },
+    {
+      leakSegments,
+      monitoringFolderLabel,
+      monitoringPlace: monitoringPlace(project),
+    },
   );
   await yieldToMainThread();
   zip.file("backup.json", JSON.stringify(exportedLeaks, null, 2));
@@ -211,6 +241,9 @@ export async function buildProjectBackupZip({
     vars,
     settings: readProjectSettings(project?.id),
     monitoringRound: readMonitoringRound(project?.id),
+    rounds: readProjectRounds(project?.id ?? null),
+    acceptances: readAcceptances(project?.id),
+    survey: readStoredSurvey(project?.id),
     syncState: await readProjectSyncStateAsync(project?.id),
   });
   if (meta) zip.file("project.json", JSON.stringify(meta, null, 2));

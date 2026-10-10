@@ -1,5 +1,6 @@
 import { fieldLabel } from "@/utils/fieldLabels";
 import { formatLeakDate, getIntlLocale } from "@/utils/locale";
+import { getMonitoringResultLabel } from "@/utils/monitoring";
 
 export const ACTION_ICONS = {
   created: "✦",
@@ -7,6 +8,7 @@ export const ACTION_ICONS = {
   edited: "✎",
   comment: "💬",
   monitoring: "M",
+  repair_check: "R",
 };
 
 export const STATUS_COLORS = {
@@ -64,6 +66,12 @@ export function formatHistoryValue(key, value, kind, t, lang) {
   }
   if (value == null || value === "") return t("leakDetails.valueEmpty");
   if (value === "[changed]") return t("leakDetails.valueChanged");
+  if (typeof value === "boolean") {
+    return value ? t("monitoring.yes") : t("monitoring.no");
+  }
+  // Исправленный итог осмотра и статус, который пошёл за ним.
+  if (key === "result") return getMonitoringResultLabel(value, lang);
+  if (key === "status") return t(`leakDetails.statuses.${value}`);
   if (key === "date") return formatLeakDate(value, {}, lang);
   if (IDENTIFIER_KEYS.has(key)) return String(value);
   if (typeof value === "number") {
@@ -72,7 +80,33 @@ export function formatHistoryValue(key, value, kind, t, lang) {
   return String(value);
 }
 
-export function getHistoryChangeLabel(change, fields, localeTexts, t) {
+// Поля записанных осмотров и ремонтов, исправленные в карточке.
+const RECORD_FIELD_LABELS = {
+  result: "leakDetails.recordEdit.result",
+  physicalTag: "database.physicalTag",
+  fiction: "database.fiction",
+  comment: "leakDetails.roundComment",
+  note: "leakDetails.repairLog.note",
+  brigade: "leakDetails.repairLog.brigade",
+  materials_equipment: "leakDetails.materials",
+};
+
+export function getHistoryChangeLabel(
+  change,
+  fields,
+  localeTexts,
+  t,
+  lang = "ru",
+) {
+  // «Осмотр 05.10.2026: итог осмотра» — какая запись и какое в ней поле.
+  if (change.record) {
+    const kind = t(`leakDetails.recordEdit.${change.record.kind}`);
+    const field = RECORD_FIELD_LABELS[change.key];
+    return `${kind} ${fmtDate(change.record.date, lang)}: ${
+      field ? t(field) : change.key
+    }`;
+  }
+  if (change.key === "status") return t("leakDetails.recordEdit.status");
   if (change.key === "photo") return localeTexts.photo.before;
   if (change.key === "photo_after") return localeTexts.photo.after;
   if (change.key === "photo_repair") return localeTexts.photo.repair;

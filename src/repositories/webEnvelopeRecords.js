@@ -285,11 +285,45 @@ export async function deleteRecord(openDb, storeName, key) {
  * record all fall through to the snapshot write below.
  */
 export async function saveEnvelope(openDb, key, envelope, mutation) {
-  if (isWorthJournalling(mutation, envelope.data?.length ?? 0)) {
+  let saved = false;
+  try {
+    saved = await saveEnvelopeOnce(openDb, key, envelope, mutation);
+    return saved;
+  } finally {
+    markRefusedCopy(openDb, key, !saved);
+  }
+}
+
+async function saveEnvelopeOnce(openDb, key, envelope, mutation) {
+  if (
+    !refusedCopies.get(openDb)?.has(key) &&
+    isWorthJournalling(mutation, envelope.data?.length ?? 0)
+  ) {
     const appended = await appendEnvelopeDelta(openDb, key, envelope, mutation);
     if (appended) return true;
   }
   return writeEnvelope(openDb, key, envelope);
+}
+
+// Копии, отклонившие последнюю запись: им следующая запись — только снимком.
+//
+// Дельту вызывающий считает от последнего сохранения, которое удалось хоть
+// где-то. Копия, отказавшая в нём, стоит ревизией раньше — а ревизию эту
+// записала сама вкладка, и проверка основы в `appendEnvelopeDelta` её
+// пропускала. Дельта ложилась на чужую основу, контрольная сумма не сходилась,
+// и после перезагрузки проект открывался только для чтения или не открывался.
+// Ключ — функция открытия, а не имя базы: база, которая не открылась вовсе,
+// имени не сообщает.
+const refusedCopies = new Map();
+
+function markRefusedCopy(openDb, key, refused) {
+  let keys = refusedCopies.get(openDb);
+  if (refused) {
+    if (!keys) refusedCopies.set(openDb, (keys = new Set()));
+    keys.add(key);
+  } else {
+    keys?.delete(key);
+  }
 }
 
 /**

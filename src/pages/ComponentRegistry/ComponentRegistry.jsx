@@ -1,19 +1,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  activeReconcileRoundNumber,
+  reconcileRoundStore,
+} from "@/pages/Reconcile/reconcileRound";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { useComponentRegistry } from "@/features/componentRegistry/useComponentRegistry";
 import { usePhotoRequirements } from "@/app/project/hooks/usePhotoRequirements";
 import ComponentCardForm from "./ComponentCardForm";
-import SchemaList from "@/features/schemas/SchemaList";
 import ComponentCardCompact from "@/features/componentRegistry/ComponentCardCompact";
 import VirtualizedLeakList from "@/features/leakList/VirtualizedLeakList/VirtualizedLeakList";
 import ComponentInspectSheet from "@/features/componentRegistry/ComponentInspectSheet";
-import ComponentDetailsSheet from "@/features/componentRegistry/ComponentDetailsSheet";
+import { useRoundStartGate } from "@/app/project/hooks/useRoundStartGate";
+import { useComponentCheck } from "@/features/componentRegistry/useComponentCheck";
+import { errorText } from "@/utils/appError";
+import { useComponentDetails } from "@/features/componentRegistry/useComponentDetails";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import Notification from "@/components/ui/Notification/Notification";
 import ComponentFilterBar from "./components/ComponentFilterBar";
 import { useRegistryFilters } from "./hooks/useRegistryFilters";
 import ComponentResultsBar from "./components/ComponentResultsBar";
-import { useInventoryExport } from "./hooks/useInventoryExport";
 import { matchesLeakLocationFilter } from "@/utils/locationFilter";
 import { getDistanceMeters } from "@/utils/geoUtils";
 import { hasCoordsFix } from "@/utils/coordsFix";
@@ -29,6 +34,8 @@ import {
 } from "@/domain/componentHistory";
 import s from "./ComponentRegistry.module.scss";
 
+const SEARCH_ALL = "all";
+
 function withinRadius(component, coords, radius) {
   return (
     getDistanceMeters(coords.lat, coords.lng, component.lat, component.lng) <=
@@ -36,10 +43,17 @@ function withinRadius(component, coords, radius) {
   );
 }
 
-function matchesSearch(component, query) {
+/**
+ * Поиск по всей карточке или по одному полю — как «Где искать» у базы утечек:
+ * номер «12» по всем полям находит и давление 12, и диаметр, а по номеру на
+ * схеме — только ту задвижку.
+ */
+function matchesSearch(component, query, field = SEARCH_ALL) {
   if (!query) return true;
   const needle = query.trim().toLowerCase();
-  return Object.values(component).some(
+  const values =
+    field === SEARCH_ALL ? Object.values(component) : [component[field]];
+  return values.some(
     (value) => value != null && String(value).toLowerCase().includes(needle),
   );
 }
@@ -61,6 +75,9 @@ export default function ComponentRegistry({
   sharedFilters = /** @type {any} */ (null),
   onOpenCard = /** @type {(() => void)|null} */ (null),
   onCloseCard = /** @type {(() => void)|null} */ (null),
+  // Номер запроса «+» из нижней панели инвентаризации: новый номер открывает
+  // пустую карточку.
+  addRequest = 0,
 }) {
   const { t } = useLanguage();
   const {
@@ -84,6 +101,7 @@ export default function ComponentRegistry({
   const { savePhoto } = usePhotoStorage();
 
   const [search, setSearch] = useState("");
+  const [searchField, setSearchField] = useState(SEARCH_ALL);
   const {
     statusFilter,
     setStatusFilter,
@@ -97,21 +115,42 @@ export default function ComponentRegistry({
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [bulkInspecting, setBulkInspecting] = useState(false);
   const [editing, setEditing] = useState(/** @type {any} */ (null));
-  const [tab, setTab] = useState("components");
   const [conflictsOnly, setConflictsOnly] = useState(false);
-  const [inspecting, setInspecting] = useState(/** @type {any} */ (null));
   const listRef = useRef(/** @type {HTMLDivElement|null} */ (null));
   const [listHeight, setListHeight] = useState(600);
-  const [viewing, setViewing] = useState(/** @type {any} */ (null));
   const [notification, setNotification] = useState(/** @type {any} */ (null));
 
   const notify = useCallback((type, message, options = {}) => {
     setNotification({ type, message, ...options });
   }, []);
-  const { exportInventory, isExporting } = useInventoryExport({
+
+  // Осмотр одной карточки — тем же экраном, что в «Сверке»: со снимком,
+  // замечанием и точкой по GPS. Во время сверки — её отметка.
+  const check = useComponentCheck({
     project,
-    notify,
+    updateComponent,
+    userProfile,
+    roundNumber: () => activeReconcileRoundNumber(project?.id),
+    onError: (error) =>
+      notify("error", t("common.saveError", { message: errorText(error, t) })),
   });
+  // Осмотр вне «Сверки» — как осмотр мониторинга: без идущей сверки сначала
+  // вопрос о новой (а не осмотр мимо всякой сверки).
+  const reconcileGate = useRoundStartGate({
+    projectId: project?.id ?? null,
+    kind: "reconcile",
+    store: reconcileRoundStore,
+    texts: {
+      disabled: t("reconcile.disabled"),
+      title: t("reconcile.newRoundTitle"),
+      description: t("reconcile.newRoundDescription"),
+      confirm: t("reconcile.newRoundConfirm"),
+    },
+    notify: ({ type, message }) => notify(type, message),
+    onReady: (component) =>
+      component ? check.open(component) : setBulkInspecting(true),
+  });
+  const openCheck = reconcileGate.request;
 
   /*
    * Nothing is written without a name. Every history entry is signed, and a
@@ -119,6 +158,15 @@ export default function ComponentRegistry({
    * first disagreement about a reading would have nowhere to go.
    */
   const canWrite = canWriteRegistry(userProfile);
+  // Карточка целиком — тот же лист, что открывает свайп в «Сверке».
+  const details = useComponentDetails({
+    fields,
+    canEdit: canWrite,
+    userProfile,
+    updateComponent,
+    removeComponent,
+  });
+  const openDetails = details.open;
 
   const texts = useMemo(
     () => ({
@@ -168,7 +216,7 @@ export default function ComponentRegistry({
     const observer = new ResizeObserver(measure);
     observer.observe(node);
     return () => observer.disconnect();
-  }, [tab]);
+  }, []);
 
   /*
    * Место берётся из выбора в шапке, а не из своего списка: там уже стоит
@@ -200,7 +248,7 @@ export default function ComponentRegistry({
             statusFilter.includes(String(component.component_status ?? ""))) &&
           (!conflictsOnly || conflictingIds.has(component.id)) &&
           (!nearby || withinRadius(component, coords, nearbyRadius)) &&
-          matchesSearch(component, search),
+          matchesSearch(component, search, searchField),
       ),
     [
       components,
@@ -210,6 +258,7 @@ export default function ComponentRegistry({
       nearby,
       nearbyRadius,
       search,
+      searchField,
       sharedFilters,
       statusFilter,
     ],
@@ -289,6 +338,14 @@ export default function ComponentRegistry({
     visible.length > 0 &&
     visible.every((component) => selectedIds.has(component.id));
 
+  // Правило то же, что у базы утечек: осмотр списком — по выбранным среди
+  // видимых. Выбор, скрытый фильтром, остаётся и показан плашкой у панели.
+  const visibleSelected = useMemo(
+    () => visible.filter((component) => selectedIds.has(component.id)),
+    [visible, selectedIds],
+  );
+  const hiddenSelectedCount = selectedIds.size - visibleSelected.length;
+
   /**
    * Расстояние до карточки от того места, где человек стоит.
    *
@@ -319,11 +376,19 @@ export default function ComponentRegistry({
         selected={selectedIds.has(component.id)}
         distance={distanceTo(component)}
         onToggleSelect={canWrite ? toggleSelect : undefined}
-        onOpenDetails={setViewing}
-        onInspect={canWrite ? setInspecting : undefined}
+        onOpenDetails={openDetails}
+        onInspect={canWrite ? openCheck : undefined}
       />
     ),
-    [canWrite, conflictingIds, distanceTo, selectedIds, toggleSelect],
+    [
+      canWrite,
+      conflictingIds,
+      distanceTo,
+      openCheck,
+      openDetails,
+      selectedIds,
+      toggleSelect,
+    ],
   );
 
   /*
@@ -339,16 +404,32 @@ export default function ComponentRegistry({
     async (status) => {
       setBulkInspecting(false);
       const user = userProfile?.name;
-      for (const card of components) {
-        if (!selectedIds.has(card.id)) continue;
-        await updateComponent(
-          card.id,
-          recordComponentInspected(card, { status, user }),
-        );
+      // Осмотр в реестре во время сверки — тоже её отметка.
+      const roundNumber = activeReconcileRoundNumber(project?.id);
+      for (const card of visibleSelected) {
+        try {
+          await updateComponent(
+            card.id,
+            recordComponentInspected(card, { status, user, roundNumber }),
+          );
+        } catch (error) {
+          // Записанные уже сняты с выбора — выбранными остаются те, до кого
+          // осмотр не дошёл, и повтор начнётся с них. Молча оборванный цикл
+          // выглядел как выполненный.
+          notify(
+            "error",
+            t("common.saveError", { message: errorText(error, t) }),
+          );
+          return;
+        }
+        setSelectedIds((current) => {
+          const next = new Set(current);
+          next.delete(card.id);
+          return next;
+        });
       }
-      clearSelection();
     },
-    [clearSelection, components, selectedIds, updateComponent, userProfile],
+    [notify, project?.id, t, updateComponent, userProfile, visibleSelected],
   );
 
   /**
@@ -365,6 +446,17 @@ export default function ComponentRegistry({
     },
     [onOpenCard],
   );
+
+  const handledAddRequestRef = useRef(addRequest);
+  useEffect(() => {
+    if (addRequest === handledAddRequestRef.current) return;
+    handledAddRequestRef.current = addRequest;
+    if (!canWrite) {
+      notify("error", t("components.nameRequired"));
+      return;
+    }
+    openCard({});
+  }, [addRequest, canWrite, notify, openCard, t]);
 
   const closeCard = useCallback(() => {
     setEditing(null);
@@ -416,47 +508,6 @@ export default function ComponentRegistry({
     ],
   );
 
-  /**
-   * Правка из подробной карточки. Мастер заведения к ней отношения не имеет:
-   * там четыре шага для того, кто стоит у железа впервые, а здесь исправляют
-   * одно поле, не теряя карточку из виду.
-   */
-  const handleEditSaved = useCallback(
-    async (form) => {
-      const target = viewing;
-      if (!target?.id) return;
-      const card = await withStoredPhoto(
-        { ...form, id: target.id },
-        target.id,
-        savePhoto,
-      );
-      const recorded = recordComponentEdited(
-        target,
-        { ...target, ...card },
-        { user: userProfile?.name, fields: fields?.all ?? [] },
-      );
-      await updateComponent(target.id, recorded);
-      // Лист остаётся открытым и показывает сохранённое — вместе с только что
-      // дописанной строкой истории: правка редко бывает одна, а закрытие
-      // отправляло бы искать ту же карточку заново.
-      setViewing(recorded);
-    },
-    [fields, savePhoto, updateComponent, userProfile, viewing],
-  );
-
-  const handleInspect = useCallback(
-    async (status) => {
-      const card = inspecting;
-      setInspecting(null);
-      if (!card) return;
-      await updateComponent(
-        card.id,
-        recordComponentInspected(card, { status, user: userProfile?.name }),
-      );
-    },
-    [inspecting, updateComponent, userProfile],
-  );
-
   if (!enabled) return null;
 
   // The form waits on the declaration that arrives with the screen; the list
@@ -492,69 +543,15 @@ export default function ComponentRegistry({
         notification={notification}
         onClose={() => setNotification(null)}
       />
-      <header className={s.head}>
-        <h1>{t("components.title")}</h1>
-        {/* Drawings sit next to the registry rather than in settings: they are
-            consulted while a card is being filled in, not configured once. */}
-        <div className={s.tabs} role="tablist">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === "components"}
-            className={tab === "components" ? s.tabActive : s.tab}
-            onClick={() => setTab("components")}
-          >
-            {t("components.tab")}
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === "schemas"}
-            className={tab === "schemas" ? s.tabActive : s.tab}
-            onClick={() => setTab("schemas")}
-          >
-            {t("schemas.tab")}
-          </button>
-        </div>
-        {tab === "components" && (
-          <p className={s.count}>
-            {t("components.count", { count: components.length })}
-            {visible.length !== components.length &&
-              ` · ${t("components.shown", { count: visible.length })}`}
-          </p>
-        )}
-      </header>
+      {details.element}
 
-      {tab === "schemas" && <SchemaList project={project} />}
-
-      {viewing && (
-        <ComponentDetailsSheet
-          component={viewing}
-          // Целиком, а не только видимые: подписи в истории берутся отсюда, и
-          // поле, скрытое из карточки, всё равно должно называться по-русски.
-          fields={fields?.all ?? []}
-          canEdit={canWrite}
-          onSave={handleEditSaved}
-          onRemove={async (card) => {
-            setViewing(null);
-            await removeComponent(card.id);
-          }}
-          onClose={() => setViewing(null)}
-        />
-      )}
-
-      {inspecting && (
-        <ComponentInspectSheet
-          component={inspecting}
-          onPick={handleInspect}
-          onClose={() => setInspecting(null)}
-        />
-      )}
+      {check.element}
+      {reconcileGate.element}
 
       {bulkInspecting && (
         <ComponentInspectSheet
           subtitle={t("database.selectedOf", {
-            selected: selectedIds.size,
+            selected: visibleSelected.length,
             visible: visible.length,
           })}
           onPick={inspectSelected}
@@ -562,113 +559,99 @@ export default function ComponentRegistry({
         />
       )}
 
-      {tab === "components" && (
-        <>
-          {error && (
-            <p className={s.error} role="alert">
-              {t("components.loadError")}
-            </p>
-          )}
+      {error && (
+        <p className={s.error} role="alert">
+          {t("components.loadError")}
+        </p>
+      )}
 
-          {/* Two devices with no allotted number ranges collide by design. The
+      {/* Two devices with no allotted number ranges collide by design. The
               merge keeps both cards and says so here; renumbering is a call
               only somebody who saw the equipment can make. */}
-          {conflicts.length > 0 && (
-            <p className={s.warning} role="status">
-              {t("components.conflictBanner", { count: conflicts.length })}{" "}
-              <button
-                type="button"
-                className={s.link}
-                onClick={() => setConflictsOnly((value) => !value)}
-              >
-                {conflictsOnly
-                  ? t("components.showAll")
-                  : t("components.showConflicts")}
-              </button>
-            </p>
-          )}
+      {conflicts.length > 0 && (
+        <p className={s.warning} role="status">
+          {t("components.conflictBanner", { count: conflicts.length })}{" "}
+          <button
+            type="button"
+            className={s.link}
+            onClick={() => setConflictsOnly((value) => !value)}
+          >
+            {conflictsOnly
+              ? t("components.showAll")
+              : t("components.showConflicts")}
+          </button>
+        </p>
+      )}
 
-          <ComponentFilterBar
-            search={search}
-            setSearch={setSearch}
-            statuses={usedStatuses}
-            statusFilter={statusFilter}
-            onToggleStatus={toggleStatus}
-            onClearStatuses={() => setStatusFilter([])}
-            conflictsOnly={conflictsOnly}
-            onToggleConflicts={() => setConflictsOnly((value) => !value)}
-            conflictCount={conflicts.length}
-            counts={statusCounts}
-            hasGps={hasGps}
-            nearbyOnly={nearbyOnly}
-            nearbyRadius={nearbyRadius}
-            nearbyRadiusOptions={NEARBY_RADIUS_OPTIONS}
-            nearbyCount={nearbyCount}
-            onToggleNearby={() => setNearbyOnly((value) => !value)}
-            onRadiusChange={(radius) => {
-              setNearbyRadius(radius);
-              setNearbyOnly(true);
-            }}
-          />
+      <ComponentFilterBar
+        search={search}
+        setSearch={setSearch}
+        searchFields={fields?.search ?? []}
+        searchField={searchField}
+        onSearchFieldChange={setSearchField}
+        statuses={usedStatuses}
+        statusFilter={statusFilter}
+        onToggleStatus={toggleStatus}
+        onClearStatuses={() => setStatusFilter([])}
+        conflictsOnly={conflictsOnly}
+        onToggleConflicts={() => setConflictsOnly((value) => !value)}
+        conflictCount={conflicts.length}
+        counts={statusCounts}
+        hasGps={hasGps}
+        nearbyOnly={nearbyOnly}
+        nearbyRadius={nearbyRadius}
+        nearbyRadiusOptions={NEARBY_RADIUS_OPTIONS}
+        nearbyCount={nearbyCount}
+        onToggleNearby={() => setNearbyOnly((value) => !value)}
+        onRadiusChange={(radius) => {
+          setNearbyRadius(radius);
+          setNearbyOnly(true);
+        }}
+      />
 
-          <ComponentResultsBar
-            visibleCount={visible.length}
-            totalCount={components.length}
-            sortAsc={sortAsc}
-            onSortToggle={() => setSortAsc((value) => !value)}
-            selectedCount={selectedIds.size}
-            allDisplayedSelected={allDisplayedSelected}
-            onSelectDisplayed={selectDisplayed}
-            onClearSelection={clearSelection}
-            onInspectSelected={() => setBulkInspecting(true)}
-            onExport={exportInventory}
-            isExporting={isExporting}
-          />
+      <ComponentResultsBar
+        visibleCount={visible.length}
+        sortAsc={sortAsc}
+        onSortToggle={() => setSortAsc((value) => !value)}
+        selectedCount={visibleSelected.length}
+        hiddenSelectedCount={hiddenSelectedCount}
+        allDisplayedSelected={allDisplayedSelected}
+        onSelectDisplayed={selectDisplayed}
+        onClearSelection={clearSelection}
+        onInspectSelected={() => reconcileGate.request(null)}
+      />
 
-          <div className={s.actions}>
-            <button
-              type="button"
-              className={s.primary}
-              onClick={() => openCard({})}
-              disabled={!canWrite}
-            >
-              {t("components.add")}
-            </button>
-          </div>
-
-          {/* Said once, where the button is, rather than after a walker has
+      {/* Said once, where the button is, rather than after a walker has
               filled a card and pressed save. */}
-          {!canWrite && (
-            <p className={s.warning} role="status">
-              {t("components.nameRequired")}
-            </p>
-          )}
+      {!canWrite && (
+        <p className={s.warning} role="status">
+          {t("components.nameRequired")}
+        </p>
+      )}
 
-          {loading ? (
-            <p className={s.muted}>{t("components.loading")}</p>
-          ) : visible.length === 0 ? (
-            <p className={s.muted}>
-              {components.length === 0
-                ? t("components.empty")
-                : t("components.noMatches")}
-            </p>
-          ) : (
-            /*
-             * The same virtualiser the leak list uses. A finished walk is
-             * thousands of cards, each with a photograph — rendering them all
-             * would cost the scroll long before the registry is complete.
-             */
-            <div ref={listRef} className={s.list}>
-              <VirtualizedLeakList
-                items={ordered}
-                height={listHeight}
-                bottomPadding={88}
-                gap={8}
-                renderItem={renderCard}
-              />
-            </div>
-          )}
-        </>
+      {loading ? (
+        <p className={s.muted}>{t("components.loading")}</p>
+      ) : visible.length === 0 ? (
+        <p className={s.muted}>
+          {components.length === 0
+            ? t("components.empty")
+            : t("components.noMatches")}
+        </p>
+      ) : (
+        /*
+         * The same virtualiser the leak list uses. A finished walk is
+         * thousands of cards, each with a photograph — rendering them all
+         * would cost the scroll long before the registry is complete.
+         */
+        <div ref={listRef} className={s.list}>
+          <VirtualizedLeakList
+            items={ordered}
+            height={listHeight}
+            bottomPadding={88}
+            gap={8}
+            renderItem={renderCard}
+          />
+        </div>
       )}
     </div>
   );

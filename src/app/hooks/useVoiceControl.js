@@ -30,6 +30,13 @@ export function useVoiceControl({
   const { lang } = useLanguage();
   const { corrections } = useVoiceCorrections(activeProject?.id);
   const [pendingVoiceData, setPendingVoiceData] = useState(null);
+  // Что было сказано на месте подставленного словарём — для листа
+  // подтверждения: по полям и фраза целиком.
+  const [pendingVoiceHeard, setPendingVoiceHeard] = useState(
+    /** @type {{ phrase: string, fields: Record<string, string> } | null} */ (
+      null
+    ),
+  );
 
   const dictationKey = useMemo(() => {
     const currentStep = steps[step - 1];
@@ -42,16 +49,18 @@ export function useVoiceControl({
       // услышанное как «сохрани», — такая же ошибка распознавателя, как и
       // «место рождения», и чинить её вторым списком незачем.
       const text = applyVoiceCorrections(raw, corrections);
-      const command = parseVoiceCommand(text, lang);
-      if (command) {
-        onCommand?.(command);
+      // Без обработчика команд фраза — просто диктовка: «назад», сказанное в
+      // карточке реестра, иначе пропадало бы молча.
+      const command = onCommand ? parseVoiceCommand(text, lang) : null;
+      if (onCommand && command) {
+        onCommand(command);
         return;
       }
 
       const active = voice ?? projectConfig?.voice;
       const synonymsFields = active?.synonymsFields ?? [];
       const outputFields = active?.outputFields ?? [];
-      handleVoiceText(
+      const fields = handleVoiceText(
         synonymsFields,
         text,
         setPendingVoiceData,
@@ -60,6 +69,7 @@ export function useVoiceControl({
         outputFields,
         active?.options ?? {},
       );
+      setPendingVoiceHeard({ phrase: text, fields: fields ?? {} });
     },
     [corrections, dictationKey, lang, onCommand, project, projectConfig, voice],
   );
@@ -68,10 +78,12 @@ export function useVoiceControl({
 
   const dismissVoiceData = useCallback(() => {
     setPendingVoiceData(null);
+    setPendingVoiceHeard(null);
   }, []);
 
   return {
     pendingVoiceData,
+    pendingVoiceHeard,
     dismissVoiceData,
     startVoiceInput: start,
     stopVoiceInput: stop,

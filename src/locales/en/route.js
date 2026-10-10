@@ -1,0 +1,23 @@
+export const route = {
+  title: "Route through points",
+  summary: "Points: {{count}} · {{distance}}",
+  empty: "No points left to check that have coordinates",
+  close: "Close",
+  origin: "My location",
+  gpsOn: "GPS",
+  gpsOff: "GPS is off — ordered from the first point",
+  tag: "No.",
+  m: "m",
+  km: "km",
+  showMap: "On the map",
+  start: "Start route",
+  step: "Route · point {{step}} of {{total}}",
+  stepShort: "{{step}}/{{total}}",
+  finished: "Route complete",
+  finishedHint: "All points checked",
+  check: "Check",
+  end: "End route",
+  endConfirmTitle: "End the route?",
+  endConfirmDescription:
+    "Points left: {{left}}. The route will have to be built again.",
+};

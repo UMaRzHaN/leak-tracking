@@ -1,16 +1,21 @@
+import { acceptance } from "./acceptance";
 import { addLeak } from "./addLeak";
 import { app } from "./app";
+import { appMenu } from "./appMenu";
 import { cards } from "./cards";
 import { common } from "./common";
 import { components } from "./components";
+import { coverage } from "./coverage";
 import { database } from "./database";
 import { emissionsSummary } from "./emissionsSummary";
 import { emptyState } from "./emptyState";
 import { excelExport } from "./excelExport";
+import { exportReport } from "./export";
 import { fieldVisibility } from "./fieldVisibility";
 import { footer } from "./footer";
 import { header } from "./header";
 import { importConflict } from "./importConflict";
+import { importScreen } from "./importScreen";
 import { leakDetails } from "./leakDetails";
 import { leakForm } from "./leakForm";
 import { localSync } from "./localSync";
@@ -23,8 +28,11 @@ import { photoViewer } from "./photoViewer";
 import { projectSetup } from "./projectSetup";
 import { priority } from "./priority";
 import { pwa } from "./pwa";
+import { reconcile } from "./reconcile";
 import { reopen } from "./reopen";
-import { resolve } from "./resolve";
+import { repairs } from "./repairs";
+import { route } from "./route";
+import { coordsUpdate } from "./coordsUpdate";
 import { schemas } from "./schemas";
 import { settings } from "./settings";
 import { settingsModal } from "./settingsModal";
@@ -35,19 +43,24 @@ import { userProfile } from "./userProfile";
 import { voice } from "./voice";
 
 export const translation = {
+  acceptance,
   addLeak,
   app,
+  appMenu,
   cards,
   common,
   components,
+  coverage,
   database,
   emissionsSummary,
   emptyState,
   excelExport,
+  export: exportReport,
   fieldVisibility,
   footer,
   header,
   importConflict,
+  importScreen,
   leakDetails,
   leakForm,
   localSync,
@@ -60,8 +73,11 @@ export const translation = {
   projectSetup,
   priority,
   pwa,
+  reconcile,
   reopen,
-  resolve,
+  repairs,
+  route,
+  coordsUpdate,
   schemas,
   settings,
   settingsModal,

@@ -12,6 +12,17 @@ export const errors = {
   VOICE_UNSUPPORTED: "Voice input is not supported",
   CAMERA_PERMISSION_REQUIRED: "Allow the app to use the camera",
 
+  // Camera and photos
+  CAMERA_FAILED: "Could not open the camera",
+  GALLERY_FAILED: "Could not open the gallery",
+  CAMERA_MOBILE_ONLY: "The camera is available only on a phone",
+  GALLERY_MOBILE_ONLY: "The gallery is available only on a phone",
+  PHOTO_READ_FAILED: "Could not read the photo",
+  PHOTO_NOT_RETURNED: "The camera did not return a photo",
+  PHOTO_INVALID: "The camera returned a damaged photo",
+  PHOTO_NOT_IMAGE: "The selected file is not an image",
+  PHOTO_TOO_LARGE: "The photo is larger than 32 MB",
+
   // Sync QR code
   QR_SCAN_CANCELLED: "Scanning cancelled",
   QR_SCAN_UNSUPPORTED: "This phone does not support QR scanning",
@@ -90,6 +101,9 @@ export const errors = {
   HISTORY_USER_REQUIRED:
     "No one is set to record the change: fill in the name in your profile.",
   INVALID_LEAK_EVENT_TYPE: "Unknown event kind in the leak history",
+  REPAIR_NOT_IN_PROGRESS: "A stage can only be marked on a leak under repair",
+  REPAIR_NOT_RESOLVED: "Only a closed repair can be confirmed as resolved",
+  INVALID_REPAIR_STAGE: "Unknown repair stage",
 
   // Drawings
   SCHEMA_OPEN_FAILED: "No app on this device can open the drawing",

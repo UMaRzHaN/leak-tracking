@@ -1,13 +1,30 @@
 export const mainPage = {
-  total: "Всего",
-  open: "Открыто",
-  inProgress: "В ремонте",
-  resolved: "Устранено",
-
-  recentRecords: "Последние {{count}} записей",
   showAll: "Все {{count}} →",
 
-  shownRecent: "показаны последние {{count}}",
+  chips: {
+    label: "Фильтр по статусу",
+    all: "Все",
+    open: "Открыто",
+    inProgress: "Ремонт",
+    resolved: "Устранено",
+  },
+
+  groups: {
+    today: "Сегодня",
+    yesterday: "Вчера",
+    earlier: "Раньше",
+  },
+
+  coverage: {
+    title: "Охват обследования",
+    estimated: "{{surveyed}} из ~{{total}} · {{percent}}%",
+    value: "{{surveyed}} из {{total}} · {{percent}}%",
+    hint: "Объекты с записями об утечках",
+    open: "По категориям объектов",
+    projectWide: "По всему проекту — у обследования не указано место",
+    noRegistry:
+      "Объекты с записями об утечках. Общее число появится с реестром компонентов",
+  },
 
   repairs: {
     title: "Ремонты",

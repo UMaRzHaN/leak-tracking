@@ -4,7 +4,9 @@ import {
   createLeak,
   createProject,
   openMap,
+  openRound,
   setUserProfile,
+  openMapFilters,
 } from "./helpers";
 
 /**
@@ -28,7 +30,7 @@ test("осмотренная в обходе булавка гаснет, неп
   await context.setGeolocation({ latitude: 41.3125, longitude: 69.2425 });
   await createLeak(page, "4243");
 
-  await page.getByRole("button", { name: "Мониторинг", exact: true }).click();
+  await openRound(page);
   await page.getByRole("button", { name: "Начать мониторинг" }).click();
   await page.getByRole("button", { name: "Начать обход" }).click();
 
@@ -39,12 +41,15 @@ test("осмотренная в обходе булавка гаснет, неп
     .click();
   await page.getByLabel("Комментарий", { exact: true }).fill("Обход");
   await attachModalPhoto(page);
-  await page.getByRole("button", { name: "Сохранить", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Сохранить проверку", exact: true })
+    .click();
   await expect(page.getByRole("alert")).toContainText(
     "Результат мониторинга сохранен",
   );
 
   await openMap(page);
+  await openMapFilters(page);
   await page.getByRole("button", { name: "Фильтр по мониторингу" }).click();
   await page.getByRole("button", { name: "Все теги", exact: true }).click();
 

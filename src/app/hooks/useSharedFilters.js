@@ -3,6 +3,8 @@ import {
   FICTION_FILTER,
   MONITORING_FILTER,
   NEARBY_RADIUS_M,
+  SEARCH_SCOPE,
+  TAG_FILTER,
 } from "@/domain/leakFilters";
 import { PROJECT_LOCATION_CONFIG } from "@/configs/projectLocation.config";
 import {
@@ -17,6 +19,7 @@ import {
 
 export function useSharedFilters({ projectId, projectType }) {
   const [search, setSearch] = useState("");
+  const [searchScope, setSearchScope] = useState(SEARCH_SCOPE.ALL);
   const [statusFilter, setStatusFilter] = useState(
     /** @type {string[]} */ ([]),
   );
@@ -24,6 +27,7 @@ export function useSharedFilters({ projectId, projectType }) {
     /** @type {string[]} */ ([]),
   );
   const [fictionFilter, setFictionFilter] = useState(FICTION_FILTER.ALL);
+  const [tagFilter, setTagFilter] = useState(TAG_FILTER.ALL);
   /*
    * Состояние железа — отдельно от статуса утечки: словари разные, а живёт
    * фильтр здесь по той же причине, что и остальные. Реестр и карта на базе
@@ -66,9 +70,11 @@ export function useSharedFilters({ projectId, projectType }) {
     const keep = (filter, key) => (filter?.key === key ? filter : null);
 
     setSearch(stored.search);
+    setSearchScope(stored.searchScope);
     setStatusFilter(stored.statusFilter);
     setPriorityFilter(stored.priorityFilter);
     setFictionFilter(stored.fictionFilter);
+    setTagFilter(stored.tagFilter);
     setComponentStatusFilter(stored.componentStatusFilter);
     setMainLocationFilter(
       keep(stored.mainLocationFilter, locationConfig?.main),
@@ -93,9 +99,11 @@ export function useSharedFilters({ projectId, projectType }) {
 
     writeProjectFilters(projectId, {
       search,
+      searchScope,
       statusFilter,
       priorityFilter,
       fictionFilter,
+      tagFilter,
       componentStatusFilter,
       mainLocationFilter,
       locationFilter,
@@ -108,9 +116,11 @@ export function useSharedFilters({ projectId, projectType }) {
     projectId,
     projectType,
     search,
+    searchScope,
     statusFilter,
     priorityFilter,
     fictionFilter,
+    tagFilter,
     componentStatusFilter,
     mainLocationFilter,
     locationFilter,
@@ -124,12 +134,16 @@ export function useSharedFilters({ projectId, projectType }) {
     () => ({
       search,
       setSearch,
+      searchScope,
+      setSearchScope,
       statusFilter,
       setFilter: setStatusFilter,
       priorityFilter,
       setPriorityFilter,
       fictionFilter,
       setFictionFilter,
+      tagFilter,
+      setTagFilter,
       componentStatusFilter,
       setComponentStatusFilter,
       mainLocationFilter,
@@ -147,9 +161,11 @@ export function useSharedFilters({ projectId, projectType }) {
     }),
     [
       search,
+      searchScope,
       statusFilter,
       priorityFilter,
       fictionFilter,
+      tagFilter,
       componentStatusFilter,
       mainLocationFilter,
       locationFilter,

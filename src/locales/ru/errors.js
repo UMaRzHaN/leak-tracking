@@ -15,6 +15,17 @@ export const errors = {
   VOICE_UNSUPPORTED: "Голосовой ввод не поддерживается",
   CAMERA_PERMISSION_REQUIRED: "Разрешите приложению использовать камеру",
 
+  // Камера и снимки
+  CAMERA_FAILED: "Не удалось открыть камеру",
+  GALLERY_FAILED: "Не удалось открыть галерею",
+  CAMERA_MOBILE_ONLY: "Камера доступна только на телефоне",
+  GALLERY_MOBILE_ONLY: "Галерея доступна только на телефоне",
+  PHOTO_READ_FAILED: "Не удалось прочитать снимок",
+  PHOTO_NOT_RETURNED: "Камера не вернула снимок",
+  PHOTO_INVALID: "Камера вернула повреждённый снимок",
+  PHOTO_NOT_IMAGE: "Выбранный файл — не изображение",
+  PHOTO_TOO_LARGE: "Снимок больше 32 МБ",
+
   // QR-код синхронизации
   QR_SCAN_CANCELLED: "Сканирование отменено",
   QR_SCAN_UNSUPPORTED: "Сканирование QR не поддерживается на этом телефоне",
@@ -94,6 +105,10 @@ export const errors = {
   HISTORY_USER_REQUIRED:
     "Не указано, кто вносит запись: заполните имя в профиле.",
   INVALID_LEAK_EVENT_TYPE: "Неизвестный вид события в истории утечки",
+  REPAIR_NOT_IN_PROGRESS: "Стадию можно отметить только у утечки в ремонте",
+  REPAIR_NOT_RESOLVED:
+    "Подтвердить устранение можно только у закрытого ремонта",
+  INVALID_REPAIR_STAGE: "Неизвестная стадия ремонта",
 
   // Схемы
   SCHEMA_OPEN_FAILED: "На устройстве нет приложения, которое откроет схему",

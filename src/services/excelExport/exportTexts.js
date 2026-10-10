@@ -27,6 +27,16 @@ const MONITORING_KEYS = [
   "previousPhoto",
 ];
 
+const MATERIALS_KEYS = [
+  "index",
+  "leak_id",
+  "date",
+  "time",
+  "source",
+  "materials_equipment",
+  "user",
+];
+
 const REPAIR_KEYS = [
   "index",
   "leak_id",
@@ -37,11 +47,60 @@ const REPAIR_KEYS = [
   "resolvedTime",
   "durationHours",
   "user",
+  "brigade",
   "materials_equipment",
   "note",
   "repairPhoto",
   "donePhoto",
 ];
+
+const REPAIR_LOG_KEYS = [
+  "index",
+  "leak_id",
+  "roundNumber",
+  "date",
+  "time",
+  "event",
+  "brigade",
+  "materials_equipment",
+  "note",
+  "physicalTag",
+  "fiction",
+  "user",
+  "previousPhoto",
+  "photo",
+];
+const REPAIR_LOG_EVENTS = [
+  "repair_started",
+  "repair_done",
+  "returned",
+  "waiting_mtr",
+  "in_repair",
+  "ready",
+  "resolved",
+];
+
+const ACCEPTANCE_KEYS = [
+  "invoice",
+  "supplier",
+  "warehouse",
+  "status",
+  "batch",
+  "date",
+  "time",
+  "name",
+  "unit",
+  "ordered",
+  "qty",
+  "received",
+  "left",
+  "complete",
+  "dnpnMatch",
+  "remark",
+  "user",
+];
+const ACCEPTANCE_STATUSES = ["pending", "partial", "accepted"];
+const ACCEPTANCE_UNITS = ["pcs", "set", "m", "kg", "l"];
 
 const PHOTO_FOLDER_STATUSES = ["open", "in_progress", "resolved"];
 
@@ -81,10 +140,14 @@ export function buildExcelExportTexts(t) {
       history: t("excelExport.sheets.history"),
       monitoring: t("excelExport.sheets.monitoring"),
       repairs: t("excelExport.sheets.repairs"),
+      materials: t("excelExport.sheets.materials"),
+      repairLog: t("excelExport.sheets.repairLog"),
+      acceptance: t("excelExport.sheets.acceptance"),
     },
     photo: {
       open: t("excelExport.photo.open"),
       missing: t("excelExport.photo.missing"),
+      noPlace: t("excelExport.photo.noPlace"),
       folderStatus: byKey(PHOTO_FOLDER_STATUSES, (key) =>
         t(`excelExport.photo.folderStatus.${key}`),
       ),
@@ -111,6 +174,36 @@ export function buildExcelExportTexts(t) {
       headers: byKey(REPAIR_KEYS, (key) =>
         t(`excelExport.repairs.headers.${key}`),
       ),
+    },
+    repairLog: {
+      headers: byKey(REPAIR_LOG_KEYS, (key) =>
+        t(`excelExport.repairLog.headers.${key}`),
+      ),
+      events: byKey(REPAIR_LOG_EVENTS, (key) =>
+        t(`excelExport.repairLog.events.${key}`),
+      ),
+    },
+    acceptance: {
+      headers: byKey(ACCEPTANCE_KEYS, (key) =>
+        t(`excelExport.acceptance.headers.${key}`),
+      ),
+      statuses: byKey(ACCEPTANCE_STATUSES, (key) =>
+        t(`acceptance.status.${key}`),
+      ),
+      units: byKey(ACCEPTANCE_UNITS, (key) =>
+        t(`acceptance.units.${key}.short`),
+      ),
+      yes: t("repairs.yes"),
+      no: t("repairs.no"),
+    },
+    materials: {
+      headers: byKey(MATERIALS_KEYS, (key) =>
+        t(`excelExport.materials.headers.${key}`),
+      ),
+      sources: {
+        repair: t("excelExport.materials.sources.repair"),
+        monitoring: t("excelExport.materials.sources.monitoring"),
+      },
     },
     backup: {
       title: t("excelExport.backup.title"),

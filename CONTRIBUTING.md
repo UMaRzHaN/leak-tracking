@@ -354,12 +354,16 @@ cd android && ANDROID_VERSION_CODE=1 ANDROID_VERSION_NAME=1.0.0-probe \
 зависимости.
 
 **Обёртку Gradle поднимать задачей, а не правкой файла.**
-`./gradlew wrapper --gradle-version <версия> --distribution-type all`
+`./gradlew wrapper --gradle-version <версия> --distribution-type all --gradle-distribution-sha256-sum <sha256>`
 пересобирает `gradle-wrapper.jar` самим Gradle, а не берёт его из чужой ветки —
 для файла, который скачивает и запускает сборку, происхождение важнее удобства.
 Флаг `--distribution-type all` обязателен: по умолчанию задача переключает
 дистрибутив на `-bin`, а в `-all` едут исходники, по которым IDE показывает
-документацию.
+документацию. Сумму берут с
+`https://services.gradle.org/distributions/gradle-<версия>-all.zip.sha256`:
+`distributionSha256Sum` в `gradle-wrapper.properties` заставляет обёртку
+отказаться от архива, который скачался не тем, что опубликовал Gradle, и без
+флага задача эту строку сотрёт.
 
 ### Закрыто в `.github/dependabot.yml`
 

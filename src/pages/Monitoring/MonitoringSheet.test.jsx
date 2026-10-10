@@ -15,10 +15,15 @@ vi.mock("@/features/photos/PhotoInput/PhotoInput", () => ({
   ),
 }));
 
+vi.mock("@/app/project/ProjectContext", () => ({
+  useProjectData: () => ({ project: "upstream" }),
+}));
+
 import MonitoringSheet from "./MonitoringSheet";
 
 const texts = {
-  check: "Check leak",
+  check: "Check",
+  checkTitle: "Check leak",
   leakNumber: "Tag",
   close: "Close",
   result: "Result",
@@ -30,6 +35,7 @@ const texts = {
   photo: "Photo",
   saving: "Saving...",
   save: "Save",
+  saveCheck: "Save check",
 };
 
 function renderSheet(overrides = {}) {
@@ -38,7 +44,13 @@ function renderSheet(overrides = {}) {
   const onClose = vi.fn();
   const view = render(
     <MonitoringSheet
-      leak={{ id: "l1", leak_id: "TAG-7", status: "open" }}
+      leak={{
+        id: "l1",
+        leak_id: "TAG-7",
+        status: "open",
+        deposit: "Tengiz",
+        location: "Pad 12",
+      }}
       draft={{
         result: "still_leaking",
         comment: "",
@@ -65,7 +77,8 @@ describe("MonitoringSheet", () => {
     renderSheet();
 
     expect(screen.getByText("2 / 4")).toBeTruthy();
-    expect(screen.getByText(/TAG-7/)).toBeTruthy();
+    // Под заголовком — номер и два нижних уровня места.
+    expect(screen.getByText("Tag TAG-7 · Tengiz · Pad 12")).toBeTruthy();
     expect(screen.getByRole("option", { name: "Yes (current)" })).toBeTruthy();
   });
 
@@ -126,9 +139,8 @@ describe("MonitoringSheet", () => {
   });
 
   it("blocks closing and saving controls while a save is in progress", () => {
-    const { container, onClose, onSave } = renderSheet({ saving: true });
+    const { onClose, onSave } = renderSheet({ saving: true });
 
-    fireEvent.click(container.firstChild);
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
     fireEvent.click(screen.getByRole("button", { name: "Saving..." }));
 
@@ -140,13 +152,16 @@ describe("MonitoringSheet", () => {
     );
   });
 
-  it("closes from the overlay but not from clicks inside the sheet", () => {
-    const { container, onClose } = renderSheet();
+  it("takes the whole screen and closes only from its own button", () => {
+    const { onClose } = renderSheet();
 
-    fireEvent.click(screen.getByText("Check leak"));
+    // Подложки больше нет: случайное касание мимо формы не теряет ввод.
+    fireEvent.click(screen.getByRole("dialog"));
     expect(onClose).not.toHaveBeenCalled();
 
-    fireEvent.click(container.firstChild);
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(onClose).toHaveBeenCalledOnce();
+    expect(screen.getByRole("heading", { name: "Check leak" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Save check" })).toBeTruthy();
   });
 });

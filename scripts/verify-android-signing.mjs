@@ -1,5 +1,7 @@
 import { existsSync } from "node:fs";
+import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { normalizeCertDigest } from "./verify-android-release-apk.mjs";
 
 const REQUIRED = [
   "ANDROID_KEYSTORE_PATH",
@@ -8,6 +10,7 @@ const REQUIRED = [
   "ANDROID_KEY_PASSWORD",
   "ANDROID_VERSION_CODE",
   "ANDROID_VERSION_NAME",
+  "ANDROID_SIGNING_CERT_SHA256",
 ];
 
 export function validateAndroidReleaseEnvironment(
@@ -27,6 +30,17 @@ export function validateAndroidReleaseEnvironment(
   const versionName = String(env.ANDROID_VERSION_NAME).trim();
   if (!/^[0-9A-Za-z][0-9A-Za-z._+-]{0,99}$/.test(versionName)) {
     return "ANDROID_VERSION_NAME must be 1-100 safe version characters";
+  }
+
+  if (!normalizeCertDigest(env.ANDROID_SIGNING_CERT_SHA256)) {
+    return "ANDROID_SIGNING_CERT_SHA256 must be the release certificate SHA-256 fingerprint: 64 hex digits, colons allowed";
+  }
+
+  // Gradle resolves `file(...)` against android/app, this check against the
+  // repository root: a relative path would be checked in one place and used
+  // in another. Only an absolute path means the same file to both.
+  if (!path.isAbsolute(env.ANDROID_KEYSTORE_PATH)) {
+    return `ANDROID_KEYSTORE_PATH must be absolute (Gradle reads a relative path from android/app): ${env.ANDROID_KEYSTORE_PATH}`;
   }
 
   if (!fileExists(env.ANDROID_KEYSTORE_PATH)) {

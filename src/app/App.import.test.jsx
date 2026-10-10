@@ -151,6 +151,10 @@ vi.mock("@/app/project/projectFilters", () => ({
 vi.mock("@/app/project/projectSettings", () => ({
   writeProjectSettings: vi.fn(),
 }));
+// Вопрос о новом обходе ремонтов проверяется у себя; импорту он не важен.
+vi.mock("@/app/project/hooks/useRoundStartGate", () => ({
+  useRoundStartGate: () => ({ request: vi.fn(), element: null }),
+}));
 vi.mock("@/app/project/storageKeys", () => ({
   STORAGE_KEYS: {
     PROJECT_VARS: (projectId) => `app:${projectId}:vars`,
@@ -164,6 +168,8 @@ vi.mock("@/configs/projects", () => ({
   },
 }));
 vi.mock("@/utils/monitoringRound", () => ({
+  MONITORING_ROUND_EVENT: "monitoring-round-updated",
+  readMonitoringRound: vi.fn(() => null),
   saveMonitoringRound: vi.fn(),
 }));
 vi.mock("@/services/sync/projectSyncState", () => ({

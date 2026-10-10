@@ -90,24 +90,32 @@ function renderRegistry(props = {}) {
 
   function Harness() {
     const [page, setPage] = useState("components");
+    // «+» нижней панели инвентаризации: живёт вне реестра и шлёт запрос.
+    const [addRequest, setAddRequest] = useState(0);
     return (
-      <ComponentRegistry
-        project={project}
-        userProfile={{ name: "Мухиддин" }}
-        // Приёмник по умолчанию отвечает: сохранение без фикса честно ждёт
-        // его пятнадцать секунд, и это проверяется отдельным тестом.
-        coords={{ lat: 38.4, lng: 66.1 }}
-        {...props}
-        cardPage={page === "component"}
-        onOpenCard={() => {
-          spies.onOpenCard();
-          setPage("component");
-        }}
-        onCloseCard={() => {
-          spies.onCloseCard();
-          setPage("components");
-        }}
-      />
+      <>
+        <button type="button" onClick={() => setAddRequest((n) => n + 1)}>
+          Add component
+        </button>
+        <ComponentRegistry
+          project={project}
+          userProfile={{ name: "Мухиддин" }}
+          // Приёмник по умолчанию отвечает: сохранение без фикса честно ждёт
+          // его пятнадцать секунд, и это проверяется отдельным тестом.
+          coords={{ lat: 38.4, lng: 66.1 }}
+          {...props}
+          addRequest={addRequest}
+          cardPage={page === "component"}
+          onOpenCard={() => {
+            spies.onOpenCard();
+            setPage("component");
+          }}
+          onCloseCard={() => {
+            spies.onCloseCard();
+            setPage("components");
+          }}
+        />
+      </>
     );
   }
 
@@ -139,6 +147,14 @@ function makeRegistry(overrides = {}) {
   };
 }
 
+// Карточка компонента открывается только свайпом вправо: тап по ней ничего не
+// делает, чтобы касание при прокрутке не открывало чужую карточку.
+function swipeOpen(element) {
+  fireEvent.mouseDown(element, { clientX: 0, clientY: 0 });
+  fireEvent.mouseMove(element, { clientX: 120, clientY: 0 });
+  fireEvent.mouseUp(element, { clientX: 120, clientY: 0 });
+}
+
 describe("ComponentRegistry screen", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -147,8 +163,10 @@ describe("ComponentRegistry screen", () => {
 
   it("renders nothing for a project type without a registry", () => {
     registry.current = makeRegistry({ enabled: false });
-    const { container } = renderRegistry();
-    expect(container).toBeEmptyDOMElement();
+    renderRegistry();
+    // На месте только «+» обвязки — сам реестр ничего не рисует.
+    expect(screen.getAllByRole("button")).toHaveLength(1);
+    expect(screen.queryByText(/records?\b/)).toBeNull();
   });
 
   it("counts what has been recorded, never a percentage", () => {
@@ -162,7 +180,7 @@ describe("ComponentRegistry screen", () => {
     });
     renderRegistry();
 
-    expect(screen.getByText("Recorded: 2")).toBeTruthy();
+    expect(screen.getByText(/^2 records/)).toBeTruthy();
     expect(screen.queryByText(/%/)).toBeNull();
   });
 
@@ -226,8 +244,12 @@ describe("ComponentRegistry screen", () => {
 
     // Фильтры прячутся за кнопкой, как на странице базы.
     fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    // Первая — в панели фильтров, вторая — чип над списком.
     fireEvent.click(
-      screen.getByRole("button", { pressed: false, name: /Требует замены/ }),
+      screen.getAllByRole("button", {
+        pressed: false,
+        name: /Требует замены/,
+      })[0],
     );
 
     expect(screen.getByText("Труба")).toBeTruthy();
@@ -244,8 +266,8 @@ describe("ComponentRegistry screen", () => {
     fireEvent.click(screen.getByRole("button", { name: "Filters" }));
 
     expect(
-      screen.getByRole("button", { name: /В работе/, pressed: false }),
-    ).toBeTruthy();
+      screen.getAllByRole("button", { name: /В работе/, pressed: false }),
+    ).toHaveLength(1);
     // An empty button selects nothing and only adds to the noise.
     expect(screen.queryByRole("button", { name: /Демонтирован/ })).toBeNull();
   });
@@ -277,15 +299,114 @@ describe("ComponentRegistry screen", () => {
     expect(screen.queryByText("Труба")).toBeNull();
   });
 
+  it("searches one chosen field when asked to", () => {
+    // «12» по всем полям находит и номер, и номер на схеме; выбрав поле,
+    // ищут только в нём — как «Где искать» у базы утечек.
+    registry.current = makeRegistry({
+      components: [
+        { id: "a", component_uid: "12", component: "Задвижка" },
+        { id: "b", component_uid: "7", component: "Труба", scheme_tag: "КШ12" },
+      ],
+      fields: {
+        ...makeRegistry().fields,
+        search: [
+          { key: "all", label: "По всем полям" },
+          { key: "scheme_tag", label: "Номер на схеме" },
+        ],
+      },
+    });
+    renderRegistry();
+
+    fireEvent.change(screen.getByLabelText(/Number, name, drawing tag/i), {
+      target: { value: "12" },
+    });
+    expect(screen.getByText("Задвижка")).toBeTruthy();
+    expect(screen.getByText("Труба")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    fireEvent.click(screen.getByRole("button", { name: "Drawing tag" }));
+
+    expect(screen.getByLabelText("Search: Drawing tag...")).toBeTruthy();
+    expect(screen.queryByText("Задвижка")).toBeNull();
+    expect(screen.getByText("Труба")).toBeTruthy();
+  });
+
   it("will not let an unsigned walker write to the registry", () => {
     // Every history entry is signed; a registry nobody signs is a list of
     // assertions with no one behind them.
     renderRegistry({ userProfile: { name: "  " } });
 
-    expect(screen.getByText("Add component").disabled).toBe(true);
     expect(screen.getByRole("status").textContent).toMatch(
       /Set your name in the profile/i,
     );
+    fireEvent.click(screen.getByText("Add component"));
+    expect(screen.queryByText("New component")).toBeNull();
+  });
+
+  /** Выбрать показанные и отметить их состояние списком. */
+  async function inspectDisplayed() {
+    fireEvent.click(screen.getByText("Select all"));
+    fireEvent.click(screen.getByText("Change state"));
+    // Без идущей сверки сначала спрашивают о новой.
+    const start = screen.queryByRole("button", { name: "Start" });
+    if (start) fireEvent.click(start);
+    fireEvent.click(await screen.findByRole("button", { name: "В работе" }));
+  }
+
+  it("сообщает, что осмотр списком не записался, и не сбрасывает выбор", async () => {
+    localStorage.clear();
+    registry.current = makeRegistry({
+      components: [
+        { id: "a", component_uid: "1", component: "Задвижка" },
+        { id: "b", component_uid: "2", component: "Труба" },
+      ],
+      updateComponent: vi
+        .fn()
+        .mockResolvedValueOnce([])
+        .mockRejectedValueOnce(new Error("disk full")),
+    });
+    renderRegistry();
+
+    await inspectDisplayed();
+
+    expect(await screen.findByText(/disk full/)).toBeTruthy();
+    // Записанная снята с выбора, незаписанная ждёт повтора.
+    expect(screen.getByText("1 selected of 2")).toBeTruthy();
+    // Начатая здесь сверка не должна достаться соседним тестам.
+    localStorage.clear();
+  });
+
+  it("осматривает списком только видимые, а скрытый фильтром выбор хранит", async () => {
+    localStorage.clear();
+    registry.current = makeRegistry({
+      components: [
+        { id: "a", component_uid: "1", component: "Задвижка" },
+        { id: "b", component_uid: "2", component: "Труба" },
+      ],
+    });
+    renderRegistry();
+
+    fireEvent.click(screen.getByText("Select all"));
+    fireEvent.change(
+      screen.getByPlaceholderText("Number, name, drawing tag..."),
+      { target: { value: "Задвижка" } },
+    );
+    expect(screen.getByText("1 more selected, hidden by filters")).toBeTruthy();
+
+    fireEvent.click(screen.getByText("Change state"));
+    const start = screen.queryByRole("button", { name: "Start" });
+    if (start) fireEvent.click(start);
+    fireEvent.click(await screen.findByRole("button", { name: "В работе" }));
+
+    await waitFor(() =>
+      expect(registry.current.updateComponent).toHaveBeenCalledTimes(1),
+    );
+    expect(registry.current.updateComponent.mock.calls[0][0]).toBe("a");
+    // Скрытая карточка осталась выбранной — её не сбросили молча.
+    expect(
+      await screen.findByText("1 more selected, hidden by filters"),
+    ).toBeTruthy();
+    localStorage.clear();
   });
 
   it("says nothing about conflicts when there are none", () => {
@@ -342,7 +463,7 @@ describe("ComponentRegistry screen", () => {
     });
     renderRegistry();
 
-    fireEvent.click(screen.getByText("Задвижка"));
+    swipeOpen(screen.getByText("Задвижка"));
 
     // The trail lives on its own tab, as it does on the leak sheet.
     fireEvent.click(screen.getByText("History"));
@@ -362,7 +483,7 @@ describe("ComponentRegistry screen", () => {
     });
     renderRegistry();
 
-    fireEvent.click(screen.getByText("Задвижка"));
+    swipeOpen(screen.getByText("Задвижка"));
     fireEvent.click(screen.getByRole("button", { name: "Delete component" }));
     expect(registry.current.removeComponent).not.toHaveBeenCalled();
 
@@ -440,7 +561,7 @@ describe("card page switching", () => {
     fireEvent.click(screen.getByLabelText("Cancel"));
 
     expect(spies.onCloseCard).toHaveBeenCalled();
-    expect(screen.getByText("Add component")).toBeTruthy();
+    expect(screen.queryByText("New component")).toBeNull();
   });
 
   it("closes the card when the page is left from outside the form", () => {
@@ -448,14 +569,19 @@ describe("card page switching", () => {
     // header arrow; the card has to follow.
     function Harness() {
       const [page, setPage] = useState("components");
+      const [addRequest, setAddRequest] = useState(0);
       return (
         <>
           <button type="button" onClick={() => setPage("components")}>
             hardware back
           </button>
+          <button type="button" onClick={() => setAddRequest((n) => n + 1)}>
+            Add component
+          </button>
           <ComponentRegistry
             project={project}
             userProfile={{ name: "Мухиддин" }}
+            addRequest={addRequest}
             cardPage={page === "component"}
             onOpenCard={() => setPage("component")}
             onCloseCard={() => setPage("components")}
@@ -470,7 +596,6 @@ describe("card page switching", () => {
 
     fireEvent.click(screen.getByText("hardware back"));
     expect(screen.queryByText("New component")).toBeNull();
-    expect(screen.getByText("Add component")).toBeTruthy();
   });
 
   it("returns to the list page after a card is saved", async () => {
@@ -743,7 +868,7 @@ describe("component card form", () => {
 
     // Opening a card lands on what it says; editing is a step further in —
     // и остаётся в этом же листе, как у утечки, а не открывает мастер заново.
-    fireEvent.click(screen.getByText("Задвижка"));
+    swipeOpen(screen.getByText("Задвижка"));
     const sheet = screen.getByRole("dialog", { name: "Component card" });
     fireEvent.click(screen.getByText("Edit"));
 
@@ -875,7 +1000,7 @@ describe("copying from the previous card", () => {
       lastComponent: { id: "prev", component_uid: "6", scheme_tag: "PG" },
     });
     renderRegistry();
-    fireEvent.click(screen.getByText("Задвижка"));
+    swipeOpen(screen.getByText("Задвижка"));
     fireEvent.click(screen.getByText("Edit"));
 
     expect(
@@ -1028,8 +1153,18 @@ describe("the card in full", () => {
   function openCard(component = walked) {
     registry.current = makeRegistry({ components: [component] });
     renderRegistry();
-    fireEvent.click(screen.getByText("Задвижка"));
+    swipeOpen(screen.getByText("Задвижка"));
   }
+
+  it("opens only by a swipe, not by a tap", () => {
+    registry.current = makeRegistry({ components: [walked] });
+    renderRegistry();
+    fireEvent.click(screen.getByText("Задвижка"));
+    expect(screen.queryByText("Coordinates")).toBeNull();
+
+    swipeOpen(screen.getByText("Задвижка"));
+    expect(screen.getByText("Coordinates")).toBeTruthy();
+  });
 
   it("keeps the coordinates off the passport list and on their own tab", () => {
     openCard();
@@ -1040,8 +1175,8 @@ describe("the card in full", () => {
     expect(screen.queryByText("38.4")).toBeNull();
 
     fireEvent.click(screen.getByText("Coordinates"));
-    expect(screen.getByText("38.4")).toBeTruthy();
-    expect(screen.getByText("66.1")).toBeTruthy();
+    expect(screen.getByText("38.400000")).toBeTruthy();
+    expect(screen.getByText("66.100000")).toBeTruthy();
   });
 
   it("says outright when a card never got a fix", () => {
@@ -1102,6 +1237,8 @@ describe("working with a set of cards at once", () => {
 
     fireEvent.click(screen.getByText("Select all"));
     fireEvent.click(screen.getByText("Change state"));
+    // Сверки нет — сначала вопрос о новой, как у осмотра в мониторинге.
+    fireEvent.click(screen.getByRole("button", { name: "Start" }));
     fireEvent.click(screen.getByText("В работе"));
 
     await waitFor(() =>

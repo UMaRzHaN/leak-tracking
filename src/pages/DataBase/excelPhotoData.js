@@ -38,14 +38,17 @@ async function buildPhotoEntries(
   monitoringExportMode,
   photoReadCache,
   archiveRoot = "photos",
-  folderTexts = /** @type {{folderStatus: Record<string, string>}|null} */ (
+  folderTexts = /** @type {{folderStatus: Record<string, string>, placeField?: string|null, noPlace?: string}|null} */ (
     null
   ),
 ) {
   // Без подписей состояний — прежняя раскладка по папкам бирок: так её ждут
   // вызовы, которым архив не нужен.
   const leakSegments = folderTexts
-    ? allocateLeakFolderNames(orderedLeaks)
+    ? allocateLeakFolderNames(orderedLeaks, {
+        placeField: folderTexts.placeField ?? null,
+        noPlace: folderTexts.noPlace,
+      })
     : allocateUniqueLeakArchiveSegments(orderedLeaks);
   const includedMonitoringPhotoKeys =
     monitoringExportMode === EXCEL_MONITORING_EXPORT_MODE.LATEST_PER_ROUND
@@ -74,6 +77,10 @@ async function buildPhotoEntries(
             folderTexts.folderStatus[
               STATUS_BY_MONITORING_RESULT[result] ?? "open"
             ],
+          {
+            placeField: folderTexts.placeField ?? null,
+            noPlace: folderTexts.noPlace,
+          },
         ).byIndex
       : null,
   );
@@ -130,7 +137,7 @@ export async function resolvePhotoExportData({
   idbGet,
   monitoringExportMode,
   photoReadCache,
-  folderTexts = /** @type {{folderStatus: Record<string, string>}|null} */ (
+  folderTexts = /** @type {{folderStatus: Record<string, string>, placeField?: string|null, noPlace?: string}|null} */ (
     null
   ),
 }) {

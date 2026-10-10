@@ -7,7 +7,10 @@ const getExcelJS = () => import("exceljs");
 const getJSZip = () => import("jszip");
 
 import { inferMonitoringRound } from "@/utils/monitoringRound";
-import { hydrateZipPhotos } from "@/services/import/zipPhotoHydration";
+import {
+  DEFAULT_ZIP_HYDRATE_CONCURRENCY,
+  hydrateZipPhotos,
+} from "@/services/import/zipPhotoHydration";
 import {
   attachHistoryRecords,
   attachMonitoringRecords,
@@ -119,10 +122,13 @@ export async function parseExcelLeaks(
       columns: [],
       sheetName: "Project Backup",
       monitoringRound: embeddedBackup.monitoringRound ?? null,
+      rounds: embeddedBackup.rounds ?? null,
       project: embeddedBackup.project,
       vars: embeddedBackup.vars ?? null,
       settings: embeddedBackup.settings ?? null,
       sync: embeddedBackup.sync ?? null,
+      acceptances: embeddedBackup.acceptances ?? null,
+      survey: embeddedBackup.survey ?? null,
       portableArchive: true,
     };
   }
@@ -417,7 +423,15 @@ export async function parseExcelImportFile(file, options = {}) {
     { ...options, projectType: project?.type || options.projectType },
   );
 
-  const hydrated = await hydrateZipPhotos(parsed, zip);
+  const xlsxDir = xlsxEntry.name.includes("/")
+    ? xlsxEntry.name.slice(0, xlsxEntry.name.lastIndexOf("/") + 1)
+    : "";
+  const hydrated = await hydrateZipPhotos(
+    parsed,
+    zip,
+    DEFAULT_ZIP_HYDRATE_CONCURRENCY,
+    xlsxDir,
+  );
   const mergedProject =
     project || parsed.project
       ? {

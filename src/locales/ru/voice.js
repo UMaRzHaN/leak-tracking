@@ -6,5 +6,6 @@ export const voice = {
     empty: "Ничего не распознано",
     cancel: "Отмена",
     apply: "Применить",
+    heard: "Услышано",
   },
 };

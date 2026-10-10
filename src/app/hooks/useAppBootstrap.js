@@ -11,7 +11,6 @@ import { saveMonitoringRound } from "@/utils/monitoringRound";
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import { writeProjectSettings } from "@/app/project/projectSettings";
 import { writeProjectSyncState } from "@/services/sync/projectSyncState";
-import { rollbackImportedProject } from "@/services/backup/projectCleanup";
 import { useLeakFormContext } from "@/features/leakForm/LeakFormContext";
 import { useDeferredPhotoGc } from "./useDeferredPhotoGc";
 import { useSetupImports } from "./useSetupImports";
@@ -138,13 +137,19 @@ export function useAppBootstrap() {
     isSuspended: isPhotoGcSuspended,
     resumeKey: photoGcResumeRevision,
   });
+  // Экран, с которого позвали проверку (карта, база, главная): крестик в
+  // окне проверки возвращает туда, а не оставляет на странице обхода.
+  const [monitoringReturnPage, setMonitoringReturnPage] = useState(
+    /** @type {string|null} */ (null),
+  );
   const requestMonitoring = useCallback(
     (leak) => {
       setRequestedMonitoringLeakId(leak?.id ?? null);
       setRequestedMonitoringLeakIds([]);
+      setMonitoringReturnPage(page !== "monitoring" ? page : null);
       setPage("monitoring");
     },
-    [setPage],
+    [page, setPage],
   );
 
   const requestMonitoringQueue = useCallback(
@@ -155,9 +160,10 @@ export function useAppBootstrap() {
       if (ids.length === 0) return;
       setRequestedMonitoringLeakId(null);
       setRequestedMonitoringLeakIds(ids);
+      setMonitoringReturnPage(page !== "monitoring" ? page : null);
       setPage("monitoring");
     },
-    [setPage],
+    [page, setPage],
   );
 
   /* =========================
@@ -232,6 +238,7 @@ export function useAppBootstrap() {
           type,
           leaks,
           monitoringRound,
+          rounds,
           vars,
           settings,
           syncId,
@@ -259,11 +266,15 @@ export function useAppBootstrap() {
           // Снимок, сохранённый в неготовое хранилище, не сохраняется вовсе, и
           // никакой ошибки при этом не видно. На первом запуске хранилище
           // готово не сразу — а Excel-копия заводится как раз оттуда.
-          const [{ persistExcelImportPhotos }, { waitForPhotoStorage }] =
-            await Promise.all([
-              import("@/services/import/excelImportService"),
-              import("@/services/backup/runtime"),
-            ]);
+          const [
+            { persistExcelImportPhotos },
+            { waitForPhotoStorage },
+            { applyProjectRounds },
+          ] = await Promise.all([
+            import("@/services/import/excelImportService"),
+            import("@/services/backup/runtime"),
+            import("@/app/project/projectRounds"),
+          ]);
           await waitForPhotoStorage(photoReadyRef);
           const withPhotos = await persistExcelImportPhotos(
             leaks,
@@ -274,6 +285,12 @@ export function useAppBootstrap() {
             await writeProjectSyncState(newProject.id, sync, withPhotos);
           if (monitoringRound)
             saveMonitoringRound(newProject.id, monitoringRound);
+          applyProjectRounds(newProject.id, rounds);
+          // Накладные и обследование из служебного листа книги. Откат нового
+          // проекта их и уберёт — см. rollbackImportedProject.
+          const { mergeAcceptancesAndSurvey } =
+            await import("@/services/backup/acceptancesAndSurvey");
+          mergeAcceptancesAndSurvey(newProject.id, payload);
           clearForm();
           return { project: newProject, leakCount: withPhotos.length };
         } catch (caught) {
@@ -282,6 +299,10 @@ export function useAppBootstrap() {
           const error = asError(caught);
           try {
             try {
+              // Откат нужен только при сбое импорта — модуль уборки (с
+              // хранилищем приёмок) грузится тогда же, а не до первого экрана.
+              const { rollbackImportedProject } =
+                await import("@/services/backup/projectCleanup");
               const rollback = await rollbackImportedProject(
                 newProject,
                 removeProject,
@@ -358,6 +379,8 @@ export function useAppBootstrap() {
     prevPage,
     requestMonitoring,
     requestMonitoringQueue,
+    monitoringReturnPage,
+    setMonitoringReturnPage,
     requestedMonitoringLeakId,
     requestedMonitoringLeakIds,
     retryLoad,

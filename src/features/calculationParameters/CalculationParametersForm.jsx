@@ -11,7 +11,13 @@ function formatValue(value) {
   return value == null || value === "" ? "-" : String(value);
 }
 
+/**
+ * Пустое поле — не ноль. `Number("")` даёт 0, и стёртый GWP или доля газа
+ * тихо сохранялись нулём, обнуляя расчёт выбросов. Пустота возвращается как
+ * `null`, и правка отклоняется: в параметре остаётся прежнее число.
+ */
 function toNumber(value) {
+  if (value == null || String(value).trim() === "") return null;
   const number = Number(value);
   return Number.isNaN(number) ? null : number;
 }

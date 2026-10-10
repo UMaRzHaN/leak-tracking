@@ -1,11 +1,14 @@
 import { errorText } from "@/utils/appError";
+import {
+  importInventoryAlongside,
+  withInventoryNote,
+} from "@/pages/Settings/bundledInventoryNote";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useProjectVars } from "@/app/project/hooks/useProjectVars";
 import { useProjectIntegrityCheck } from "./useProjectIntegrityCheck";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import { useProjectConfig } from "@/app/project/hooks/useProjectConfig";
 import { useHiddenFields } from "@/app/project/hooks/useHiddenFields";
-import { useExcelExportMode } from "@/app/project/hooks/useExcelExportMode";
 import { useVoiceCorrections } from "@/app/project/hooks/useVoiceCorrections";
 import { usePhotoRequirements } from "@/app/project/hooks/usePhotoRequirements";
 import { getMapCacheInfo, clearMapCache } from "@/services/maps/tileCache";
@@ -22,7 +25,9 @@ import { useSettingsTexts } from "./useSettingsTexts";
 import { useLocalSync } from "./useLocalSync";
 import { performSettingsCleanup } from "../settingsCleanup";
 import { resolvePortableExcelArchiveRoute } from "../excelArchiveRouting";
+import { prepareExcelLeaks as prepareLeaksForProject } from "../excelLeakPreparation";
 import { importRollbackNote } from "@/services/import/excelImportTransaction";
+import { mergeAcceptancesAndSurvey } from "@/services/backup/acceptancesAndSurvey";
 
 export function useSettingsPage({
   data = /** @type {any[]} */ ([]),
@@ -107,9 +112,6 @@ export function useSettingsPage({
   const { hiddenFields, setHiddenFields } = useHiddenFields(
     activeProject?.id ?? null,
   );
-  const { monitoringExportMode, setMonitoringExportMode } = useExcelExportMode(
-    activeProject?.id ?? null,
-  );
   const {
     leakPhotoRequired,
     monitoringPhotoRequired,
@@ -117,6 +119,10 @@ export function useSettingsPage({
     setLeakPhotoRequired,
     setMonitoringPhotoRequired,
     setComponentPhotoRequired,
+    repairPhotoRequired,
+    setRepairPhotoRequired,
+    reconcilePhotoRequired,
+    setReconcilePhotoRequired,
   } = usePhotoRequirements(activeProject?.id ?? null);
   const {
     corrections: voiceCorrections,
@@ -140,8 +146,6 @@ export function useSettingsPage({
 
   const {
     importZipRef,
-    handleExportZip,
-    isExportingZip,
     handleImportZip,
     importConfirmState,
     confirmImport,
@@ -152,10 +156,6 @@ export function useSettingsPage({
     handleConflictMerge,
     handleConflictCopy,
   } = useBackupActions({
-    data,
-    idbGetPhoto,
-    activeProject,
-    vars,
     onImportZip,
     onImportIntoExisting,
     notify,
@@ -182,34 +182,7 @@ export function useSettingsPage({
     setSettingsConfirmAction("clearDatabase");
   }, []);
   const prepareExcelLeaks = useCallback(
-    (leaks, { mode = "append" } = {}) => {
-      const now = Date.now();
-      const existingByTag = new Map(
-        /** @type {[string, any][]} */ (
-          data
-            .map((leak) => [String(leak?.leak_id ?? "").trim(), leak])
-            .filter(([tag]) => Boolean(tag))
-        ),
-      );
-
-      return leaks.map((leak, index) => {
-        const existing =
-          mode === "merge" && String(leak?.leak_id ?? "").trim()
-            ? existingByTag.get(String(leak.leak_id).trim())
-            : null;
-
-        return {
-          ...leak,
-          id: existing?.id ?? now + index,
-          index:
-            mode === "overwrite" || mode === "copy"
-              ? index + 1
-              : (existing?.index ?? data.length + index + 1),
-          importedFromExcel: true,
-          importedAt: now,
-        };
-      });
-    },
+    (leaks, options) => prepareLeaksForProject(data, leaks, options),
     [data],
   );
 
@@ -233,6 +206,11 @@ export function useSettingsPage({
           notify("warning", t("settings.noImportableRowsFound"));
           return;
         }
+        // Инвентаризация папкой рядом с отчётом (8a) — вольётся вслед за
+        // утечками, в тот же проект и только если они легли.
+        const { extractBundledInventory } =
+          await import("@/services/inventory/bundledInventory");
+        result.bundledInventory = await extractBundledInventory(file);
 
         const archiveRoute = resolvePortableExcelArchiveRoute({
           result,
@@ -248,17 +226,28 @@ export function useSettingsPage({
             type: result.project.type,
             leaks: result.leaks,
             monitoringRound: result.monitoringRound,
+            rounds: result.rounds,
             vars: result.vars,
             settings: result.settings,
             syncId: result.project.syncId,
             sync: result.sync,
+            acceptances: result.acceptances,
+            survey: result.survey,
           });
+          const inventoryNote = await importInventoryAlongside(
+            result,
+            created?.project,
+            t,
+          );
           notify(
             "success",
-            t("settings.projectVImportedV2", {
-              v1: created?.project?.name ?? archiveRoute.name,
-              v2: result.leaks.length,
-            }),
+            withInventoryNote(
+              t("settings.projectVImportedV2", {
+                v1: created?.project?.name ?? archiveRoute.name,
+                v2: result.leaks.length,
+              }),
+              inventoryNote,
+            ),
           );
           return;
         }
@@ -402,11 +391,19 @@ export function useSettingsPage({
         deletePhoto,
       });
       const transactionWarning = getExcelImportTransactionWarning(withPhotos);
+      const inventoryNote = await importInventoryAlongside(
+        excelImportState.result,
+        activeProject,
+        t,
+      );
       notify(
         transactionWarning ? "warning" : "success",
-        transactionWarning
-          ? t("settings.importedVRecordsBut", { v1: withPhotos.length })
-          : t("settings.importedFromExcelV", { v1: withPhotos.length }),
+        withInventoryNote(
+          transactionWarning
+            ? t("settings.importedVRecordsBut", { v1: withPhotos.length })
+            : t("settings.importedFromExcelV", { v1: withPhotos.length }),
+          inventoryNote,
+        ),
       );
     } catch (error) {
       notify(
@@ -418,7 +415,7 @@ export function useSettingsPage({
       setExcelImportState({ open: false });
     }
   }, [
-    activeProject?.id,
+    activeProject,
     applyExcelArchiveMetadata,
     captureExcelImportSnapshot,
     data,
@@ -473,13 +470,23 @@ export function useSettingsPage({
         deletePhoto,
       });
       const transactionWarning = getExcelImportTransactionWarning(withPhotos);
+      const inventoryNote = await importInventoryAlongside(
+        excelConflictState.result,
+        activeProject,
+        t,
+      );
       notify(
         transactionWarning ? "warning" : "success",
-        transactionWarning
-          ? t("settings.projectOverwrittenVRecords", { v1: withPhotos.length })
-          : t("settings.projectOverwrittenFromExcel", {
-              v1: withPhotos.length,
-            }),
+        withInventoryNote(
+          transactionWarning
+            ? t("settings.projectOverwrittenVRecords", {
+                v1: withPhotos.length,
+              })
+            : t("settings.projectOverwrittenFromExcel", {
+                v1: withPhotos.length,
+              }),
+          inventoryNote,
+        ),
       );
     } catch (error) {
       notify(
@@ -491,7 +498,7 @@ export function useSettingsPage({
       setExcelConflictState({ open: false });
     }
   }, [
-    activeProject?.id,
+    activeProject,
     applyExcelArchiveMetadata,
     captureExcelImportSnapshot,
     data,
@@ -533,6 +540,10 @@ export function useSettingsPage({
           });
           await setData?.(mergeResult.leaks);
           saveExcelMonitoringRound(excelConflictState.result?.monitoringRound);
+          mergeAcceptancesAndSurvey(
+            activeProject?.id,
+            excelConflictState.result,
+          );
         },
         rollbackState: async () => {
           await setData?.(data);
@@ -543,11 +554,19 @@ export function useSettingsPage({
       const transactionWarning =
         getExcelImportTransactionWarning(importedLeaks);
       const appliedCount = /** @type {any} */ (mergeResult)?.changed ?? 0;
+      const inventoryNote = await importInventoryAlongside(
+        excelConflictState.result,
+        activeProject,
+        t,
+      );
       notify(
         transactionWarning ? "warning" : "success",
-        transactionWarning
-          ? t("settings.excelWasMergedBut")
-          : t("settings.excelMergedIntoProject", { v1: appliedCount }),
+        withInventoryNote(
+          transactionWarning
+            ? t("settings.excelWasMergedBut")
+            : t("settings.excelMergedIntoProject", { v1: appliedCount }),
+          inventoryNote,
+        ),
       );
     } catch (error) {
       notify(
@@ -559,7 +578,7 @@ export function useSettingsPage({
       setExcelConflictState({ open: false });
     }
   }, [
-    activeProject?.id,
+    activeProject,
     captureExcelImportSnapshot,
     data,
     deletePhoto,
@@ -590,17 +609,28 @@ export function useSettingsPage({
         type: excelConflictState.result?.project?.type || activeProject?.type,
         leaks: prepared,
         monitoringRound: excelConflictState.result?.monitoringRound,
+        rounds: excelConflictState.result?.rounds,
         vars: excelConflictState.result?.vars,
         settings: excelConflictState.result?.settings,
         syncId: excelConflictState.result?.project?.syncId,
         sync: excelConflictState.result?.sync,
+        acceptances: excelConflictState.result?.acceptances,
+        survey: excelConflictState.result?.survey,
       });
+      const inventoryNote = await importInventoryAlongside(
+        excelConflictState.result,
+        result?.project,
+        t,
+      );
       notify(
         "success",
-        t("settings.copyVCreatedV2", {
-          v1: result?.project?.name ?? copyName,
-          v2: prepared.length,
-        }),
+        withInventoryNote(
+          t("settings.copyVCreatedV2", {
+            v1: result?.project?.name ?? copyName,
+            v2: prepared.length,
+          }),
+          inventoryNote,
+        ),
       );
     } catch (error) {
       notify(
@@ -705,7 +735,6 @@ export function useSettingsPage({
     handleExcelConflictCopy,
     handleExcelConflictMerge,
     handleExcelConflictOverwrite,
-    handleExportZip,
     handleImportExcel,
     handleImportFile,
     handleImportZip,
@@ -718,7 +747,6 @@ export function useSettingsPage({
     importExcelRef,
     importZipRef,
     integrityReport,
-    isExportingZip,
     isImportingExcel,
     lang,
     voiceCorrections,
@@ -726,9 +754,12 @@ export function useSettingsPage({
     leakPhotoRequired,
     componentPhotoRequired,
     setComponentPhotoRequired,
+    repairPhotoRequired,
+    setRepairPhotoRequired,
+    reconcilePhotoRequired,
+    setReconcilePhotoRequired,
     localSync,
     localeTexts,
-    monitoringExportMode,
     monitoringPhotoRequired,
     notification,
     notify,
@@ -740,7 +771,6 @@ export function useSettingsPage({
     setFieldsModalOpen,
     setHiddenFields,
     setIntegrityReport,
-    setMonitoringExportMode,
     setLeakPhotoRequired,
     setMonitoringPhotoRequired,
     setNotification,

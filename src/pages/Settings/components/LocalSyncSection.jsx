@@ -73,7 +73,10 @@ export default function LocalSyncSection({ sync }) {
   const remainingTime = `${String(Math.floor(remainingSeconds / 60)).padStart(2, "0")}:${String(remainingSeconds % 60).padStart(2, "0")}`;
 
   return (
-    <section className={`${s.section} ${s.localSyncSection}`}>
+    <section
+      className={`${s.section} ${s.localSyncSection}`}
+      data-settings-section="sync"
+    >
       {isScanning ? (
         <div
           className={s.localSyncScannerOverlay}

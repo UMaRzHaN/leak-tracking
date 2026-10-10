@@ -14,7 +14,7 @@
   display: flex;
   align-items: center;
   padding: 0 16px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: #fff;
   pointer-events: none;
@@ -24,7 +24,7 @@
   left: 0;
   width: 50%;
   justify-content: flex-start;
-  background: var(--c-blue);
+  background: var(--c-accent);
 }
 
 .hintRight {
@@ -49,7 +49,7 @@
 }
 
 .cardSelected {
-  border-color: var(--c-blue);
+  border-color: var(--c-accent);
 }
 
 .selectToggle {
@@ -61,8 +61,8 @@
   border-radius: 5px;
   border: 1px solid var(--c-border);
   background: var(--c-surface2);
-  color: var(--c-blue-text);
-  font-size: 12px;
+  color: var(--c-accent-text);
+  font-size: var(--fs-xs);
   line-height: 1;
   display: inline-flex;
   align-items: center;
@@ -72,8 +72,8 @@
 }
 
 .selectToggleActive {
-  border-color: var(--c-blue);
-  background: var(--c-blue);
+  border-color: var(--c-accent);
+  background: var(--c-accent);
   color: #fff;
 }
 
@@ -87,12 +87,13 @@
   border: none;
   background: none;
   text-align: left;
-  cursor: pointer;
   color: var(--c-text);
 }
 
 .thumb {
   flex: none;
+  padding: 0;
+  border: none;
   width: 52px;
   height: 52px;
   border-radius: var(--r-md, 10px);
@@ -102,16 +103,13 @@
   align-items: center;
   justify-content: center;
 
+  cursor: zoom-in;
+
   img {
     width: 100%;
     height: 100%;
     object-fit: cover;
   }
-}
-
-.thumbEmpty {
-  font-size: 20px;
-  color: var(--c-text3);
 }
 
 .text {
@@ -133,9 +131,9 @@
 .uidConflict {
   flex: none;
   font-variant-numeric: tabular-nums;
-  font-size: 15px;
+  font-size: var(--fs-lg);
   font-weight: 700;
-  color: var(--c-blue-text);
+  color: var(--c-accent-text);
 }
 
 /* A colliding number is a state, not a value — the list has to show which
@@ -147,7 +145,7 @@
 .name {
   flex: 1 1 auto;
   min-width: 0;
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -160,7 +158,7 @@
   flex: none;
   margin-left: auto;
   padding-left: 8px;
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   color: var(--c-text3);
   white-space: nowrap;
 }
@@ -175,11 +173,11 @@
 /* Тот же значок расстояния, что на карточке утечки. */
 .chipNear {
   flex: none;
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
-  color: var(--c-blue-text);
-  background: var(--c-blue-dim);
-  border: 1px solid rgba(37, 99, 235, 0.25);
+  color: var(--c-accent-text);
+  background: var(--c-accent-dim);
+  border: 1px solid rgba(109, 61, 232, 0.25);
   border-radius: var(--r-pill);
   padding: 1px 8px;
   white-space: nowrap;
@@ -187,7 +185,7 @@
 
 .meta,
 .status {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--c-text3);
   overflow: hidden;
   text-overflow: ellipsis;

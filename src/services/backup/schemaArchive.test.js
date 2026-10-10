@@ -179,6 +179,20 @@ describe("restoring from an archive", () => {
     });
   });
 
+  it("does not unpack a drawing that inflates past the import limit", async () => {
+    const { inflatedArchive } = await import("@/test/zipBomb");
+    const archive = await inflatedArchive(
+      { [`${SCHEMA_ARCHIVE_DIR}/bomb.png`]: "drawing" },
+      [`${SCHEMA_ARCHIVE_DIR}/bomb.png`],
+    );
+
+    await expect(restoreSchemasFromArchive(archive, project)).resolves.toEqual({
+      restored: 0,
+      skipped: 0,
+    });
+    expect(mocks.addSchema).not.toHaveBeenCalled();
+  });
+
   it("does nothing without a project", async () => {
     const archive = await makeArchive({
       [`${SCHEMA_ARCHIVE_DIR}/a.png`]: "drawing",
@@ -254,6 +268,21 @@ describe("удаление схемы переживает обмен", () => {
     );
     expect(mocks.addSchema).not.toHaveBeenCalled();
     expect(result.restored).toBe(0);
+  });
+
+  it("не берёт из архива идентификатор, похожий на путь", async () => {
+    const archive = await archiveWith(
+      [{ ...drawing({ id: "../../other/photos/h_1" }), file: "узел.pdf" }],
+      { [`${SCHEMA_ARCHIVE_DIR}/узел.pdf`]: "pdf" },
+    );
+
+    const result = await restoreSchemasFromArchive(archive, project);
+
+    expect(result.restored).toBe(1);
+    const [, stored] = mocks.addSchema.mock.calls[0];
+    expect(stored.id).toMatch(/^[A-Za-z0-9_-]+$/);
+    const [, savedIndex] = mocks.saveIndex.mock.calls.at(-1);
+    expect(savedIndex.map((schema) => schema.id)).toEqual([stored.id]);
   });
 
   it("удалённая здесь схема не возвращается из чужого архива", async () => {

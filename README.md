@@ -808,7 +808,7 @@ npm run release:evidence:web     # Манифест верификации по 
 
 ```bash
 npm run verify:release   # Полный web release-gate: все проверки выше подряд
-npm run android:release  # Проверка подписи → build → cap:sync → gradlew test lintRelease assembleRelease
+npm run android:release  # Проверка окружения → build → cap:sync → gradlew test lintRelease assembleRelease → подпись APK и mapping.txt
 npm run pack:source      # Чистый source ZIP + проверка через npm ci и lint
 npm run deps:refresh-lock # Обновить package-lock без установки
 ```
@@ -822,10 +822,14 @@ ANDROID_KEY_ALIAS
 ANDROID_KEY_PASSWORD
 ANDROID_VERSION_CODE
 ANDROID_VERSION_NAME
+ANDROID_SIGNING_CERT_SHA256
 ```
 
 `npm run android:release` завершается ошибкой до сборки, если keystore или одна
-из обязательных переменных отсутствует. `ANDROID_VERSION_CODE` должен быть
+из обязательных переменных отсутствует. `ANDROID_KEYSTORE_PATH` должен быть
+абсолютным: Gradle читает относительный путь от `android/app`, а проверка — от
+корня репозитория, и они разошлись бы. `ANDROID_SIGNING_CERT_SHA256` — отпечаток
+сертификата из раздела «Подпись релиза» ниже, с двоеточиями или без. `ANDROID_VERSION_CODE` должен быть
 положительным целым числом (и увеличиваться при каждой публикации), а
 `ANDROID_VERSION_NAME` — явной версией релиза, например `1.4.0`. Любая Gradle
 задача с `Release` также отклоняет отсутствующую или некорректную версию. CI
@@ -897,14 +901,24 @@ DN:     CN=Umarjonov Mukhiddin, OU=Vemission, O=VEMA S.A., L=Tashkent,
 APK. Секретны только сам файл keystore и пароли к нему; в репозитории их нет и
 быть не должно (`.gitignore` отклоняет `*.jks`, `*.keystore`, `*.p12`).
 
-Проверить, что собранный APK подписан именно этим ключом:
+После `assembleRelease` команда `npm run android:release` сама проверяет APK
+(`scripts/verify-android-release-apk.mjs`): запускает
 
 ```bash
 apksigner verify --print-certs android/app/build/outputs/apk/release/app-release.apk
 ```
 
-Отпечаток в выводе обязан совпасть со значением выше. Если он другой — сборка
-подписана не тем ключом и обновлением для уже установленной версии не станет.
+и сверяет SHA-256 сертификата с `ANDROID_SIGNING_CERT_SHA256`. Если он другой —
+сборка подписана не тем ключом, обновлением для уже установленной версии не
+станет, и релиз останавливается до манифеста и чек-сумм. `apksigner` берётся из
+новейших `build-tools` в `ANDROID_HOME`, `ANDROID_SDK_ROOT` или
+`android/local.properties`; путь можно задать явно переменной `APKSIGNER`.
+
+Тот же шаг копирует карту R8 `outputs/mapping/release/mapping.txt` в
+`outputs/apk/release/mapping.txt`, рядом с APK: без неё стектрейсы из
+минифицированной сборки не читаются, а следующая сборка её перезаписывает.
+Манифест `release-verification-android.json` и `SHA256SUMS` хешируют её вместе
+с APK — храните её вместе с выпущенным APK.
 
 Проект распространяется вне магазинов приложений, поэтому Play App Signing не
 используется и резервной копии ключа у Google нет. Потеря файла или пароля
@@ -942,7 +956,7 @@ npm run test:perf
 | `android-instrumentation` | Инструментальные тесты на эмуляторах API 33 и 35                                                                                                                                                                                         |
 
 Артефакты (отчёт покрытия, bundle-отчёт, SBOM, манифесты верификации, отчёты
-Playwright, APK и AAB) выкладываются в результаты запуска. Локальный эквивалент
+Playwright, APK) выкладываются в результаты запуска. Локальный эквивалент
 задачи `quality` — `npm run verify:release`; Android-части — `npm run
 android:release`.
 

@@ -126,4 +126,25 @@ describe("native camera service", () => {
       "Unable to read the selected photo",
     );
   });
+
+  it("отмена камеры и галереи — пустой результат, а не ошибка", async () => {
+    camera.getPhoto.mockRejectedValueOnce(
+      new Error("User cancelled photos app"),
+    );
+    await expect(pickPhotoFromGallery()).resolves.toBeNull();
+
+    camera.getPhoto.mockRejectedValueOnce(
+      Object.assign(new Error("cancelled"), { code: "OS-PLUG-CAMR-0006" }),
+    );
+    await expect(takePhotoFromCamera()).resolves.toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("прочий отказ плагина приходит с кодом для перевода", async () => {
+    camera.getPhoto.mockRejectedValueOnce(new Error("No camera available"));
+
+    await expect(takePhotoFromCamera()).rejects.toMatchObject({
+      code: "CAMERA_FAILED",
+    });
+  });
 });

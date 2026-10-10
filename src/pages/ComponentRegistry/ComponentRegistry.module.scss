@@ -18,43 +18,9 @@
 
   h1 {
     margin: 0;
-    font-size: 18px;
+    font-size: var(--fs-xl);
     font-weight: 700;
     color: var(--c-text);
-  }
-}
-
-/* Absolute, never a percentage: the app does not mark a node as walked, so the
-   total number of components on the field is never known. */
-.count {
-  margin: 0;
-  font-size: 13px;
-  color: var(--c-text3);
-}
-
-.actions {
-  display: flex;
-  gap: 8px;
-
-  > * {
-    flex: 1 1 0;
-    min-width: 0;
-  }
-}
-
-.primary {
-  padding: 11px 16px;
-  border: none;
-  border-radius: var(--r-lg);
-  background: var(--c-blue);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: default;
   }
 }
 
@@ -104,14 +70,14 @@
   grid-area: uid;
   align-self: center;
   font-variant-numeric: tabular-nums;
-  font-size: 15px;
+  font-size: var(--fs-lg);
   font-weight: 700;
-  color: var(--c-blue-text);
+  color: var(--c-accent-text);
 }
 
 .name {
   grid-area: name;
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -120,7 +86,7 @@
 
 .meta {
   grid-area: meta;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--c-text3);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -132,7 +98,7 @@
   width: 40px;
   border: none;
   background: none;
-  font-size: 20px;
+  font-size: var(--fs-xl);
   line-height: 1;
   color: var(--c-text3);
   cursor: pointer;
@@ -145,7 +111,7 @@
 .muted {
   margin: 0;
   padding: 20px 4px;
-  font-size: 14px;
+  font-size: var(--fs-md);
   color: var(--c-text3);
   text-align: center;
 }
@@ -155,7 +121,7 @@
   padding: 10px 12px;
   border-radius: var(--r-lg);
   background: var(--c-surface2, var(--c-surface));
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--c-red, #d33);
 }
 
@@ -173,7 +139,7 @@
   border: 1.5px solid var(--c-border);
   border-radius: var(--r-lg);
   background: var(--c-surface);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--c-text3);
   cursor: pointer;
@@ -181,7 +147,7 @@
 
 .tabActive {
   border-color: transparent;
-  background: var(--c-blue);
+  background: var(--c-accent);
   color: #fff;
 }
 
@@ -190,7 +156,7 @@
   padding: 10px 12px;
   border: 1.5px solid var(--c-amber, #e0a800);
   border-radius: var(--r-lg);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--c-text);
 }
 
@@ -200,7 +166,7 @@
   padding: 0;
   font: inherit;
   font-weight: 600;
-  color: var(--c-blue-text);
+  color: var(--c-accent-text);
   cursor: pointer;
   text-decoration: underline;
 }
@@ -226,7 +192,7 @@
   padding: 10px 14px;
   background: var(--c-banner);
   color: var(--c-banner-text);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
@@ -245,7 +211,7 @@
   color: #fff;
   border: none;
   border-radius: 8px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   cursor: pointer;
 
@@ -255,7 +221,7 @@
 }
 
 .draftBtnRestore {
-  background: var(--c-blue);
+  background: var(--c-accent);
 }
 
 .draftBtnDiscard {

@@ -1,7 +1,9 @@
 import { expect, test } from "@playwright/test";
 import {
+  openSettings,
+  openHome,
+  openComponentRegistry,
   attachModalPhoto,
-  chooseDetailsStatus,
   createLeak,
   createProject,
   exportExcelArchive,
@@ -10,7 +12,14 @@ import {
   openLeakDetails,
   openMap,
   setUserProfile,
+  openRound,
+  openMapFilters,
+  closeMapFilters,
+  openMenuItem,
+  importFile,
+  leaveSettings,
 } from "./helpers.js";
+import { startRepairByCheck, swipeCardLeft } from "./repairSteps.js";
 
 async function seedMapCache(page, count = 3) {
   await page.evaluate(async (entryCount) => {
@@ -60,12 +69,7 @@ test("opens the main application sections", async ({ page }) => {
   await expect(databaseButton).toHaveAttribute("aria-current", "page");
   await expect(page.getByText("Записей нет", { exact: true })).toBeVisible();
 
-  const monitoringButton = page.getByRole("button", {
-    name: "Мониторинг",
-    exact: true,
-  });
-  await monitoringButton.click();
-  await expect(monitoringButton).toHaveAttribute("aria-current", "page");
+  await openRound(page);
   await expect(
     page.getByText(
       "Активного обхода нет. Начните мониторинг, чтобы сформировать список к проверке.",
@@ -76,37 +80,32 @@ test("opens the main application sections", async ({ page }) => {
     page.getByRole("button", { name: "Начать мониторинг" }),
   ).toBeVisible();
 
-  // У Upstream между мониторингом и картой стоит реестр — переход по имени,
-  // а не по номеру вкладки.
-  const registryButton = page.getByRole("button", {
-    name: "Реестр",
-    exact: true,
-  });
-  await registryButton.click();
-  await expect(registryButton).toHaveAttribute("aria-current", "page");
-  await expect(
-    page.getByRole("heading", { name: "Реестр компонентов" }),
-  ).toBeVisible();
+  // Реестр у Upstream открывается из бургер-меню как «Инвентаризация».
+  await openComponentRegistry(page);
 
+  // Карта утечек — в LDAR; у инвентаризации карта показывает железо.
+  await openHome(page);
   await openMap(page);
+  await openMapFilters(page);
 
-  const monitoringMapFilter = page.getByRole("button", {
-    name: "Фильтр по мониторингу",
-  });
-  await expect(monitoringMapFilter).toBeVisible();
-  await monitoringMapFilter.click();
-  await expect(page.getByRole("button", { name: "Все теги" })).toBeVisible();
+  // В LDAR на карте статус и приоритет; отбор обхода — у мониторинга.
+  await expect(
+    page.getByRole("button", { name: "Фильтр по статусу" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Фильтр по мониторингу" }),
+  ).toHaveCount(0);
 });
 
 test("persists project, appearance, and export settings", async ({ page }) => {
   await createProject(page, "Settings E2E");
-  await page.getByTitle("Настройки").click();
+  await openSettings(page);
 
   await page.getByTitle("Переименовать").click();
   const projectNameInput = page.locator('input[value="Settings E2E"]');
   await projectNameInput.fill("Settings persisted E2E");
   await page.locator('input[value="Settings persisted E2E"]').press("Enter");
-  await expect(page.getByTitle("Активный проект")).toContainText(
+  await expect(page.getByTitle("Переименовать")).toContainText(
     "Settings persisted E2E",
   );
 
@@ -121,28 +120,20 @@ test("persists project, appearance, and export settings", async ({ page }) => {
   await monitoringPhotoSwitch.click();
   await expect(monitoringPhotoSwitch).toHaveAttribute("aria-checked", "false");
 
-  const latestExportMode = page.getByRole("radio", {
-    name: /Последняя запись в обходе/,
-  });
-  await latestExportMode.click();
-  await expect(latestExportMode).toHaveAttribute("aria-checked", "true");
-
   await page.getByRole("button", { name: "Переключить тему" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.getByRole("button", { name: "Переключить язык" }).click();
   await expect(page.getByText("Settings", { exact: true })).toBeVisible();
 
   await page.reload();
+  // Название теперь и в группе «Проект», и в списке проектов.
   await expect(
-    page.getByText("Settings persisted E2E", { exact: true }),
+    page.getByText("Settings persisted E2E", { exact: true }).first(),
   ).toBeVisible();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await expect(
     page.getByRole("switch", { name: "During monitoring" }),
   ).toHaveAttribute("aria-checked", "false");
-  await expect(
-    page.getByRole("radio", { name: /Latest Record per Round/ }),
-  ).toHaveAttribute("aria-checked", "true");
 
   await expect(
     page.getByRole("button", { name: "Edit Parameters" }),
@@ -152,7 +143,7 @@ test("persists project, appearance, and export settings", async ({ page }) => {
 test("clears a populated offline map cache from settings", async ({ page }) => {
   await createProject(page, "Map cache settings E2E");
   await seedMapCache(page);
-  await page.getByTitle("Настройки").click();
+  await openSettings(page);
 
   await expect(page.getByText(/3 тайлов/)).toBeVisible();
   await page
@@ -176,7 +167,7 @@ test("keeps map cache available when settings cleanup fails", async ({
 }) => {
   await createProject(page, "Map cache failure E2E");
   await seedMapCache(page, 1);
-  await page.getByTitle("Настройки").click();
+  await openSettings(page);
   await expect(page.getByText(/1 тайлов/)).toBeVisible();
 
   await page.evaluate(() => {
@@ -221,6 +212,7 @@ test("creates a leak with a photo and keeps it after reload", async ({
   await expect(page.locator("img")).toHaveCount(1);
 });
 
+// Статус вручную не меняют: весь путь записи — проверками ремонта со свайпа.
 test("moves a leak through repair, resolution, and reopening", async ({
   page,
 }) => {
@@ -228,33 +220,29 @@ test("moves a leak through repair, resolution, and reopening", async ({
   await setUserProfile(page);
   await createLeak(page, "5201");
 
-  await openDatabase(page);
-  await openLeakDetails(page);
+  // В ремонт: «утечка есть, ремонт выполнен».
+  await startRepairByCheck(page);
 
-  await chooseDetailsStatus(page, "В ремонте");
-  await expect(
-    page.getByRole("heading", { name: "Утечка в ремонте" }),
-  ).toBeVisible();
+  // Устранение: «утечки нет» — бригада, МТР и снимок.
+  const sheet = page.getByRole("dialog", { name: "Приёмка ремонта" });
+  await swipeCardLeft(page);
+  await sheet.getByLabel("Бригада", { exact: true }).fill("Бригада 1");
+  await sheet.getByRole("radio", { name: "Заказчик" }).click();
+  await sheet.getByLabel("Наименование МТР").fill("Хомут");
   await attachModalPhoto(page);
-  await page.getByRole("button", { name: "Подтвердить" }).click();
-  await expect(page.getByText(/^В ремонте$/i).first()).toBeVisible();
-  await openLeakDetails(page, "В ремонте");
-
-  await chooseDetailsStatus(page, "Устранена");
-  await expect(
-    page.getByRole("heading", { name: "Устранение утечки" }),
-  ).toBeVisible();
-  await attachModalPhoto(page);
-  await page.getByRole("button", { name: "Подтвердить" }).click();
+  await sheet.getByRole("button", { name: "Принять и закрыть ремонт" }).click();
+  await expect(sheet).toHaveCount(0);
   await expect(page.getByText(/^Устранена$/i).first()).toBeVisible();
-  await openLeakDetails(page, "Устранена");
 
-  await chooseDetailsStatus(page, "Открыта");
-  await expect(
-    page.getByRole("heading", { name: "Повторное открытие утечки" }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Открыть", exact: true }).click();
+  // Переоткрытие: перепроверка принятого — течь снова есть, ремонт не сделан.
+  await swipeCardLeft(page);
+  await sheet.getByLabel("Утечка есть?").selectOption("yes");
+  await sheet.getByLabel("Ремонт выполнен?").selectOption("no");
+  await sheet.getByRole("button", { name: "Вернуть: ожидает МТР" }).click();
+  await expect(sheet).toHaveCount(0);
 
+  await openMenuItem(page, /^LDAR/);
+  await openDatabase(page);
   await expect(page.getByText(/^Открыта$/i).first()).toBeVisible();
   await page.reload();
   await expect(page.getByText(/^Открыта$/i).first()).toBeVisible();
@@ -281,7 +269,7 @@ test("preserves an edited leak and monitoring round through ZIP backup restore",
     page.getByText("Уточнено в сквозном E2E", { exact: true }).first(),
   ).toBeVisible();
 
-  await page.getByRole("button", { name: "Мониторинг", exact: true }).click();
+  await openRound(page);
   await page.getByRole("button", { name: "Начать мониторинг" }).click();
   await page.getByRole("button", { name: "Начать обход" }).click();
   await page.getByRole("button", { name: "Проверить", exact: true }).click();
@@ -289,31 +277,49 @@ test("preserves an edited leak and monitoring round through ZIP backup restore",
     .getByLabel("Комментарий", { exact: true })
     .fill("Сквозной контроль после редактирования");
   await attachModalPhoto(page);
-  await page.getByRole("button", { name: "Сохранить", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Сохранить проверку", exact: true })
+    .click();
   await expect(
     page.getByText("Все теги проверены", { exact: true }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Завершить обход" }).click();
   await expect(page.getByText("Обход завершён", { exact: true })).toBeVisible();
 
-  await page.getByTitle("Настройки").click();
+  await openSettings(page);
   const monitoringPhotoSwitch = page.getByRole("switch", {
     name: /\u041f\u0440\u0438 \u043c\u043e\u043d\u0438\u0442\u043e\u0440\u0438\u043d\u0433\u0435/,
   });
   await monitoringPhotoSwitch.click();
   await expect(monitoringPhotoSwitch).toHaveAttribute("aria-checked", "false");
-  const latestExportMode = page.getByRole("radio", {
-    name: /\u041f\u043e\u0441\u043b\u0435\u0434\u043d\u044f\u044f \u0437\u0430\u043f\u0438\u0441\u044c \u0432 \u043e\u0431\u0445\u043e\u0434\u0435/,
-  });
-  await latestExportMode.click();
-  await expect(latestExportMode).toHaveAttribute("aria-checked", "true");
+  await leaveSettings(page);
 
+  // Как писать журнал мониторинга, выбирают на экране экспорта.
+  await openMenuItem(page, "Экспорт отчёта");
+  // Режим записей обхода — в окне за «⋯» у строки листа мониторинга.
+  const monitoringMode = async () => {
+    await page
+      .getByRole("button", { name: "Записи обхода: Мониторинг" })
+      .click();
+    return page
+      .getByRole("dialog", { name: "Записи обхода: Мониторинг" })
+      .getByRole("radio", { name: /Последняя в обходе/ });
+  };
+  const latestExportMode = await monitoringMode();
+  await latestExportMode.click();
+  // Выбор закрывает окно и виден подписью под строкой листа.
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByText("Последняя в обходе")).toBeVisible();
+  await page.getByRole("button", { name: "Назад" }).click();
+
+  // ZIP-бэкап — из меню, в настройках его больше нет.
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Экспорт ZIP" }).click();
+  await openMenuItem(page, "Резервная копия (ZIP)");
   const download = await downloadPromise;
   const backupPath = await download.path();
   expect(backupPath).toBeTruthy();
 
+  await openSettings(page);
   await page
     .getByRole("button", { name: "Очистить базу данных", exact: true })
     .click();
@@ -324,32 +330,35 @@ test("preserves an edited leak and monitoring round through ZIP backup restore",
     .getByRole("button", { name: "Очистить базу данных", exact: true })
     .last()
     .click();
-  await expect(page.getByRole("alert")).toContainText("База данных очищена");
+  // Уведомление о скачанном бэкапе может ещё висеть рядом — ищем своё.
+  await expect(
+    page.getByRole("alert").filter({ hasText: "База данных очищена" }),
+  ).toBeVisible();
 
-  const fileChooserPromise = page.waitForEvent("filechooser");
-  await page.getByRole("button", { name: "Импорт", exact: true }).click();
-  const fileChooser = await fileChooserPromise;
-  await fileChooser.setFiles(backupPath);
+  // Восстановление — через «Импорт данных», как любой другой файл.
+  await leaveSettings(page);
+  await importFile(page, backupPath);
 
   await expect(
     page.getByRole("heading", { name: "Проект уже существует" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Перезаписать" }).click();
-  await expect(page.getByRole("alert")).toContainText("Backup restore E2E");
-  await expect(page.getByRole("alert")).toContainText("перезаписан");
+  await expect(
+    page.getByRole("alert").filter({ hasText: "перезаписан" }),
+  ).toContainText("Backup restore E2E");
+  await leaveSettings(page);
+  await openSettings(page);
 
   await expect(
     page.getByRole("switch", {
       name: /\u041f\u0440\u0438 \u043c\u043e\u043d\u0438\u0442\u043e\u0440\u0438\u043d\u0433\u0435/,
     }),
   ).toHaveAttribute("aria-checked", "false");
-  await expect(
-    page.getByRole("radio", {
-      name: /\u041f\u043e\u0441\u043b\u0435\u0434\u043d\u044f\u044f \u0437\u0430\u043f\u0438\u0441\u044c \u0432 \u043e\u0431\u0445\u043e\u0434\u0435/,
-    }),
-  ).toHaveAttribute("aria-checked", "true");
-
-  await page.getByRole("button", { name: /^(?:←\s*)?(?:Назад|Back)$/ }).click();
+  await leaveSettings(page);
+  await openMenuItem(page, "Экспорт отчёта");
+  await expect(await monitoringMode()).toHaveAttribute("aria-checked", "true");
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Назад" }).click();
   await openDatabase(page);
   await expect(page.getByText("№ 5301", { exact: true })).toBeVisible();
 
@@ -357,14 +366,18 @@ test("preserves an edited leak and monitoring round through ZIP backup restore",
   await expect(
     page.getByText("Уточнено в сквозном E2E", { exact: true }),
   ).toHaveCount(2);
-  await page.getByRole("button", { name: "Закрыть", exact: true }).click();
+  // У уведомления тоже «Закрыть» (крестик) — нужна кнопка карточки.
+  await page
+    .getByRole("button", { name: "Закрыть", exact: true })
+    .filter({ hasText: "Закрыть" })
+    .click();
 
-  await page.getByRole("button", { name: "Мониторинг", exact: true }).click();
+  await openRound(page);
   await expect(page.getByText("Обход завершён", { exact: true })).toBeVisible();
   await expect(page.getByText("1/1", { exact: true })).toBeVisible();
 
   await page.reload();
-  await page.getByRole("button", { name: "Мониторинг", exact: true }).click();
+  await openRound(page);
   await expect(page.getByText("Обход завершён", { exact: true })).toBeVisible();
 });
 
@@ -375,9 +388,9 @@ test("rejects a corrupted ZIP backup without changing project data", async ({
   await setUserProfile(page);
   await createLeak(page, "5351");
 
-  await page.getByTitle("Настройки").click();
+  await openMenuItem(page, "Импорт данных");
   const fileChooserPromise = page.waitForEvent("filechooser");
-  await page.getByRole("button", { name: "Импорт", exact: true }).click();
+  await page.getByRole("button", { name: /^Выбрать файл/ }).click();
   const fileChooser = await fileChooserPromise;
   await fileChooser.setFiles({
     name: "broken-upstream.zip",
@@ -405,7 +418,7 @@ test("records and completes a monitoring round", async ({ page }) => {
   await setUserProfile(page);
   await createLeak(page, "5401");
 
-  await page.getByRole("button", { name: "Мониторинг", exact: true }).click();
+  await openRound(page);
   await page.getByRole("button", { name: "Начать мониторинг" }).click();
   await expect(
     page.getByRole("heading", { name: "Начать мониторинг?" }),
@@ -414,6 +427,7 @@ test("records and completes a monitoring round", async ({ page }) => {
 
   await page.getByRole("button", { name: "Проверено 0" }).click();
   await openMap(page);
+  await openMapFilters(page);
   const monitoringMapFilter = page.getByRole("button", {
     name: "Фильтр по мониторингу",
   });
@@ -424,20 +438,23 @@ test("records and completes a monitoring round", async ({ page }) => {
   );
 
   await page.getByRole("button", { name: "К проверке" }).click();
-  await page.getByRole("button", { name: "Мониторинг", exact: true }).click();
+  await closeMapFilters(page);
+  await openRound(page);
   await expect(
     page.getByRole("button", { name: "К проверке 1" }),
   ).toHaveAttribute("aria-pressed", "true");
 
   await page.getByRole("button", { name: "Проверить", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "Проверить", exact: true }),
+    page.getByRole("heading", { name: "Проверка утечки", exact: true }),
   ).toBeVisible();
   await page
     .getByLabel("Комментарий", { exact: true })
     .fill("Контрольный обход E2E");
   await attachModalPhoto(page);
-  await page.getByRole("button", { name: "Сохранить", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Сохранить проверку", exact: true })
+    .click();
 
   await expect(page.getByRole("alert")).toContainText(
     "Результат мониторинга сохранен",
@@ -449,7 +466,7 @@ test("records and completes a monitoring round", async ({ page }) => {
   await expect(page.getByText("Обход завершён", { exact: true })).toBeVisible();
 
   await page.reload();
-  await page.getByRole("button", { name: "Мониторинг", exact: true }).click();
+  await openRound(page);
   await expect(page.getByText("Обход завершён", { exact: true })).toBeVisible();
   await expect(page.getByText("1/1", { exact: true })).toBeVisible();
 });
@@ -498,6 +515,9 @@ test("exports and imports an Excel archive as a project copy", async ({
     page.getByText("Изменённые поля", { exact: true }).locator(".."),
   ).toContainText("0");
   await page.getByRole("button", { name: "Создать копию" }).click();
+  // Экран импорта — только импорт; копия видна в списке проектов настроек.
+  await page.getByRole("button", { name: /^(?:←\s*)?(?:Назад|Back)$/ }).click();
+  await openSettings(page);
   await expect(
     page.getByText("Excel roundtrip (Excel)", { exact: true }).first(),
   ).toBeVisible();
@@ -505,4 +525,17 @@ test("exports and imports an Excel archive as a project copy", async ({
   await page.getByRole("button", { name: /^(?:←\s*)?(?:Назад|Back)$/ }).click();
   await openDatabase(page);
   await expect(page.getByText("№ 5501", { exact: true })).toBeVisible();
+});
+
+test("adds a project straight from the menu's project list", async ({
+  page,
+}) => {
+  await createProject(page, "Menu Add Project");
+  await page.getByRole("button", { name: "Меню", exact: true }).click();
+  await page.getByTitle("Сменить проект").click();
+  await page.getByRole("button", { name: "Добавить проект" }).click();
+  // Настройки открываются сразу с формой нового проекта.
+  await expect(
+    page.getByRole("heading", { name: "Новый проект", level: 3 }),
+  ).toBeVisible();
 });

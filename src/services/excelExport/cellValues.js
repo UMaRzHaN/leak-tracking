@@ -25,10 +25,13 @@ const DATE_KEYS = new Set([
 // часами — иначе починка «за 0,5 часа» выглядит начатой и законченной в один
 // день без всякого объяснения.
 const TIME_KEYS = new Set(["time", "repairTime", "resolvedTime"]);
+// Даты, у которых время записано в своей колонке рядом: в них — только день.
+const DAY_WITH_TIME_KEYS = new Set(["date", "repairAt", "resolvedAt"]);
 const INTEGER_KEYS = new Set([
   "index",
   "roundNumber",
   "attempt",
+  "batch",
   "coords_accuracy",
   "Operating_mode",
 ]);
@@ -42,6 +45,11 @@ const WHOLE_PERCENT_KEYS = new Set(["gasPercentage", "uncertainty"]);
 const COORDINATE_KEYS = new Set(["lat", "lng"]);
 const DECIMAL_KEYS = new Set([
   "durationHours",
+  // Количества приёмки оборудования: бывают и дробные — метры, килограммы.
+  "ordered",
+  "qty",
+  "received",
+  "left",
   "pressure",
   "temperature",
   "temperature_K",
@@ -138,6 +146,25 @@ export function toExcelDateValue(value) {
   );
 }
 
+/**
+ * Только день — для колонок, у которых время стоит в соседней колонке
+ * (`date` + `time`, `repairAt` + `repairTime`, `resolvedAt` + `resolvedTime`).
+ * Раньше в ячейку уходил весь момент, а формат лишь прятал часы: в строке
+ * формул они были видны, и фильтр по дате делил один день на разные значения.
+ * Импорт день отсюда, а часы из соседней колонки и берёт.
+ */
+export function toExcelDayValue(value) {
+  const moment = toExcelDateValue(value);
+  if (!moment) return null;
+  return new Date(
+    Date.UTC(
+      moment.getUTCFullYear(),
+      moment.getUTCMonth(),
+      moment.getUTCDate(),
+    ),
+  );
+}
+
 export function toExcelTimeValue(value) {
   if (value instanceof Date && Number.isFinite(value.getTime())) {
     return (
@@ -178,6 +205,9 @@ export function getExcelColumnFormat(key) {
 
 export function toExcelCellValue(key, value) {
   if (value == null || value === "") return "";
+  if (DAY_WITH_TIME_KEYS.has(key)) {
+    return toExcelDayValue(value) ?? normalizeExcelCellValue(value);
+  }
   if (DATE_KEYS.has(key)) {
     return toExcelDateValue(value) ?? normalizeExcelCellValue(value);
   }

@@ -2,13 +2,19 @@ import { useMemo, useState } from "react";
 import {
   COORD_KEYS,
   createActionLabel,
+  createChangeLabel,
   createFieldLabel,
   createFieldValue,
 } from "./componentFieldText";
 import { useModalDialog } from "@/hooks/useModalDialog";
-import { usePhotoSrc } from "@/hooks/usePhotoSrc";
+import { useComponentPhotoSrc } from "./useComponentPhotoSrc";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import PhotoBlock from "@/features/leakDetails/components/PhotoBlock";
+import LeakLocationSection from "@/features/leakDetails/components/LeakLocationSection";
+import GpsCoordsUpdate from "@/features/coords/GpsCoordsUpdate";
+import ComponentReconcileLog from "./ComponentReconcileLog";
+import ComponentReconcileEdit from "./ComponentReconcileEdit";
+import { applyReconcileEdits } from "@/domain/componentReconcileEdits";
 import PhotoViewer from "@/features/photos/PhotoViewer/PhotoViewer";
 import PhotoInput from "@/features/photos/PhotoInput/PhotoInput";
 import EditTextField from "@/features/editTextField/EditTextField";
@@ -46,7 +52,7 @@ export default function ComponentDetailsSheet({
 }) {
   const { t, lang } = useLanguage();
   const dialogRef = useModalDialog({ open: true, onClose });
-  const photoSrc = usePhotoSrc(component?.photo ?? null);
+  const photoSrc = useComponentPhotoSrc(component);
 
   const [tab, setTab] = useState("card");
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -58,6 +64,10 @@ export default function ComponentDetailsSheet({
    * должен оставить всё как было, а не отменять по полю.
    */
   const [draft, setDraft] = useState(/** @type {any} */ ({}));
+  // Правки записанных сверок — по ключу записи (см. componentReconcileEdits).
+  const [reconcileDraft, setReconcileDraft] = useState(
+    /** @type {Record<string, Record<string, any>>} */ ({}),
+  );
 
   const editable = useMemo(
     () => fields.filter((field) => field.editable && !field.coord),
@@ -70,6 +80,7 @@ export default function ComponentDetailsSheet({
 
   const startEditing = () => {
     setDraft({ ...component });
+    setReconcileDraft({});
     setEditing(true);
     if (tab === "history") setTab("card");
   };
@@ -77,6 +88,7 @@ export default function ComponentDetailsSheet({
   const cancelEditing = () => {
     setEditing(false);
     setDraft({});
+    setReconcileDraft({});
   };
 
   const setField = (key, value) =>
@@ -85,7 +97,29 @@ export default function ComponentDetailsSheet({
   const commit = async () => {
     setSaving(true);
     try {
-      await onSave?.(draft);
+      // Как у утечки: точка, поставленная по GPS, несёт радиус приёмника;
+      // вписанная руками — нет, прежний радиус мерил другую точку.
+      const { __gps, ...fieldsCard } = draft;
+      // Исправленные сверки; состояние последней ведёт состояние карточки.
+      const { component: card, changes } = applyReconcileEdits(
+        fieldsCard,
+        reconcileDraft,
+        component,
+      );
+      const moved = ["lat", "lng"].some(
+        (key) => String(card[key] ?? "") !== String(component?.[key] ?? ""),
+      );
+      await onSave?.(
+        moved
+          ? {
+              ...card,
+              coords_accuracy: Number.isFinite(__gps?.accuracy)
+                ? Math.round(__gps.accuracy)
+                : undefined,
+            }
+          : card,
+        { changes },
+      );
       setEditing(false);
     } finally {
       setSaving(false);
@@ -112,29 +146,21 @@ export default function ComponentDetailsSheet({
     () => filled.filter(({ key }) => !COORD_KEYS.has(key)),
     [filled],
   );
-  const coords = useMemo(
-    () => filled.filter(({ key }) => COORD_KEYS.has(key)),
-    [filled],
-  );
-
-  // Радиус приёмника не поле паспорта, а мера доверия к снятой точке, поэтому
-  // стоит под координатами, а не среди них: `filled` их форматирует как числа
-  // карточки, а здесь нужны метры со знаком «плюс-минус».
-  const accuracy = useMemo(() => {
-    const value = Number(component?.coords_accuracy);
-    return Number.isFinite(value) && value >= 0 ? Math.round(value) : null;
-  }, [component?.coords_accuracy]);
-
   const history = [...(component?.history ?? [])].reverse();
   const actionLabel = createActionLabel(t);
   const fieldValue = createFieldValue(lang);
   const labelOf = createFieldLabel(fields);
+  const changeLabel = createChangeLabel(labelOf, t, (iso) =>
+    fmtDate(iso, lang),
+  );
 
   // В правке истории нет: она про то, что уже случилось, и править её нельзя.
   const tabs = [
     { id: "card", label: t("components.tabs.params") },
     { id: "photo", label: t("components.tabs.photo") },
     { id: "coords", label: t("components.tabs.coords") },
+    // Сверки правятся (состояние и замечание), история — только смотрится.
+    { id: "reconcile", label: t("components.tabs.reconcile") },
     ...(editing
       ? []
       : [{ id: "history", label: t("components.tabs.history") }]),
@@ -169,9 +195,8 @@ export default function ComponentDetailsSheet({
             onView={
               !editing && photoSrc ? () => setViewerOpen(true) : undefined
             }
-            /* A component has no leak lifecycle; its state is changed by the
-               inspection swipe, not from the hero. */
-            onStatusChange={null}
+            onBack={onClose}
+            backLabel={t("leakDetails.back")}
           />
 
           <div className={s.tabBar}>
@@ -212,6 +237,29 @@ export default function ComponentDetailsSheet({
             ) : tab === "coords" && editing ? (
               <div className={s.tabPane}>
                 <div className={s.coordGroup}>
+                  {/* Одной кнопкой — туда, где стоит человек, как у утечки;
+                      поля ниже — руками. */}
+                  <GpsCoordsUpdate
+                    current={component}
+                    applied={draft.__gps ?? null}
+                    onApply={(gps) =>
+                      setDraft((current) =>
+                        gps
+                          ? {
+                              ...current,
+                              lat: gps.lat,
+                              lng: gps.lng,
+                              __gps: gps,
+                            }
+                          : {
+                              ...current,
+                              lat: component?.lat ?? "",
+                              lng: component?.lng ?? "",
+                              __gps: null,
+                            },
+                      )
+                    }
+                  />
                   <div className={s.coordPair}>
                     {coordFields.map(({ key, label }) => (
                       <EditTextField
@@ -226,6 +274,12 @@ export default function ComponentDetailsSheet({
                   </div>
                 </div>
               </div>
+            ) : tab === "reconcile" && editing ? (
+              <ComponentReconcileEdit
+                component={component}
+                edits={reconcileDraft}
+                setEdits={setReconcileDraft}
+              />
             ) : tab === "card" ? (
               <div className={s.tabPane}>
                 {params.length === 0 ? (
@@ -273,34 +327,19 @@ export default function ComponentDetailsSheet({
                 )}
               </div>
             ) : tab === "coords" ? (
-              <div className={s.tabPane}>
-                {coords.length === 0 ? (
-                  <div className={s.tabEmpty}>
-                    {/* Карточка на месте, компонента на карте нет — это стоит
-                        сказать прямо, а не пустой вкладкой. */}
-                    <p>{t("components.noCoords.missing")}</p>
-                  </div>
-                ) : (
-                  coords.map(({ key, label, value }) => (
-                    <div key={key} className={s.fieldRow}>
-                      <span className={s.fieldLabel}>{label}</span>
-                      <span className={s.fieldValue}>{String(value)}</span>
-                    </div>
-                  ))
-                )}
-                {coords.length > 0 && accuracy != null && (
-                  <div className={s.fieldRow}>
-                    <span className={s.fieldLabel}>
-                      {t("leakDetails.coordsAccuracy")}
-                    </span>
-                    <span className={s.fieldValue}>
-                      {t("leakDetails.coordsAccuracyValue", {
-                        count: accuracy,
-                      })}
-                    </span>
-                  </div>
-                )}
-              </div>
+              /* Та же вкладка, что у утечки: снимок карты с точкой,
+                 координаты, точность, расстояние до человека и переход на
+                 карту. Карточка на месте, а точки нет — это сказано прямо. */
+              <LeakLocationSection
+                data={component ?? {}}
+                fields={coordFields}
+                localeTexts={{
+                  empty: { coords: t("components.noCoords.missing") },
+                }}
+                t={t}
+              />
+            ) : tab === "reconcile" ? (
+              <ComponentReconcileLog component={component} />
             ) : (
               <div className={s.tabPane}>
                 {history.length === 0 ? (
@@ -328,6 +367,9 @@ export default function ComponentDetailsSheet({
                         {entry.to && (
                           <span className={s.logStatus}>{entry.to}</span>
                         )}
+                        {entry.comment && (
+                          <span className={s.logUser}>{entry.comment}</span>
+                        )}
                         {/* Прежнее значение и новое, как в истории утечки.
                             Раньше здесь стояло имя поля из кода — «medium»,
                             «scheme_tag», — и запись сообщала, что что-то
@@ -341,7 +383,7 @@ export default function ComponentDetailsSheet({
                                   className={s.logChange}
                                 >
                                   <span className={s.logChangeLabel}>
-                                    {labelOf(change.key)}
+                                    {changeLabel(change)}
                                   </span>
                                   <span
                                     className={`${s.logChangeValue} ${s.logChangeValueBefore}`}

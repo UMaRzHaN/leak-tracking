@@ -142,7 +142,7 @@ export function createOfflineMap(
   let destroyed = false;
   let heatmapLayer = /** @type {any} */ (null);
 
-  addBaseTileLayer(map);
+  const { detachAttribution } = addBaseTileLayer(map);
 
   const markersLayer = L.markerClusterGroup({
     maxClusterRadius: 48,
@@ -155,7 +155,7 @@ export function createOfflineMap(
         className: "",
         html: `<div style="
           width:34px;height:34px;border-radius:50%;
-          background:#2563eb;border:3px solid #fff;
+          background:#6d3de8;border:3px solid #fff;
           box-shadow:0 2px 8px rgba(0,0,0,0.35);
           display:flex;align-items:center;justify-content:center;
           color:#fff;font-size:12px;font-weight:700;
@@ -198,7 +198,8 @@ export function createOfflineMap(
     if (!userMarker) {
       userMarker = L.marker(latlng, { icon: buildUserIcon(heading) })
         .addTo(map)
-        .bindPopup(i18n.language === "en" ? "You are here" : "Вы здесь");
+        // Функцией, а не строкой: язык могут сменить, пока маркер на карте.
+        .bindPopup(() => i18n.t("map.youAreHere"));
     } else {
       userMarker.setLatLng(latlng).setIcon(buildUserIcon(heading));
     }
@@ -312,6 +313,7 @@ export function createOfflineMap(
   const destroy = () => {
     if (destroyed) return;
     destroyed = true;
+    detachAttribution?.();
 
     try {
       if (heatmapLayer) {
@@ -337,6 +339,9 @@ export function addMarkers(
   markersLayer,
   leaks = /** @type {any[]} */ ([]),
   map = /** @type {any} */ (null),
+  // Тап по булавке (5d): карточка снизу вместо всплывающей подсказки — у
+  // утечки и у железа одинаково. Вызовы без обработчика остаются с подсказкой.
+  onSelect = /** @type {((leak: any) => void)|null} */ (null),
 ) {
   if (!markersLayer) return;
 
@@ -348,6 +353,25 @@ export function addMarkers(
 
     const latlng = /** @type {[number, number]} */ ([leak.lat, leak.lng]);
     const accuracy = accuracyMetres(leak);
+    if (onSelect) {
+      L.marker(latlng, { icon: leakIcon(leak) })
+        .on("click", (event) => {
+          // Иначе щелчок дойдёт до карты, и она тут же закроет карточку.
+          L.DomEvent.stopPropagation(event);
+          if (accuracy != null) showAccuracyCircle(map, latlng, accuracy, leak);
+          else clearAccuracyCircle(map);
+          if (map) {
+            map._suppressLeakClickMoveend = true;
+            map.setView(latlng, Math.max(map.getZoom(), 17), { animate: true });
+            setTimeout(() => {
+              if (map) map._suppressLeakClickMoveend = false;
+            }, 500);
+          }
+          onSelect(leak);
+        })
+        .addTo(markersLayer);
+      return;
+    }
     L.marker(latlng, { icon: leakIcon(leak) })
       .on("popupopen", () => {
         if (accuracy != null) showAccuracyCircle(map, latlng, accuracy, leak);

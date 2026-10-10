@@ -256,20 +256,38 @@ export function buildMonitoringPatch({
             ? { repairAt: null, photo_repair: null }
             : {}),
         };
+  // Координаты по GPS из проверки: точка была записана не там. Вместе с
+  // ними — радиус приёмника, а прежний, мерявший старую точку, уходит.
+  const gps = draft.coords;
+  const coordsPatch =
+    gps && Number.isFinite(gps.lat) && Number.isFinite(gps.lng)
+      ? {
+          lat: gps.lat,
+          lng: gps.lng,
+          coords_accuracy: Number.isFinite(gps.accuracy)
+            ? Math.round(gps.accuracy)
+            : undefined,
+        }
+      : {};
   const nextLeakForChanges = {
     ...leak,
     ...statusPatch,
+    ...coordsPatch,
     materials_equipment: materialsEquipment,
   };
   const changes = buildLeakHistoryChanges({
     before: leak,
     after: nextLeakForChanges,
-    fields: [{ key: "materials_equipment" }],
+    fields: [
+      { key: "materials_equipment" },
+      ...(gps ? [{ key: "lat" }, { key: "lng" }] : []),
+    ],
   });
 
   return {
     ...leak,
     ...statusPatch,
+    ...coordsPatch,
     materials_equipment: materialsEquipment,
     updatedAt: now.getTime(),
     // Обход пишется только в ленту. Двойная запись в `monitoringRecords`
@@ -292,5 +310,84 @@ export function buildMonitoringPatch({
         ...(changes.length > 0 ? { changes } : {}),
       },
     ],
+  };
+}
+
+/**
+ * Слияние текущего обхода с предыдущим: «Новый обход» нажали по ошибке, и
+ * № 3 на деле — продолжение № 2. Осмотры текущего обхода переписываются в
+ * предыдущий, а предыдущий снова становится текущим и незавершённым.
+ *
+ * Идентификатор предыдущего берётся у его же осмотров: устройства, начавшие
+ * обход каждое у себя, дают ему разные, и выбирается самый частый. Начало —
+ * самый ранний из его осмотров, иначе начало текущего.
+ *
+ * @param {any[]} data
+ * @param {{id: string, number: number, startedAt: string}|null} round
+ * @returns {{ data: any[], round: {id: string, number: number, startedAt: string}, moved: number }|null}
+ *   `moved` — сколько утечек получили осмотры в предыдущий обход.
+ *   null — сливать не с чем: это первый обход.
+ */
+export function mergeRoundIntoPrevious(data, round) {
+  const number = Number(round?.number);
+  if (!round?.id || !(number > 1)) return null;
+  const target = number - 1;
+  const leaks = Array.isArray(data) ? data : [];
+
+  const idVotes = new Map();
+  let startedAt = Date.parse(round.startedAt);
+  for (const leak of leaks) {
+    for (const record of getAllMonitoringRecords(leak)) {
+      if (Number(record?.roundNumber) !== target) continue;
+      if (record.roundId) {
+        idVotes.set(record.roundId, (idVotes.get(record.roundId) ?? 0) + 1);
+      }
+      const time = Date.parse(String(record.date ?? ""));
+      if (Number.isFinite(time) && !(time >= startedAt)) startedAt = time;
+    }
+  }
+  const targetId =
+    [...idVotes.entries()].sort((left, right) => right[1] - left[1])[0]?.[0] ??
+    `${round.id}-merged`;
+
+  const inRound = (record) =>
+    record?.roundId === round.id || Number(record?.roundNumber) === number;
+  let touched = false;
+  const move = (record) => {
+    if (!inRound(record)) return record;
+    touched = true;
+    return { ...record, roundId: targetId, roundNumber: target };
+  };
+
+  let moved = 0;
+  const next = leaks.map((leak) => {
+    touched = false;
+    const events = getLeakEvents(leak).map((event) =>
+      event?.type === LEAK_EVENT_TYPES.INSPECTION ? move(event) : event,
+    );
+    const legacy = Array.isArray(leak?.monitoringRecords)
+      ? leak.monitoringRecords.map(move)
+      : leak?.monitoringRecords;
+    if (!touched) return leak;
+    moved += 1;
+    return {
+      ...leak,
+      ...(Array.isArray(leak?.events) ? { events } : {}),
+      ...(Array.isArray(leak?.monitoringRecords)
+        ? { monitoringRecords: legacy }
+        : {}),
+    };
+  });
+
+  return {
+    data: next,
+    round: {
+      id: targetId,
+      number: target,
+      startedAt: Number.isFinite(startedAt)
+        ? new Date(startedAt).toISOString()
+        : round.startedAt,
+    },
+    moved,
   };
 }

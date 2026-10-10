@@ -94,6 +94,48 @@ describe("LeakHistorySection", () => {
     expect(container).not.toHaveTextContent("[object Object]");
   });
 
+  it("показывает у осмотра ответы про физ. тег и фикцию", () => {
+    render(
+      <LeakHistorySection
+        {...props}
+        activeTab="monitoring"
+        data={{
+          id: "x",
+          events: [
+            {
+              id: "i1",
+              type: "inspection",
+              date: "2026-10-05T10:00:00.000Z",
+              result: "resolved",
+              physicalTag: false,
+              fiction: true,
+            },
+            {
+              // Обычный осмотр: тег на месте, «не фикция» не показывается.
+              id: "i2",
+              type: "inspection",
+              date: "2026-09-05T10:00:00.000Z",
+              result: "still_leaking",
+              physicalTag: true,
+              fiction: false,
+            },
+            {
+              // Осмотр старой сборки — вопросов не было, плашек нет.
+              id: "i3",
+              type: "inspection",
+              date: "2026-08-05T10:00:00.000Z",
+              result: "still_leaking",
+            },
+          ],
+        }}
+      />,
+    );
+
+    expect(screen.getByText("No physical tag")).toBeTruthy();
+    expect(screen.getAllByText("Fiction")).toHaveLength(1);
+    expect(screen.getAllByText("Physical tag in place")).toHaveLength(1);
+  });
+
   it("shows repairs and rounds in one feed, newest first", () => {
     render(
       <LeakHistorySection
@@ -141,5 +183,36 @@ describe("LeakHistorySection", () => {
     expect(badges).toEqual(["repair_done", null, "repair_started"]);
     expect(screen.getByText("Repair started")).toBeInTheDocument();
     expect(screen.getByText("Repair finished")).toBeInTheDocument();
+  });
+
+  it("показывает проверку ремонта в журнале со стадией и замечанием", () => {
+    render(
+      <LeakHistorySection
+        {...props}
+        localeTexts={{
+          ...localeTexts,
+          actions: { repair_check: "Repair check" },
+        }}
+        activeTab="history"
+        data={{
+          id: "x",
+          history: [
+            {
+              action: "repair_check",
+              date: "2026-10-06T10:00:00.000Z",
+              to: "in_progress",
+              stage: "in_repair",
+              user: "Ким",
+              text: "Подтянули хомут",
+            },
+          ],
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByText("Repair check · repairs.stages.in_repair"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Подтянули хомут")).toBeInTheDocument();
   });
 });

@@ -4,6 +4,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const controller = vi.hoisted(() => ({ current: null }));
 
 vi.mock("@/utils/renderMetrics", () => ({ useRenderMetric: vi.fn() }));
+vi.mock("@/pages/Repairs/useCanCheckRepair", () => ({
+  useCanCheckRepair: () => () => true,
+}));
 // Resolves against the real English locale, so these assertions fail if the
 // screen loses a translation rather than quietly falling back to the key.
 vi.mock("@/app/hooks/useLanguage", async () => {
@@ -30,43 +33,29 @@ vi.mock("./components/FilterBar", () => ({
   ),
 }));
 vi.mock("./components/ResultsBar", () => ({
-  default: ({
-    onSortToggle,
-    onMonitorSelected,
-    onEditBulkCalculation,
-    onExport,
-  }) => (
+  default: ({ onSortToggle, onMonitorSelected, onEditBulkCalculation }) => (
     <div>
       <button onClick={onSortToggle}>sort</button>
       <button onClick={onMonitorSelected}>monitor-selected</button>
       <button onClick={onEditBulkCalculation}>bulk-calculation</button>
-      <button onClick={onExport}>export</button>
     </div>
   ),
 }));
 vi.mock("./components/LeakList", () => ({
-  default: ({
-    items,
-    onOpenDetails,
-    onPickStatus,
-    onMonitor,
-    onToggleSelect,
-  }) => (
+  default: ({ items, onOpenDetails, onMonitor, onToggleSelect }) => (
     <div>
       <span>items:{items.length}</span>
       <button onClick={() => onOpenDetails(items[0])}>details</button>
-      <button onClick={() => onPickStatus(items[0])}>status</button>
       <button onClick={() => onMonitor(items[0])}>monitor</button>
       <button onClick={() => onToggleSelect(items[0].id)}>select</button>
     </div>
   ),
 }));
 vi.mock("./components/LeakModals", () => ({
-  default: ({ onCloseDetails, onDelete, onClosePicker }) => (
+  default: ({ onCloseDetails, onDelete }) => (
     <div>
       <button onClick={onCloseDetails}>close-details</button>
       <button onClick={() => onDelete("leak-1")}>delete</button>
-      <button onClick={onClosePicker}>close-picker</button>
     </div>
   ),
 }));
@@ -87,11 +76,6 @@ function createController() {
   return {
     notification: { type: "info", message: "ready" },
     clearNotification: vi.fn(),
-    bulkPickerOpen: false,
-    closeBulkPicker: vi.fn(),
-    handleBulkPickerSelect: vi.fn(),
-    handleExport: vi.fn(),
-    isExporting: false,
     filters: {
       search: "",
       setSearch: vi.fn(),
@@ -117,41 +101,23 @@ function createController() {
     actions: {
       activeLeak: leak,
       setActiveLeak: vi.fn(),
-      handlePickStatus: vi.fn(),
       handleSave: vi.fn(),
       handleDelete: vi.fn((id, options) => options.onDeleted(id)),
-      pickerLeak: leak,
-      setPickerLeak: vi.fn(),
-      handleStatusSelect: vi.fn(),
-      resolveLeak: null,
-      setResolveLeak: vi.fn(),
-      handleResolveConfirm: vi.fn(),
-      repairLeak: null,
-      setRepairLeak: vi.fn(),
-      handleRepairConfirm: vi.fn(),
-      reopenLeak: null,
-      setReopenLeak: vi.fn(),
-      handleReopenConfirm: vi.fn(),
       vars: {},
     },
     bulk: {
       selectedCount: 1,
       allDisplayedSelected: false,
-      selectedIds: new Set(["leak-1"]),
+      hiddenSelectedCount: 1,
+      selectedIds: new Set(["leak-1", "hidden-by-filter"]),
+      actionableSelected: [leak],
+      clearActionable: vi.fn(),
       clearSelection: vi.fn(),
       selectDisplayed: vi.fn(),
       toggleSelected: vi.fn(),
       deselectId: vi.fn(),
       bulkCalculationVars: {},
       handleBulkCalculationSave: vi.fn(),
-      resolveQueue: [],
-      resolveTotal: 0,
-      handleSequentialResolveConfirm: vi.fn(),
-      cancelBulkResolve: vi.fn(),
-      repairQueue: [],
-      repairTotal: 0,
-      handleSequentialRepairConfirm: vi.fn(),
-      cancelBulkRepair: vi.fn(),
     },
   };
 }
@@ -161,7 +127,7 @@ describe("DataBase", () => {
     controller.current = createController();
   });
 
-  it("wires filters, list actions, selection monitoring, export, and bulk calculation", () => {
+  it("wires filters, list actions, selection monitoring and bulk calculation", () => {
     const onMonitorLeak = vi.fn();
     const onMonitorLeaks = vi.fn();
     render(
@@ -179,14 +145,11 @@ describe("DataBase", () => {
     fireEvent.click(screen.getByText("filter"));
     fireEvent.click(screen.getByText("sort"));
     fireEvent.click(screen.getByText("details"));
-    fireEvent.click(screen.getByText("status"));
     fireEvent.click(screen.getByText("monitor"));
     fireEvent.click(screen.getByText("select"));
     fireEvent.click(screen.getByText("monitor-selected"));
-    fireEvent.click(screen.getByText("export"));
     fireEvent.click(screen.getByText("delete"));
     fireEvent.click(screen.getByText("close-details"));
-    fireEvent.click(screen.getByText("close-picker"));
     fireEvent.click(screen.getByText("bulk-calculation"));
     fireEvent.click(screen.getByText("save-bulk"));
     fireEvent.click(screen.getByText("close-bulk"));
@@ -195,8 +158,10 @@ describe("DataBase", () => {
     expect(controller.current.filters.setFilter).toHaveBeenCalledWith("open");
     expect(onMonitorLeak).toHaveBeenCalled();
     expect(onMonitorLeaks).toHaveBeenCalledWith([{ id: "leak-1" }]);
-    expect(controller.current.bulk.clearSelection).toHaveBeenCalled();
-    expect(controller.current.handleExport).toHaveBeenCalled();
+    // «Проверить» — выбранные среди видимых; выбор, скрытый фильтром, не
+    // сбрасывается.
+    expect(controller.current.bulk.clearActionable).toHaveBeenCalled();
+    expect(controller.current.bulk.clearSelection).not.toHaveBeenCalled();
     expect(controller.current.bulk.deselectId).toHaveBeenCalledWith("leak-1");
   });
 });

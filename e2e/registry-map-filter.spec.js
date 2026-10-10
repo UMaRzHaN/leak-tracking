@@ -5,6 +5,8 @@ import {
   openComponentRegistry,
   openMap,
   setUserProfile,
+  openMapFilters,
+  closeMapFilters,
 } from "./helpers.js";
 
 /*
@@ -70,18 +72,22 @@ test("несёт отбор по состоянию из реестра на к�
   // Отбор ставится в реестре.
   await page.getByRole("button", { name: "Фильтры" }).click();
   // В реестре у кнопки состояния в имени ещё и счётчик карточек.
-  await page.getByRole("button", { name: /^Требует замены/ }).click();
+  await page
+    .getByRole("button", { name: /^Требует замены/ })
+    .first()
+    .click();
   await expect(page.getByText("Манометр", { exact: true })).toBeVisible();
   await expect(page.getByText("Задвижка", { exact: true })).toHaveCount(0);
 
   // И действует на карте, где его никто не повторял.
   await openMap(page);
-  await page.getByRole("button", { name: /Переключить базу/ }).click();
+  // Карта инвентаризации сама открывается на базе железа.
   await expect(marker(page, "9002")).toBeVisible({ timeout: 30_000 });
   await expect(marker(page, "9001")).toHaveCount(0);
 
   // Кнопка карты показывает то же выбранное, а не своё. Отбор ищется внутри
   // своей обёртки: «Все» есть и в шапке — это переключатель папок.
+  await openMapFilters(page);
   const mapFilter = page.locator('[class*="filterControlWrap"]', {
     has: page.getByRole("button", { name: "Фильтр по состоянию железа" }),
   });
@@ -95,6 +101,7 @@ test("несёт отбор по состоянию из реестра на к�
   // Снятое на карте снято и в реестре: набор один, а не два похожих.
   await mapFilter.getByRole("button", { name: "Все", exact: true }).click();
   await expect(marker(page, "9001")).toBeVisible();
+  await closeMapFilters(page);
 
   await openComponentRegistry(page);
   await expect(page.getByText("Задвижка", { exact: true })).toBeVisible();
@@ -123,7 +130,8 @@ test("держит список состояний на карте в преде
   }
 
   await openMap(page);
-  await page.getByRole("button", { name: /Переключить базу/ }).click();
+  // Карта инвентаризации сама открывается на базе железа.
+  await openMapFilters(page);
   await page
     .getByRole("button", { name: "Фильтр по состоянию железа" })
     .click();

@@ -17,67 +17,6 @@
   height: 100%;
 }
 
-/*
- * Переключатель баз. Намеренно не похож на кнопки справа: те отвечают на
- * вопрос «что показать из этого», а он — на вопрос «что это». Поэтому
- * пилюля с подписью в другом углу, а не ещё одна иконка в том же столбце.
- */
-.baseSwitch {
-  position: absolute;
-  /* Справа сверху: слева зум карты, а внизу справа столбец кнопок — угол,
-     свободный на любом экране. */
-  right: 12px;
-  top: 12px;
-  z-index: var(--z-overlay);
-
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border: 1.5px solid var(--c-border);
-  border-radius: var(--r-pill, 999px);
-  background: var(--c-surface);
-  color: var(--c-text);
-  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.18);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  transition:
-    background var(--t-fast),
-    border-color var(--t-fast),
-    color var(--t-fast);
-
-  &:active {
-    transform: scale(0.97);
-  }
-}
-
-/* На базе железа переключатель окрашен: с одного взгляда видно, что булавки
-   на карте — не утечки. */
-.baseSwitchComponents {
-  border-color: var(--c-blue);
-  background: var(--c-blue);
-  color: #fff;
-}
-
-.baseSwitchIcon {
-  font-size: 14px;
-  line-height: 1;
-}
-
-.baseSwitchLabel {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.baseSwitchHint {
-  font-size: 13px;
-  line-height: 1;
-  opacity: 0.6;
-}
-
 .controls {
   position: absolute;
   right: 12px;
@@ -127,7 +66,7 @@
 }
 
 .controlBtnActive {
-  color: var(--c-blue-text);
+  color: var(--c-accent-text);
 
   &::before {
     content: "";
@@ -190,23 +129,23 @@
   border-radius: 8px;
   background: transparent;
   color: var(--c-text2);
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   line-height: 1;
   cursor: pointer;
   white-space: nowrap;
 
   &:hover {
-    color: var(--c-blue-text);
-    background: var(--c-blue-dim);
-    border-color: var(--c-blue);
+    color: var(--c-accent-text);
+    background: var(--c-accent-dim);
+    border-color: var(--c-accent);
   }
 }
 
 .filterOptionBtnActive {
-  color: var(--c-blue-text);
-  background: var(--c-blue-dim);
-  border-color: var(--c-blue);
+  color: var(--c-accent-text);
+  background: var(--c-accent-dim);
+  border-color: var(--c-accent);
 }
 
 .controlBtnActive[disabled],
@@ -259,14 +198,14 @@
 
 .tileProgressBar {
   height: 3px;
-  background: var(--c-blue-light);
+  background: var(--c-accent-light);
   border-radius: 2px;
   transition: width 0.2s ease;
   min-width: 4px;
 }
 
 .tileProgressLabel {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   color: var(--c-text2);
   text-align: center;
   white-space: nowrap;
@@ -297,13 +236,18 @@
 }
 
 .exportBtn {
-  padding: 6px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 8px 6px 12px;
   border-radius: 20px;
+  font-weight: 700;
   border: none;
   background: var(--c-surface);
   color: var(--c-text);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   cursor: pointer;
   white-space: nowrap;
   -webkit-tap-highlight-color: transparent;
@@ -316,6 +260,17 @@
   &:active {
     transform: scale(0.97);
   }
+}
+
+.exportCount {
+  min-width: 22px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--c-accent);
+  color: #fff;
+  font-size: var(--fs-2xs);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
 }
 
 :global([data-theme="dark"]) {
@@ -353,14 +308,14 @@
 
     &:hover {
       border-color: rgba(96, 165, 250, 0.72);
-      background: rgba(37, 99, 235, 0.22);
+      background: rgba(109, 61, 232, 0.22);
       color: #bfdbfe;
     }
   }
 
   .filterOptionBtnActive {
     border-color: rgba(96, 165, 250, 0.82);
-    background: rgba(37, 99, 235, 0.28);
+    background: rgba(109, 61, 232, 0.28);
     color: #bfdbfe;
   }
 
@@ -372,4 +327,332 @@
       0 10px 24px rgba(0, 0, 0, 0.42),
       0 0 0 1px rgba(148, 163, 184, 0.12);
   }
+}
+
+.stageDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.stageCount {
+  color: var(--c-text3);
+}
+
+/* ── Поиск и фильтры сверху (5d) ── */
+/* Ряд во всю ширину, но пустое место в нём — карта: её тянут и там. */
+.topBar {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  z-index: var(--z-overlay);
+  display: flex;
+  gap: 8px;
+  pointer-events: none;
+
+  > button,
+  > [role="status"] {
+    pointer-events: auto;
+  }
+}
+
+/* Подпись модуля — не кнопка: касания уходят карте под ней. */
+.topModule {
+  align-self: center;
+  max-width: calc(100% - 104px);
+  margin-right: auto;
+  overflow: hidden;
+  padding: 7px 12px;
+  border-radius: var(--r-pill);
+  background: var(--c-surface);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.14);
+  color: var(--c-text2);
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  pointer-events: none;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.topSpacer {
+  flex: 1;
+}
+
+.topFilter {
+  position: relative;
+  flex: none;
+  width: 46px;
+  height: 50px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 16px;
+  background: var(--c-surface);
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.14);
+  color: var(--c-ink);
+}
+
+.topFilterBadge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border: 2px solid var(--c-surface);
+  border-radius: 9px;
+  background: var(--c-accent);
+  color: #fff;
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+  line-height: 14px;
+  text-align: center;
+}
+
+.topFilterDot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--c-surface);
+  border-radius: 50%;
+  background: var(--c-accent);
+}
+
+/* Зум Leaflet — под строкой поиска, а не под ней внахлёст. */
+.mapWrapper :global(.leaflet-top.leaflet-left) {
+  top: 64px;
+}
+
+/* ── Шторка «Фильтры карты» ── */
+.filterSheetRoot {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.filterSheetBackdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.36);
+}
+
+.filterSheet {
+  position: relative;
+  max-height: calc(100dvh - 40px);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 20px 20px;
+  border-radius: var(--r-sheet);
+  background: var(--c-surface);
+  box-shadow: var(--shadow-sheet);
+
+  @supports (padding-bottom: env(safe-area-inset-bottom)) {
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  }
+}
+
+.filterSheetHead {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+
+  h2 {
+    color: var(--c-ink);
+    font-size: var(--fs-xl);
+    font-weight: 800;
+  }
+
+  > span {
+    flex: 1;
+    color: var(--c-text3);
+    font-size: var(--fs-sm);
+    font-weight: 600;
+  }
+}
+
+.filterSheetReset {
+  min-height: 44px;
+  border: none;
+  background: none;
+  color: var(--c-accent-text);
+  font-size: var(--fs-md);
+  font-weight: 800;
+
+  &:disabled {
+    color: var(--c-text3);
+  }
+}
+
+.filterSheet .filterSheetBody {
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  overflow-y: auto;
+
+  /* В шторке группа — карточка: строка с подписью сверху, варианты
+     раскрываются чипами внутри неё, а не всплывают сбоку. */
+  .filterControlWrap {
+    width: auto;
+    height: auto;
+    line-height: normal;
+    border: 1px solid var(--c-border-soft, var(--c-border));
+    border-radius: 16px;
+    background: var(--c-surface-soft, var(--c-surface));
+    overflow: hidden;
+    transition: border-color var(--t-fast);
+
+    &:has(.filterFlyoutOpen) {
+      border-color: var(--c-border);
+    }
+
+    &:has(.controlBtnActive) {
+      border-color: var(--c-accent);
+    }
+  }
+
+  .controlBtn {
+    width: 100%;
+    height: auto;
+    min-height: 56px;
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 10px 14px 10px 10px;
+    border: none !important;
+    border-radius: 0 !important;
+    background: transparent;
+    box-shadow: none;
+    color: var(--c-accent);
+
+    > svg {
+      flex: none;
+      box-sizing: content-box;
+      width: 18px;
+      height: 18px;
+      padding: 9px;
+      border-radius: 11px;
+      background: var(--c-accent-surface);
+    }
+
+    /* Подпись группы и стрелка раскрытия. */
+    &::after {
+      content: attr(aria-label);
+      flex: 1;
+      color: var(--c-ink);
+      font-size: var(--fs-lg);
+      font-weight: 700;
+      text-align: left;
+    }
+
+    &::before {
+      content: "";
+      position: static;
+      order: 2;
+      flex: none;
+      width: 8px;
+      height: 8px;
+      margin-right: 4px;
+      border-right: 2px solid var(--c-text3);
+      border-bottom: 2px solid var(--c-text3);
+      transform: rotate(45deg) translateY(-2px);
+      transition: transform var(--t-fast);
+    }
+
+    &[aria-expanded="true"]::before {
+      transform: rotate(-135deg) translateY(-2px);
+    }
+  }
+
+  .controlBtnActive {
+    background: transparent;
+    color: var(--c-accent);
+
+    /* Стрелка та же, что у остальных: полоска столбца кнопок здесь лишняя,
+       включённость показывает залитая плитка и рамка карточки. */
+    &::before {
+      top: auto;
+      bottom: auto;
+      left: auto;
+      width: 8px;
+      border-radius: 0;
+      background: none;
+    }
+
+    > svg {
+      background: var(--c-accent);
+      color: #fff;
+    }
+  }
+
+  .filterFlyout {
+    position: static;
+    display: none;
+    max-width: none;
+    justify-content: flex-start;
+    gap: 8px;
+    padding: 2px 14px 14px;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    transform: none;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .filterFlyoutOpen {
+    display: flex;
+  }
+
+  .filterOptionBtn,
+  .filterOptionBtn:hover {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 38px;
+    padding: 0 14px;
+    border-color: var(--c-border);
+    border-radius: var(--r-pill);
+    background: var(--c-surface);
+    color: var(--c-text);
+    font-size: var(--fs-sm);
+    font-weight: 600;
+  }
+
+  /* Сильнее тёмной темы столбца кнопок: в шторке выбранное — сплошной
+     акцент в обеих темах. */
+  .filterOptionBtn.filterOptionBtnActive {
+    border-color: var(--c-accent);
+    background: var(--c-accent);
+    color: #fff;
+
+    .stageCount {
+      color: inherit;
+      opacity: 0.8;
+    }
+  }
+
+  .stageCount {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.filterSheetApply {
+  min-height: 54px;
+  border: none;
+  border-radius: 16px;
+  background: var(--c-accent);
+  color: #fff;
+  font-size: var(--fs-lg);
+  font-weight: 800;
 }

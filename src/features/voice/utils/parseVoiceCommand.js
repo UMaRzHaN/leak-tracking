@@ -27,18 +27,27 @@ function getCommandSets(language) {
 }
 
 /**
- * Returns a command string if the utterance is a short navigation command,
- * or null if it's regular field dictation.
- * Short-utterance guard (<= 4 words) prevents false positives in field values.
+ * Returns a command string if the utterance is a navigation command and
+ * nothing else, or null if it's regular field dictation.
+ *
+ * The whole phrase has to be the command. A substring match turned short
+ * dictation into commands: «описание очистить фланец» wiped the form, and
+ * «comment done» saved it half-filled.
  */
 export function parseVoiceCommand(text, language) {
   if (!text) return null;
 
-  const norm = text.toLowerCase().trim();
-  if (norm.split(/\s+/).length > 4) return null;
+  // Распознаватель дописывает точку или восклицание: «Сохранить.» — та же
+  // команда.
+  const norm = text
+    .toLowerCase()
+    .replace(/[.,!?;:…]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!norm) return null;
 
   for (const { pattern, command } of getCommandSets(language)) {
-    if (pattern.test(norm)) return command;
+    if (new RegExp(`^(?:${pattern.source})$`).test(norm)) return command;
   }
 
   return null;

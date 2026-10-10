@@ -26,6 +26,7 @@ export const reopen = {
   confirm: "Open",
   placeholder: "New value",
   saveError: "Failed to reopen leak",
+  calcParamsInvalid: "Calculation parameters are out of range",
 
   fields: {
     leak_speed: "Leak speed, L/min",

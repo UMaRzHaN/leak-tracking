@@ -1,13 +1,51 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { useProjectBackupExport } from "@/app/hooks/useProjectBackupExport";
+import Notification from "@/components/ui/Notification/Notification";
+import { isMonitoringDue } from "@/utils/monitoring";
+import {
+  MONITORING_ROUND_EVENT,
+  readMonitoringRound,
+} from "@/utils/monitoringRound";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { SHOW_ON_MAP_EVENT } from "@/app/mapFocus";
+import { globalScope } from "@/utils/globalScope";
+import "@fontsource-variable/manrope";
 import "@/index.scss";
 import { useLocationScope } from "@/hooks/useLocationScope";
+import {
+  reconcileNeedsRegistry,
+  useRoundRemaining,
+} from "./hooks/useRoundRemaining";
 import { useRegistryLocationSource } from "@/hooks/useRegistryLocationSource";
 import { MAP_BASE } from "@/pages/MapPage/mapBase";
-import { showsComponentTree } from "./pages";
+import { showsComponentTree, showsLocationScope } from "./pages";
 import { STATUS } from "@/utils/status";
+import { hasComponentRegistry } from "@/configs/componentRegistry.config";
+import { computeSurveyCoverage } from "@/utils/surveyCoverage";
+import { surveyCoverage, surveyForPlace } from "@/domain/surveyGroups";
+import { useSurvey } from "@/utils/surveyStorage";
+import {
+  MODULE,
+  moduleHomePage,
+  useActiveModule,
+} from "@/app/modules/activeModule";
+import { countRepairStages } from "@/domain/repairStages";
+import {
+  readRoute,
+  routeProgress,
+  saveRoute,
+} from "@/features/route/routePlan";
 
 const Header = lazy(() => import("@/components/layout/Header/Header"));
 const Footer = lazy(() => import("@/components/layout/Footer/Footer"));
+const AppMenu = lazy(() => import("@/components/layout/AppMenu/AppMenu"));
+const RouteSheet = lazy(() => import("@/features/route/RouteSheet"));
 // Only reached from the header button, so it stays out of the initial graph.
 const LocationBrowser = lazy(
   () => import("@/features/locationScope/LocationBrowser"),
@@ -48,6 +86,8 @@ export default function App() {
     prevPage,
     requestMonitoring,
     requestMonitoringQueue,
+    monitoringReturnPage,
+    setMonitoringReturnPage,
     requestedMonitoringLeakId,
     requestedMonitoringLeakIds,
     retryLoad,
@@ -70,6 +110,55 @@ export default function App() {
   useTheme();
 
   const [locationBrowserOpen, setLocationBrowserOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [survey] = useSurvey(activeProject?.id ?? null);
+  const [module, setModule] = useActiveModule();
+  const [routeSheetOpen, setRouteSheetOpen] = useState(false);
+  // Маршрут живёт в проекте: после перезапуска обход продолжается с той же
+  // точки, а в другом проекте своего маршрута нет.
+  const [storedRoute, setStoredRoute] = useState(() =>
+    readRoute(activeProject?.id),
+  );
+  useEffect(() => {
+    setStoredRoute(readRoute(activeProject?.id));
+  }, [activeProject?.id]);
+  const setRoute = (next) => {
+    saveRoute(activeProject?.id, next);
+    setStoredRoute(next);
+  };
+  const selectModule = (next) => {
+    setModule(next);
+    setPage(moduleHomePage(next));
+  };
+  // «+» инвентаризации: реестр открывает пустую карточку, когда номер
+  // запроса меняется. Номер, а не флаг — второй запрос подряд тоже должен
+  // сработать.
+  const [componentAddRequest, setComponentAddRequest] = useState(0);
+  // У инвентаризации своей главной нет: её «Записи» — это реестр.
+  useEffect(() => {
+    if (module === MODULE.INVENTORY && page === "") {
+      setPage("components", { replace: true });
+    }
+  }, [module, page, setPage]);
+  // «Показать на карте» из карточки утечки: точку она оставила в mapFocus,
+  // здесь — только переход.
+  useEffect(() => {
+    const show = () => setPage("map");
+    globalScope.addEventListener?.(SHOW_ON_MAP_EVENT, show);
+    return () => globalScope.removeEventListener?.(SHOW_ON_MAP_EVENT, show);
+  }, [setPage]);
+  // Раздел настроек, к которому прокрутить: меню ведёт в импорт и
+  // синхронизацию, а они пока живут внутри настроек, а не на своих экранах.
+  const [settingsSection, setSettingsSection] = useState(
+    /** @type {string|null} */ (null),
+  );
+  useEffect(() => {
+    if (page !== "settings") setSettingsSection(null);
+  }, [page]);
+  const openSettings = (section) => {
+    setSettingsSection(section);
+    setPage("settings");
+  };
   const leakScope = useLocationScope({
     leaks: data,
     sharedFilters,
@@ -81,7 +170,11 @@ export default function App() {
    * реестре рядом с «Мессояхское УПГ» стояло число утечек, а открывалась папка
    * с железом: фильтр общий, а деревья у сущностей разные.
    */
-  const registryPage = page === "components" || page === "component";
+  const registryPage =
+    page === "components" ||
+    page === "component" ||
+    page === "schemas" ||
+    page === "reconcile";
   const [mapBase, setMapBase] = useState(MAP_BASE.LEAKS);
   /*
    * Уходя с карты, база возвращается к утечкам — так было, пока она жила
@@ -91,9 +184,19 @@ export default function App() {
    */
   useEffect(() => {
     if (page !== "map") setMapBase(MAP_BASE.LEAKS);
-  }, [page]);
+    // Карта инвентаризации (6c) — это карта железа.
+    else if (module === MODULE.INVENTORY) setMapBase(MAP_BASE.COMPONENTS);
+  }, [page, module]);
   const componentTree = showsComponentTree(page, mapBase);
-  const registryComponents = useRegistryLocationSource(componentTree);
+  const showRegistry = hasComponentRegistry(activeProject);
+  // Главная тоже читает реестр: по нему считается, сколько объектов всего,
+  // для строки охвата. И меню при идущей сверке — «N к сверке». Дерево мест
+  // шапки от этого не меняется — оно по компонентам только там, где железо.
+  const registryComponents = useRegistryLocationSource(
+    componentTree ||
+      (page === "" && module === MODULE.LDAR && showRegistry) ||
+      reconcileNeedsRegistry(menuOpen, module, activeProject?.id),
+  );
   const componentScope = useLocationScope({
     leaks: registryComponents,
     sharedFilters,
@@ -109,6 +212,98 @@ export default function App() {
     [leakScope.scopedLeaks],
   );
 
+  // Введённое обследование (4a) точнее: в нём есть и осмотренное без
+  // находок. Без ввода — нижняя граница по объектам с утечками. При
+  // выбранном месте считаются группы этого места; если места у групп не
+  // указаны, охват по всему проекту, и плитка так и подписана.
+  const placePath = leakScope.path;
+  const coverage = useMemo(() => {
+    if (page !== "" || module !== MODULE.LDAR) return null;
+    const scoped = surveyForPlace(survey, placePath);
+    const fromSurvey = surveyCoverage(scoped.survey);
+    return fromSurvey
+      ? { ...fromSurvey, projectWide: scoped.projectWide }
+      : computeSurveyCoverage({
+          leaks: leakScope.scopedLeaks,
+          components: componentScope.scopedLeaks,
+          levelKeys: leakScope.levelKeys,
+        });
+  }, [
+    page,
+    module,
+    survey,
+    placePath,
+    leakScope.scopedLeaks,
+    leakScope.levelKeys,
+    componentScope.scopedLeaks,
+  ]);
+
+  // Счётчик пункта «Ремонтные работы» в меню: работы в производстве, без
+  // принятых.
+  // ZIP-бэкап из меню; итог и ход — уведомлением поверх любой страницы.
+  const [appNotice, setAppNotice] = useState(/** @type {any} */ (null));
+  const notifyApp = useCallback(
+    (type, message, options = {}) =>
+      setAppNotice({ type, message, ...options }),
+    [],
+  );
+  const {
+    exportBackup,
+    isExporting: exportingBackup,
+    canExport: canExportBackup,
+  } = useProjectBackupExport({
+    data,
+    activeProject,
+    dataLoaded,
+    notify: notifyApp,
+  });
+
+  // Сколько тегов осталось в текущем обходе — для меню и бейджа «Обхода» в
+  // нижней панели мониторинга. Вне мониторинга считается, только пока меню
+  // открыто; обход перечитывается, когда его начинают или завершают.
+  const [roundVersion, setRoundVersion] = useState(0);
+  useEffect(() => {
+    const bump = () => setRoundVersion((value) => value + 1);
+    globalScope.addEventListener?.(MONITORING_ROUND_EVENT, bump);
+    return () =>
+      globalScope.removeEventListener?.(MONITORING_ROUND_EVENT, bump);
+  }, []);
+  const monitoringDueCount = useMemo(() => {
+    if (!menuOpen && module !== MODULE.MONITORING) return null;
+    void roundVersion;
+    const round = readMonitoringRound(activeProject?.id ?? null);
+    if (!round || round.completedAt) return null;
+    return leakScope.scopedLeaks.filter((leak) =>
+      isMonitoringDue(leak, round.id, round.number),
+    ).length;
+  }, [
+    menuOpen,
+    module,
+    roundVersion,
+    activeProject?.id,
+    leakScope.scopedLeaks,
+  ]);
+
+  const { remaining: roundRemaining, reconcileDue } = useRoundRemaining({
+    module,
+    menuOpen,
+    page,
+    projectId: activeProject?.id ?? null,
+    leaks: leakScope.scopedLeaks,
+    components: componentScope.scopedLeaks,
+    monitoringDue: monitoringDueCount,
+  });
+
+  const repairCount = useMemo(() => {
+    const counts = countRepairStages(leakScope.scopedLeaks);
+    return counts.all - counts.resolved;
+  }, [leakScope.scopedLeaks]);
+
+  const progress = useMemo(
+    () => routeProgress(storedRoute, data),
+    [storedRoute, data],
+  );
+
   if (!isConfigured) {
     return (
       <Suspense fallback={<AppLoader />}>
@@ -117,6 +312,8 @@ export default function App() {
           onImportZip={handleSetupImportZip}
           onImportExcel={handleSetupImportExcel}
           onImportInventory={handleSetupImportInventory}
+          onSaveUserName={(name) => setUserProfile({ name })}
+          knownUserName={userProfile?.name ?? ""}
         />
       </Suspense>
     );
@@ -139,9 +336,8 @@ export default function App() {
             setPage={setPage}
             gpsEnabled={gpsEnabled}
             setGpsEnabled={setGpsEnabled}
-            userProfile={userProfile}
-            onUserProfileOpen={() => setUserProfileOpen(true)}
-            locationScope={locationScope}
+            onMenuOpen={() => setMenuOpen(true)}
+            locationScope={showsLocationScope(page) ? locationScope : null}
             onLocationScopeOpen={() => setLocationBrowserOpen(true)}
           />
         </Suspense>
@@ -170,10 +366,21 @@ export default function App() {
         requestMonitoringQueue={requestMonitoringQueue}
         requestedMonitoringLeakId={requestedMonitoringLeakId}
         requestedMonitoringLeakIds={requestedMonitoringLeakIds}
+        monitoringReturnPage={monitoringReturnPage}
+        notifyApp={notifyApp}
+        setMonitoringReturnPage={setMonitoringReturnPage}
         retryLoad={retryLoad}
         save={save}
         scopedData={leakScope.scopedLeaks}
+        leakScope={leakScope}
+        onLocationScopeOpen={() => setLocationBrowserOpen(true)}
         setPage={setPage}
+        settingsSection={settingsSection}
+        coverage={coverage}
+        module={module}
+        routeProgress={module === MODULE.MONITORING ? progress : null}
+        componentAddRequest={componentAddRequest}
+        onEndRoute={() => setRoute(null)}
         setRequestedMonitoringLeakId={setRequestedMonitoringLeakId}
         setRequestedMonitoringLeakIds={setRequestedMonitoringLeakIds}
         mapBase={mapBase}
@@ -191,7 +398,60 @@ export default function App() {
             page={page}
             setPage={setPage}
             openCount={scopedOpenCount}
-            project={activeProject}
+            remainingCount={roundRemaining ?? 0}
+            module={module}
+            onRoute={() => setRouteSheetOpen(true)}
+            onAddComponent={
+              showRegistry
+                ? () => {
+                    setComponentAddRequest((value) => value + 1);
+                    setPage("components");
+                  }
+                : null
+            }
+          />
+        </Suspense>
+      )}
+
+      {routeSheetOpen && (
+        <Suspense fallback={null}>
+          <RouteSheet
+            open={routeSheetOpen}
+            leaks={leakScope.scopedLeaks}
+            coords={coords}
+            gpsEnabled={gpsEnabled}
+            onClose={() => setRouteSheetOpen(false)}
+            onShowMap={() => {
+              setRouteSheetOpen(false);
+              setPage("map");
+            }}
+            onStart={(ids) => {
+              setRoute({ ids, startedAt: new Date().toISOString() });
+              setRouteSheetOpen(false);
+              setPage("map");
+            }}
+          />
+        </Suspense>
+      )}
+
+      {menuOpen && (
+        <Suspense fallback={null}>
+          <AppMenu
+            open={menuOpen}
+            onClose={() => setMenuOpen(false)}
+            setPage={setPage}
+            module={module}
+            onSelectModule={selectModule}
+            onOpenSettings={openSettings}
+            onEditProfile={() => setUserProfileOpen(true)}
+            userProfile={userProfile}
+            openCount={scopedOpenCount}
+            repairCount={repairCount}
+            monitoringDueCount={monitoringDueCount}
+            reconcileDueCount={reconcileDue}
+            onExportBackup={canExportBackup ? exportBackup : null}
+            exportingBackup={exportingBackup}
+            showRegistry={showRegistry}
           />
         </Suspense>
       )}
@@ -207,12 +467,23 @@ export default function App() {
               // read the whole project, so it leaves the current screen alone.
               // Реестр — тоже список, и выбранную папку он показывает сам;
               // уводить с него на базу значило бы подменить сущность.
-              if ((path.length > 0 || picked.length > 0) && !registryPage)
+              // Экспорт (8a) выбирает место для отчёта у себя — уводить с
+              // него на базу значило бы бросить настройку выгрузки.
+              if (
+                (path.length > 0 || picked.length > 0) &&
+                !registryPage &&
+                page !== "export"
+              )
                 setPage("db");
             }}
           />
         </Suspense>
       )}
+
+      <Notification
+        notification={appNotice}
+        onClose={() => setAppNotice(null)}
+      />
 
       <AppDialogs
         open={userProfileOpen}

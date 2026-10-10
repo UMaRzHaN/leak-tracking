@@ -10,7 +10,8 @@ import { normalizeLeakTag } from "@/utils/leakIdentity";
  * одним номером. Под одним ключом они затирали друг друга, и объединение
  * превращало одну в копию другой.
  *
- * Поэтому сначала точная пара — тот же `id` и тот же номер. Номер сам по себе
+ * Поэтому сначала точная пара — тот же `id` и тот же номер, затем тот же `id`
+ * с поправленным номером. Номер сам по себе
  * опознаёт только там, где точной пары нет, и каждую местную утечку отдаёт не
  * больше одного раза. Местная утечка, чей `id` приехал в архиве, по номеру не
  * отдаётся вовсе: у неё есть своя пара, даже если ту отсеяли до слияния.
@@ -57,11 +58,31 @@ export function matchIncomingLeaks(existing = [], incoming = [], options = {}) {
       .map((leak) => String(leak.id)),
   );
   const claimed = new Set();
-  const matches = incoming.map((leak) => {
+  const exactMatches = incoming.map((leak) => {
     const key = exactKey(leak);
     const index = key == null ? undefined : exact.get(key);
     if (index != null) claimed.add(index);
     return index ?? -1;
+  });
+
+  // Тот же `id` с другим номером — та же утечка, номер у которой поправили на
+  // одной из сторон. Без этого шага она оставалась без пары и добавлялась
+  // второй записью с тем же `id`: на Android импорт падал целиком, в вебе в
+  // проекте появлялся дубль. Раньше номера: по номеру её отдали бы чужой
+  // записи, которой этот номер достался.
+  const byId = new Map();
+  existing.forEach((leak, index) => {
+    if (leak?.id != null && !byId.has(String(leak.id))) {
+      byId.set(String(leak.id), index);
+    }
+  });
+  const matches = exactMatches.map((match, position) => {
+    if (match >= 0) return match;
+    const id = incoming[position]?.id;
+    const index = id == null ? undefined : byId.get(String(id));
+    if (index == null || claimed.has(index)) return -1;
+    claimed.add(index);
+    return index;
   });
 
   return matches.map((match, position) => {

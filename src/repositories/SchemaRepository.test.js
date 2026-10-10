@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   save: vi.fn(),
   getStrict: vi.fn(),
   remove: vi.fn(),
+  listKeysStrict: vi.fn(),
 }));
 
 vi.mock("@/utils/platform", () => ({ isNative: false }));
@@ -18,6 +19,7 @@ vi.mock("@/repositories/idb", () => ({
     save: mocks.save,
     getStrict: mocks.getStrict,
     remove: mocks.remove,
+    listKeysStrict: mocks.listKeysStrict,
   }),
 }));
 vi.mock("@capacitor/filesystem", () => ({
@@ -183,6 +185,29 @@ describe("SchemaRepository on web", () => {
     await expect(SchemaRepository.listSchemas(project)).rejects.toMatchObject({
       code: "SCHEMA_INDEX_READ_FAILED",
     });
+  });
+
+  it("removes orphaned drawing bytes along with the project", async () => {
+    // Байты без строки в индексе — сохранение оборвалось до индекса, или
+    // файл не стёрся при удалении схемы — по индексу не удалялись никогда.
+    mocks.getStrict.mockResolvedValue({
+      version: 1,
+      data: [{ ...schema, id: "live" }],
+    });
+    mocks.listKeysStrict.mockResolvedValue([
+      "p1:index",
+      "p1:file:live",
+      "p1:file:orphan",
+      "p10:file:other",
+      "p2:index",
+    ]);
+
+    await expect(SchemaRepository.removeProjectSchemas(project)).resolves.toBe(
+      true,
+    );
+
+    const removed = mocks.remove.mock.calls.map(([key]) => key).sort();
+    expect(removed).toEqual(["p1:file:live", "p1:file:orphan", "p1:index"]);
   });
 
   it("refuses to store without a project", async () => {

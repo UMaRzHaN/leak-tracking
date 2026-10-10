@@ -43,4 +43,25 @@ describe("translateAutocompleteOption", () => {
       "Ball valve DN-15 PN-80 кгс/см² fitting-nipple connection",
     );
   });
+
+  it("у разных типов привода — разные английские названия", () => {
+    // «Гидроэлектрический» и «Электрогидравлический» оба становились
+    // Electrohydraulic: в английском списке это два одинаковых пункта.
+    const actuators = [
+      "Гидроэлектрический",
+      "Электрогидравлический",
+      "Пневмогидроэлектрический",
+      "Электропневмогидравлический",
+    ];
+    const english = actuators.map((option) =>
+      translateAutocompleteOption(option, "en"),
+    );
+
+    expect(english).toEqual([
+      "Hydroelectric",
+      "Electrohydraulic",
+      "Pneumohydroelectric",
+      "Electropneumohydraulic",
+    ]);
+  });
 });

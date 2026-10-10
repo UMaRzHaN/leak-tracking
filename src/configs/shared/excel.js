@@ -30,6 +30,13 @@ const REQUIRED_EXCEL_FIELDS = [
     after: "uncertainty",
   },
   {
+    // Поле есть в общем шаге формы у всех отраслей, а колонка была только у
+    // midstream: на upstream и downstream заполненный план в отчёт не попадал.
+    key: "repair_recommendation",
+    header: "Решение / План устранения",
+    after: "technological_solution",
+  },
+  {
     // Сразу за координатами: читают её вместе с ними, и в стороне от них она
     // превращается в число без объяснения, что оно значит.
     key: "coords_accuracy",

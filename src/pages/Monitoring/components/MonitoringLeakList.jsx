@@ -19,7 +19,6 @@ export default function MonitoringLeakList({
   monitoringRoundNumber,
   onMonitor,
   onOpenDetails,
-  onPickStatus,
   setMonitoringFilter,
   texts,
 }) {
@@ -31,12 +30,16 @@ export default function MonitoringLeakList({
         <FilterBar
           search={filters.search}
           setSearch={filters.setSearch}
+          searchScope={filters.searchScope}
+          setSearchScope={filters.setSearchScope}
           statusFilter={filters.statusFilter}
           setFilter={filters.setFilter}
           priorityFilter={filters.priorityFilter}
           setPriorityFilter={filters.setPriorityFilter}
           fictionFilter={filters.fictionFilter}
           setFictionFilter={filters.setFictionFilter}
+          tagFilter={filters.tagFilter}
+          setTagFilter={filters.setTagFilter}
           nearbyFilter={filters.nearbyFilter}
           setNearbyFilter={filters.setNearbyFilter}
           nearbyRadius={filters.nearbyRadius}
@@ -86,7 +89,6 @@ export default function MonitoringLeakList({
                 roundNumber={monitoringRoundNumber}
                 hasActiveRound={hasActiveMonitoringRound}
                 onOpenDetails={onOpenDetails}
-                onPickStatus={onPickStatus}
                 onMonitor={onMonitor}
               />
             )}

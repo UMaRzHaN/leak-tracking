@@ -1,3 +1,4 @@
+import { readProjectRounds } from "@/app/project/projectRounds";
 import { errorText } from "@/utils/appError";
 import { useCallback, useState } from "react";
 import { STATUS, getStatusLabel } from "@/utils/status";
@@ -6,9 +7,12 @@ import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import { useProjectData } from "@/app/project/ProjectContext";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { useExcelExportMode } from "@/app/project/hooks/useExcelExportMode";
+import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import { useProjectVars } from "@/app/project/hooks/useProjectVars";
 import { readProjectSettings } from "@/app/project/projectSettings";
 import { readMonitoringRound } from "@/utils/monitoringRound";
+import { readAcceptances } from "@/utils/acceptanceStorage";
+import { readStoredSurvey } from "@/utils/surveyStorage";
 import { readProjectSyncStateAsync } from "@/services/sync/projectSyncState";
 import { formatTimeOfDay } from "@/services/excelExport/cellValues";
 import { getLeakSheetValue } from "@/services/excelExport/leakSheetValues";
@@ -49,7 +53,31 @@ export function prepareRows(data, t, projectVars = {}) {
   });
 }
 
-export function useDataBaseExport({ displayed, notify }) {
+// Папка отчёта по утечкам в архиве, где рядом лежит инвентаризация.
+export const DATABASE_FOLDER = "Database";
+
+export function useDataBaseExport({
+  displayed,
+  notify,
+  onDone = /** @type {((result: any) => void)|null} */ (null),
+  // Выбор экрана экспорта (8a): какие листы и класть ли фото. База
+  // выгружает всё, как и раньше.
+  sheets = /** @type {{monitoring?:boolean, repairs?:boolean, materials?:boolean}|null} */ (
+    null
+  ),
+  includePhotos = true,
+  // Фото по разделам и инвентаризация папкой рядом (8a).
+  photoSections = /** @type {{leaks?:boolean, repairs?:boolean, monitoring?:boolean}|null} */ (
+    null
+  ),
+  inventory = /** @type {{withPhotos:boolean}|null} */ (null),
+  // Книга по утечкам в архиве; `false` — выбрана одна инвентаризация.
+  leakWorkbook = true,
+  // Строки листа «Приёмка оборудования» за период — готовит экран экспорта.
+  acceptanceRows = /** @type {any[]|null} */ (null),
+  // Экран экспорта (8b): собрать файл и вернуть его, не сохраняя сразу.
+  deferDelivery = false,
+}) {
   const { t } = useLanguage();
   const [isExporting, setIsExporting] = useState(false);
   const projectConfig = useEffectiveProjectConfig();
@@ -59,6 +87,10 @@ export function useDataBaseExport({ displayed, notify }) {
   const { activeProject } = useProjectData();
   const { monitoringExportMode } = useExcelExportMode(
     activeProject?.id ?? null,
+  );
+  const { mode: repairLogExportMode } = useExcelExportMode(
+    activeProject?.id ?? null,
+    STORAGE_KEYS.PROJECT_EXCEL_REPAIR_LOG_EXPORT_MODE,
   );
   const { vars } = useProjectVars(activeProject?.id ?? null);
 
@@ -81,34 +113,84 @@ export function useDataBaseExport({ displayed, notify }) {
           import("@/pages/DataBase/excel"),
           import("@/services/excel/excelWorkerClient"),
         ]);
+      // Одна инвентаризация — тот же архив, что отдаёт её своя выгрузка:
+      // то же имя, книга в корне, а не в папке рядом с отчётом.
+      const inventoryOnly = !leakWorkbook && inventory;
+      const fileStem = inventoryOnly
+        ? (
+            await import("@/services/inventory/inventoryArchive")
+          ).buildInventoryFileStem(activeProject?.name)
+        : `!Database_${activeProject?.name || "no_name"}`;
 
       const result = await exportToExcelFile(
         displayed,
         prepareRows(displayed, t, vars),
         excelHeaders,
         excelKeys,
-        `!Database_${activeProject?.name || "no_name"}`,
+        fileStem,
         idbGetPhoto,
         activeProject?.folderName,
         t,
         {
           monitoringExportMode,
+          repairLogExportMode,
           project: activeProject,
           vars,
           settings: readProjectSettings(activeProject?.id),
           monitoringRound: readMonitoringRound(activeProject?.id),
+          rounds: readProjectRounds(activeProject?.id ?? null),
           sync: await readProjectSyncStateAsync(activeProject?.id),
+          // Накладные и обследование едут в служебном листе, как в ZIP:
+          // без них книга, прошедшая круг экспорт → импорт, их теряла.
+          acceptances: readAcceptances(activeProject?.id),
+          survey: readStoredSurvey(activeProject?.id),
           // A filtered export must be self-contained without silently
           // including records (and photos) hidden by the current filters.
           backupLeaks: displayed,
           buildWorkbookBuffer: buildWorkbookBufferInWorker,
+          deliver: !deferDelivery,
+          sheets: sheets ?? {},
+          leakWorkbook,
+          // С инвентаризацией в одном архиве у отчёта своя папка, как у неё.
+          archiveFolder: inventory && !inventoryOnly ? DATABASE_FOLDER : null,
+          acceptanceRows: acceptanceRows ?? [],
+          includePhotos,
+          photoSections: photoSections ?? {},
+          addToArchive: inventory
+            ? async (zip) => {
+                const [{ prepareInventoryExport }, { addInventoryFiles }] =
+                  await Promise.all([
+                    import("@/services/inventory/inventoryExportParts"),
+                    import("@/services/inventory/inventoryArchive"),
+                  ]);
+                const parts = await prepareInventoryExport(activeProject, {
+                  idbGet: idbGetPhoto,
+                  t,
+                  withPhotos: inventory.withPhotos,
+                });
+                if (parts) {
+                  await addInventoryFiles(
+                    zip,
+                    parts,
+                    inventoryOnly ? "" : t("export.inventoryFolder"),
+                  );
+                }
+              }
+            : null,
         },
       );
 
       if (typeof window !== "undefined") {
         window.__EXCEL_EXPORT_METRICS__ = result?.metrics ?? null;
       }
-      notify("success", result?.message || t("database.export.success"));
+      if (!deferDelivery) {
+        notify(
+          "success",
+          /** @type {any} */ (result)?.message || t("database.export.success"),
+        );
+      }
+      // Экран экспорта (8b) показывает итог и пишет его в историю.
+      onDone?.(result);
     } catch (err) {
       notify(
         "error",
@@ -118,14 +200,23 @@ export function useDataBaseExport({ displayed, notify }) {
       setIsExporting(false);
     }
   }, [
+    acceptanceRows,
     activeProject,
+    deferDelivery,
     displayed,
     excelHeaders,
     excelKeys,
     idbGetPhoto,
+    includePhotos,
+    inventory,
     isExporting,
+    leakWorkbook,
     monitoringExportMode,
+    repairLogExportMode,
     notify,
+    onDone,
+    photoSections,
+    sheets,
     t,
     vars,
   ]);

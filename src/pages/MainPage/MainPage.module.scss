@@ -2,7 +2,7 @@
 
 .page {
   min-height: 100%;
-  padding: 14px 12px var(--app-footer);
+  padding: 18px 20px var(--app-footer);
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -12,174 +12,110 @@
   }
 }
 
-/* ── Stats row ── */
-.statsRow {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
-}
-
-.statCard {
-  background: var(--c-surface);
-  border-radius: var(--r-md);
-  padding: 7px 6px 8px;
-  min-height: 50px;
-  border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--c-border));
-  box-shadow: none;
-  position: relative;
-  overflow: hidden;
+/* ── Охват обследования ── */
+.coverage {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  cursor: pointer;
-  transition:
-    transform var(--t-fast),
-    border-color var(--t-fast),
-    background var(--t-fast),
-    box-shadow var(--t-fast);
-
-  &:active {
-    transform: scale(0.96);
-  }
-
-  &::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 8px;
-    bottom: 8px;
-    width: 3px;
-    border-radius: var(--r-pill);
-    background: var(--accent);
-    opacity: 0.75;
-  }
-}
-
-.statActive {
-  background: color-mix(in srgb, var(--accent) 12%, var(--c-surface));
-  border-color: color-mix(
-    in srgb,
-    var(--accent) 62%,
-    var(--c-border)
-  ) !important;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 16%, transparent);
-}
-
-.statBar {
-  display: none;
-}
-
-.statVal {
-  font-size: 19px;
-  font-weight: 800;
-  color: var(--accent);
-  line-height: 1;
-  text-align: center;
-}
-
-.statLabel {
-  max-width: 100%;
-  font-size: 9px;
-  font-weight: 700;
-  color: var(--c-text2);
-  text-transform: uppercase;
-  letter-spacing: 0;
-  line-height: 1.1;
-  text-align: center;
-  overflow-wrap: normal;
-  word-break: normal;
-}
-
-/* ── Filter label ── */
-.filterLabel {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 7px 12px;
-  background: var(--c-surface);
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-lg);
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--c-text2);
-  box-shadow: var(--shadow-sm);
-}
-
-.filterDot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.filterClear {
-  margin-left: auto;
-  background: none;
-  border: none;
-  color: var(--c-text3);
-  font-size: 13px;
-  cursor: pointer;
-  padding: 0 2px;
-  line-height: 1;
-  transition: color var(--t-fast);
-  &:hover {
-    color: var(--c-text);
-  }
-}
-
-/* ── GPS toggle ── */
-.gpsBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   gap: 8px;
-  padding: 11px 16px;
-  border-radius: var(--r-lg);
-  border: 1.5px solid var(--c-border);
+  padding: 14px;
+  border: 1px solid var(--c-border-soft);
+  border-radius: 18px;
   background: var(--c-surface);
-  color: var(--c-text2);
-  font-size: 13px;
-  font-weight: 500;
-  box-shadow: var(--shadow-sm);
-  transition: all var(--t-fast);
+}
 
-  &.gpsOn {
-    border-color: var(--c-resolved-border);
-    background: var(--c-resolved-bg);
-    color: var(--c-resolved-text);
-    font-weight: 600;
+.coverageHead {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.coverageTitle {
+  color: var(--c-text3);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.coverageValue {
+  margin-left: auto;
+  color: var(--c-ink);
+  font-size: var(--fs-md);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.coverageBar {
+  display: block;
+  height: 7px;
+  border-radius: var(--r-pill);
+  background: var(--c-accent-dim);
+  overflow: hidden;
+
+  span {
+    display: block;
+    height: 100%;
+    border-radius: var(--r-pill);
+    background: var(--c-accent);
   }
 }
 
-/* ── Section ── */
+.coverageLink {
+  align-self: flex-start;
+  min-height: 32px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--c-accent-text);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  text-align: left;
+}
+
+.coverageHint {
+  color: var(--c-text3);
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+}
+
+/* ── Группы записей по дням ── */
 .section {
   display: flex;
   flex-direction: column;
-  gap: 0;
 }
 
 .sectionHead {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
-  margin-bottom: 10px;
+  gap: 8px;
+  margin: 8px 2px 10px;
 }
 
 .sectionTitle {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--c-text);
+  color: var(--c-text3);
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .viewAll {
+  min-height: 44px;
+  margin: -14px 0;
+  padding: 0 2px;
   background: none;
   border: none;
-  color: var(--c-blue-text);
-  font-size: 13px;
-  font-weight: 600;
+  color: var(--c-accent-text);
+  font-size: var(--fs-sm);
+  font-weight: 700;
   cursor: pointer;
+}
+
+/* Отступ между карточками задаёт сама карточка (margin снизу). */
+.list {
+  display: flex;
+  flex-direction: column;
 }
 
 /* ── Empty state ── */
@@ -200,12 +136,12 @@
   line-height: 1;
 }
 .emptyTitle {
-  font-size: 15px;
+  font-size: var(--fs-lg);
   font-weight: 600;
   color: var(--c-text);
 }
 .emptyHint {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--c-text2);
   max-width: 260px;
   line-height: 1.5;
@@ -214,15 +150,15 @@
 .emptyBtn {
   margin-top: 4px;
   padding: 10px 20px;
-  background: var(--c-blue);
+  background: var(--c-accent);
   color: #fff;
   border: none;
   border-radius: var(--r-md);
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 600;
   cursor: pointer;
   transition: background var(--t-fast);
   &:hover {
-    background: var(--c-blue-light);
+    background: var(--c-accent-light);
   }
 }

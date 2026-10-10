@@ -7,6 +7,7 @@ import {
 } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import ReopenLeakModal from "./ReopenLeakModal";
+import { VAR_DEFAULTS } from "@/data/variables";
 
 vi.mock("@/app/hooks/useLanguage", async () => {
   const { englishLanguageHook } = await import("@/test/translate");
@@ -33,7 +34,7 @@ describe("ReopenLeakModal", () => {
           equipmentType: "GFM 2.0",
           serial_number: "   ",
         }}
-        vars={{}}
+        vars={VAR_DEFAULTS}
         onConfirm={onConfirm}
         onClose={onClose}
       />,
@@ -54,6 +55,23 @@ describe("ReopenLeakModal", () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  it("does not reopen with measurements the calculation cannot use", () => {
+    const onConfirm = vi.fn();
+    render(
+      <ReopenLeakModal
+        leak={{ id: "leak-1", leak_id: "1001", equipmentType: "pink bag" }}
+        vars={VAR_DEFAULTS}
+        onConfirm={onConfirm}
+        onClose={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Open" }));
+
+    expect(onConfirm).not.toHaveBeenCalled();
+    expect(document.body.textContent).toContain("Pressure");
+  });
+
   it("waits for persistence and blocks submit and close while saving", async () => {
     let finishSave;
     const onConfirm = vi.fn(
@@ -69,8 +87,10 @@ describe("ReopenLeakModal", () => {
           id: "leak-1",
           leak_id: "1001",
           equipmentType: "pink bag",
+          pressure: 1,
+          temperature: 20,
         }}
-        vars={{}}
+        vars={VAR_DEFAULTS}
         onConfirm={onConfirm}
         onClose={onClose}
       />,
@@ -110,8 +130,10 @@ describe("ReopenLeakModal", () => {
           id: "leak-1",
           leak_id: "1001",
           equipmentType: "pink bag",
+          pressure: 1,
+          temperature: 20,
         }}
-        vars={{}}
+        vars={VAR_DEFAULTS}
         onConfirm={onConfirm}
         onClose={onClose}
       />,

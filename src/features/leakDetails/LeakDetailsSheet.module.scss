@@ -4,13 +4,16 @@
    LeakDetailsSheet — bottom sheet modal
    ══════════════════════════════════════════ */
 
+/* Карточка утечки на весь экран (5e): фото сверху, вкладки, действия
+   снизу. Раньше это была шторка на 92 % высоты поверх тёмной шапки — шапка
+   торчала сверху и съедала место под фото. */
 .overlay {
   position: fixed;
   inset: 0;
   z-index: var(--z-overlay);
-  background: var(--c-overlay);
+  background: var(--c-bg);
   display: flex;
-  align-items: flex-end;
+  align-items: stretch;
   animation: fadeIn 0.18s ease;
 }
 
@@ -26,13 +29,11 @@
 /* ── Sheet ── */
 .sheet {
   width: 100%;
-  max-height: 92dvh;
+  height: 100dvh;
   background: var(--c-bg);
-  border-radius: var(--r-sheet);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: var(--shadow-sheet);
   animation: slideUp 0.28s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
@@ -46,16 +47,28 @@
 }
 
 /* ── Drag handle (now inside hero) ── */
-.heroHandle {
+.heroBack {
   position: absolute;
-  top: 8px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: calc(14px + env(safe-area-inset-top, 0px));
+  left: 16px;
   z-index: 3;
-  width: 36px;
-  height: 4px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.45);
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.92);
+  /* Не --c-ink: в тёмной теме он светлый, и стрелка терялась на белом. */
+  color: #0f172a;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+
+  :global([data-theme="dark"]) & {
+    background: rgba(15, 23, 42, 0.72);
+    color: #fff;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
 }
 
 /* ══════════════════════════════════════════
@@ -65,13 +78,54 @@
 .heroHeader {
   position: relative;
   width: 100%;
-  height: 160px;
+  height: calc(210px + env(safe-area-inset-top, 0px));
   flex-shrink: 0;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   overflow: hidden;
-  border-bottom: 1px solid var(--c-border);
+}
+
+/* Лента снимков (5e): свайп — нативная прокрутка с прилипанием к кадру. */
+.heroTrack {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.heroSlide {
+  flex: 0 0 100%;
+  height: 100%;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+  background: linear-gradient(145deg, #1a2035 0%, #0d1321 100%) center / cover
+    no-repeat;
+}
+
+.heroCounter {
+  position: absolute;
+  right: 16px;
+  bottom: 18px;
+  z-index: 2;
+  padding: 4px 10px;
+  border-radius: var(--r-pill, 999px);
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: #fff;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
 }
 
 .heroHeaderClickable {
@@ -98,6 +152,7 @@
 .heroOverlay {
   position: absolute;
   inset: 0;
+  pointer-events: none;
   background: linear-gradient(
     to bottom,
     rgba(0, 0, 0, 0.1) 0%,
@@ -108,8 +163,8 @@
 /* ── Status badge — top right ── */
 .heroBadgeRow {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: calc(22px + env(safe-area-inset-top, 0px));
+  right: 16px;
   z-index: 2;
 
   &::before {
@@ -127,8 +182,9 @@
 /* ── Identity — bottom left ── */
 .heroIdentity {
   position: absolute;
-  bottom: 12px;
-  left: 14px;
+  bottom: 16px;
+  left: 20px;
+  pointer-events: none;
   z-index: 2;
   display: flex;
   flex-direction: column;
@@ -136,7 +192,7 @@
 }
 
 .heroNum {
-  font-size: 24px;
+  font-size: 34px;
   font-weight: 800;
   color: #fff;
   letter-spacing: -0.02em;
@@ -145,7 +201,7 @@
 }
 
 .heroTime {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: rgba(255, 255, 255, 0.75);
   line-height: 1;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
@@ -165,8 +221,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  font-size: var(--fs-xl);
   opacity: 0;
+  pointer-events: none;
   transition: opacity var(--t-fast);
 
   .heroHeaderClickable:hover &,
@@ -182,13 +239,13 @@
 .tabBar {
   display: flex;
   gap: 4px;
-  padding: 6px 10px;
+  padding: 8px 12px;
   overflow-x: auto;
   overflow-y: hidden;
-  background: var(--c-bg);
+  background: var(--c-surface);
   border-bottom: 1px solid var(--c-border);
   flex-shrink: 0;
-  scroll-padding-inline: 10px;
+  scroll-padding-inline: 12px;
   scroll-snap-type: x proximity;
   scrollbar-width: none;
   overscroll-behavior-x: contain;
@@ -200,30 +257,27 @@
 }
 
 .tab {
-  flex: 1 0 auto;
-  padding: 7px 4px;
+  flex: none;
+  min-height: 40px;
+  padding: 0 12px;
   border: none;
-  border-radius: var(--r-md);
+  border-radius: 11px;
   background: transparent;
   color: var(--c-text3);
-  font-size: 13px;
-  font-weight: 500;
+  font-size: var(--fs-md);
+  font-weight: 600;
   cursor: pointer;
-  transition: all var(--t-fast);
+  transition:
+    background var(--t-fast),
+    color var(--t-fast);
   white-space: nowrap;
   scroll-snap-align: nearest;
-
-  &:hover {
-    color: var(--c-text2);
-    background: var(--c-border);
-  }
 }
 
 .tabActive {
-  background: var(--c-surface);
-  color: var(--c-blue-text);
-  font-weight: 700;
-  box-shadow: var(--shadow-sm);
+  background: var(--c-accent-surface);
+  color: var(--c-accent-text);
+  font-weight: 800;
 }
 
 /* ══════════════════════════════════════════
@@ -269,7 +323,7 @@
 }
 
 .photoCompareLabel {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -310,7 +364,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   color: var(--c-text3);
 }
 
@@ -360,11 +414,11 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  font-size: 22px;
+  font-size: var(--fs-2xl);
 }
 
 .editPhotoHint {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   color: var(--c-text3);
   font-weight: 600;
   text-transform: uppercase;
@@ -380,7 +434,7 @@
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.55);
   color: #fff;
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -418,7 +472,7 @@
 .photoActionTitle {
   margin-bottom: 10px;
   color: var(--c-text2);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 800;
   text-align: center;
   text-transform: uppercase;
@@ -429,7 +483,7 @@
   width: 100%;
   min-height: 46px;
   border-radius: var(--r-md);
-  font-size: 15px;
+  font-size: var(--fs-lg);
   font-weight: 800;
   cursor: pointer;
   display: inline-flex;
@@ -439,7 +493,7 @@
 }
 
 .photoActionIcon {
-  font-size: 14px;
+  font-size: var(--fs-md);
   line-height: 1;
 }
 
@@ -470,6 +524,78 @@
   }
 }
 
+/* ── Вкладка «Координаты» (5e): карточка со схемой и кнопка под ней ── */
+.coordsPane {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px 24px;
+}
+
+.coordsCard {
+  overflow: hidden;
+  border: 1px solid var(--c-border);
+  border-radius: 16px;
+  background: var(--c-surface);
+
+  .fieldRow:last-child {
+    border-bottom: none;
+  }
+}
+
+/* Условная схема: сетка вместо тайлов и точка по центру. */
+.coordsPreview {
+  position: relative;
+  overflow: hidden;
+  height: 150px;
+  border-bottom: 1px solid var(--c-border);
+  background-color: var(--c-surface-soft, var(--c-bg));
+  background-image:
+    linear-gradient(var(--c-border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--c-border) 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-position: center;
+}
+
+/* Неподвижная карта поверх сетки: пока тайлов нет, видна сетка. */
+.coordsMap {
+  position: absolute;
+  inset: 0;
+  background: transparent;
+
+  &:global(.leaflet-container) {
+    background: transparent;
+  }
+}
+
+.coordsPin {
+  position: absolute;
+  z-index: 500;
+  top: 50%;
+  left: 50%;
+  width: 18px;
+  height: 18px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transform: translate(-50%, -50%);
+}
+
+.coordsShowMap {
+  min-height: 48px;
+  border: 1px solid var(--c-border);
+  border-radius: 14px;
+  background: var(--c-surface);
+  color: var(--c-accent-text);
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  cursor: pointer;
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
 /* ══════════════════════════════════════════
    INFO TAB — field rows
    ══════════════════════════════════════════ */
@@ -484,14 +610,15 @@
   background: var(--c-surface);
 }
 
+/* Длинные поля (описание, решение, МТР) — тем же видом, что и остальные:
+   подпись слева, значение справа тем же шрифтом и цветом (5e). Отличие одно —
+   значение переносится по строкам, а подпись остаётся у верхней строки. */
 .fieldRowMulti {
-  flex-direction: column;
-  gap: 5px;
   align-items: flex-start;
 }
 
 .fieldLabel {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--c-text3);
   font-weight: 500;
   flex-shrink: 0;
@@ -499,9 +626,9 @@
 }
 
 .fieldValue {
-  font-size: 14px;
-  color: var(--c-text);
-  font-weight: 500;
+  font-size: var(--fs-md);
+  color: var(--c-ink);
+  font-weight: 700;
   text-align: right;
   word-break: break-word;
   line-height: 1.45;
@@ -509,17 +636,12 @@
 }
 
 .fieldValueMulti {
-  text-align: left;
-  color: var(--c-text2);
-  font-weight: 400;
-  line-height: 1.55;
-  font-size: 13px;
-  width: 100%;
+  white-space: pre-line;
 }
 
 .monitoringRecord {
-  --monitoring-accent: var(--c-blue);
-  --monitoring-accent-bg: var(--c-blue-dim);
+  --monitoring-accent: var(--c-accent);
+  --monitoring-accent-bg: var(--c-accent-dim);
   position: relative;
   margin: 8px 10px;
   overflow: hidden;
@@ -577,7 +699,7 @@
 
 .monitoringRecordDate {
   color: var(--c-text);
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
@@ -590,7 +712,7 @@
   background: var(--monitoring-accent-bg);
   border-color: var(--monitoring-accent);
   color: var(--c-text2);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 800;
   letter-spacing: 0.03em;
   text-transform: uppercase;
@@ -626,7 +748,7 @@
   border-radius: var(--r-pill);
   background: var(--monitoring-accent-bg);
   color: var(--monitoring-accent);
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-weight: 800;
   line-height: 1.25;
 }
@@ -650,7 +772,7 @@
   border: 1px solid var(--c-border);
   border-radius: var(--r-pill);
   background: var(--c-surface2);
-  font-size: 11px;
+  font-size: var(--fs-2xs);
 
   span {
     color: var(--c-text3);
@@ -680,7 +802,7 @@
     display: inline;
     margin: 0;
     color: var(--monitoring-accent);
-    font-size: 10px;
+    font-size: var(--fs-2xs);
     font-weight: 800;
     letter-spacing: 0.05em;
     text-transform: uppercase;
@@ -689,7 +811,7 @@
   p {
     margin: 0;
     color: var(--c-text);
-    font-size: 11px;
+    font-size: var(--fs-2xs);
     line-height: 1.35;
     overflow-wrap: anywhere;
     white-space: pre-wrap;
@@ -717,7 +839,7 @@
 
 .monitoringPhotoTitle {
   color: var(--monitoring-accent);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -769,7 +891,7 @@
 }
 
 .paramLabel {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   color: var(--c-text3);
   text-transform: uppercase;
@@ -778,9 +900,9 @@
 }
 
 .paramValue {
-  font-size: 22px;
+  font-size: var(--fs-2xl);
   font-weight: 800;
-  color: var(--c-blue-text);
+  color: var(--c-accent-text);
   letter-spacing: -0.02em;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -809,14 +931,14 @@
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: var(--c-blue);
+  background: var(--c-accent);
   border: 2px solid var(--c-bg);
   box-shadow: 0 0 0 1.5px var(--c-border);
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   color: #fff;
   font-weight: 700;
 }
@@ -844,16 +966,16 @@
 }
 
 .logAction {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--c-text);
   line-height: 1.35;
 }
 
 .logStatus {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 700;
-  color: var(--c-blue-text);
+  color: var(--c-accent-text);
 }
 
 .logUser {
@@ -864,13 +986,13 @@
   border-radius: 999px;
   background: var(--c-surface2);
   color: var(--c-text2);
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   overflow-wrap: anywhere;
 }
 
 .logDate {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   color: var(--c-text3);
   font-variant-numeric: tabular-nums;
 }
@@ -880,10 +1002,10 @@
 }
 
 .logCommentText {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--c-text);
   background: var(--c-surface2);
-  border-left: 3px solid var(--c-blue);
+  border-left: 3px solid var(--c-accent);
   padding: 6px 10px;
   border-radius: 0 8px 8px 0;
   margin: 2px 0;
@@ -913,7 +1035,7 @@
   border: 1px solid var(--c-border);
   border-radius: 8px;
   background: var(--c-surface2);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   line-height: 1.35;
 }
 
@@ -943,7 +1065,7 @@
 
 .logChangeValueAfter {
   grid-area: after;
-  color: var(--c-blue-text);
+  color: var(--c-accent-text);
 }
 
 .logChangeArrow {
@@ -963,7 +1085,7 @@
 }
 
 .priorityRowLabel {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--c-text2);
   text-transform: uppercase;
@@ -978,7 +1100,7 @@
 }
 
 .priorityBtn {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   padding: 4px 10px;
   border-radius: 20px;
@@ -1019,7 +1141,7 @@
 }
 
 .coordGroupLabel {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   color: var(--c-text3);
   text-transform: uppercase;
@@ -1056,11 +1178,11 @@
     flex-shrink: 0;
     min-height: 34px;
     padding: 0 12px;
-    border: 1px solid var(--c-blue);
+    border: 1px solid var(--c-accent);
     border-radius: var(--r-sm);
-    background: var(--c-blue-bg, rgba(37, 99, 235, 0.08));
-    color: var(--c-blue-text);
-    font-size: 12px;
+    background: var(--c-accent-bg, rgba(109, 61, 232, 0.08));
+    color: var(--c-accent-text);
+    font-size: var(--fs-xs);
     font-weight: 800;
     cursor: pointer;
   }
@@ -1073,13 +1195,13 @@
 
   strong {
     color: var(--c-text);
-    font-size: 14px;
+    font-size: var(--fs-md);
     line-height: 1.2;
   }
 
   span {
     color: var(--c-text3);
-    font-size: 12px;
+    font-size: var(--fs-xs);
     line-height: 1.25;
   }
 }
@@ -1109,7 +1231,7 @@
   gap: 8px;
   padding: 48px 20px;
   color: var(--c-text3);
-  font-size: 14px;
+  font-size: var(--fs-md);
   text-align: center;
 }
 

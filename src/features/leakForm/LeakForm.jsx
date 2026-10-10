@@ -24,6 +24,10 @@ import { getCopyPreviousKeys } from "@/features/leakForm/utils/copyPrevious";
 import { buildGhostPlaceholders } from "@/features/leakForm/utils/ghostPlaceholders";
 import { hasRestorablePhoto } from "@/utils/restorablePhoto";
 import { shortFieldLabel } from "@/utils/fieldLabels";
+import { useSurvey } from "@/utils/surveyStorage";
+import { withSurveyOptions } from "@/domain/surveyGroups";
+import { PROJECT_LOCATION_CONFIG } from "@/configs/projectLocation.config";
+import { getLocationLevelKeys } from "@/utils/locationTree";
 import s from "./LeakForm.module.scss";
 
 const STEP_TITLE_KEYS = {
@@ -118,17 +122,22 @@ export default function LeakForm({
     [t],
   );
 
+  const [survey] = useSurvey(activeProject?.id ?? null);
   const STEPS = useMemo(
     () =>
-      (projectConfig.steps.steps ?? []).map((item) => ({
-        ...item,
-        fields: item.fields.map((field) =>
-          field.type === "photo" && field.key === "photo"
-            ? { ...field, required: leakPhotoRequired }
-            : field,
-        ),
-      })),
-    [leakPhotoRequired, projectConfig],
+      withSurveyOptions(
+        (projectConfig.steps.steps ?? []).map((item) => ({
+          ...item,
+          fields: item.fields.map((field) =>
+            field.type === "photo" && field.key === "photo"
+              ? { ...field, required: leakPhotoRequired }
+              : field,
+          ),
+        })),
+        survey,
+        getLocationLevelKeys(PROJECT_LOCATION_CONFIG[activeProject?.type]),
+      ),
+    [leakPhotoRequired, projectConfig, survey, activeProject?.type],
   );
   const translatedSteps = useMemo(
     () => localizeSteps(STEPS, t, lang, activeProject?.type),
@@ -257,6 +266,7 @@ export default function LeakForm({
 
   const {
     pendingVoiceData,
+    pendingVoiceHeard,
     dismissVoiceData,
     startVoiceInput,
     stopVoiceInput,
@@ -412,6 +422,7 @@ export default function LeakForm({
 
       <VoicePreviewSheet
         pending={pendingVoiceData}
+        heard={pendingVoiceHeard}
         steps={STEPS}
         onConfirm={handleVoiceConfirm}
         onDismiss={dismissVoiceData}

@@ -26,6 +26,7 @@ export const reopen = {
   confirm: "Открыть",
   placeholder: "Новое значение",
   saveError: "Не удалось повторно открыть утечку",
+  calcParamsInvalid: "Параметры расчёта вне допустимых значений",
 
   // Keyed by the `key` of REOPEN_MEASUREMENT_FIELDS.
   fields: {

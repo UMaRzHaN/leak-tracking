@@ -1,0 +1,1125 @@
+/* Модуль ремонтов (7b, 7c, 7e–7h): тот же язык, что обход мониторинга и
+   проверка на весь экран, — поля 54 px, подписи капителью, кнопки 44+. */
+
+/* ── Обход ремонтов ── */
+.page {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 20px 0;
+  overflow: hidden;
+}
+
+.search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  color: var(--c-text3);
+
+  svg {
+    position: absolute;
+    left: 14px;
+    pointer-events: none;
+  }
+
+  input {
+    width: 100%;
+    min-height: 44px;
+    padding: 0 14px 0 44px;
+    border: 1px solid var(--c-border);
+    border-radius: 14px;
+    background: var(--c-surface);
+    color: var(--c-text);
+    font-size: var(--fs-md);
+    outline: none;
+
+    &:focus {
+      border-color: var(--c-accent);
+    }
+  }
+}
+
+.filters {
+  display: flex;
+  gap: 6px;
+}
+
+.filterBtn {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  /* Три чипа делят ряд телефона в 360 пикселей: при 13 пикселях и
+     широких полях подписи обрезались до «К провер…». */
+  justify-content: center;
+  gap: 5px;
+  padding: 0 8px;
+  border: 1px solid var(--c-border-soft);
+  border-radius: 12px;
+  background: var(--c-surface);
+  color: var(--c-ink);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  strong {
+    color: var(--c-text3);
+  }
+}
+
+.filterBtnActive {
+  border: 1.5px solid var(--c-accent);
+  background: var(--c-accent-surface);
+  color: var(--c-accent-text);
+
+  strong {
+    color: var(--c-accent-text);
+  }
+}
+
+.list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 24px;
+  overscroll-behavior: contain;
+}
+
+.empty {
+  padding: 24px 12px;
+  border: 1px dashed var(--c-border);
+  border-radius: var(--r-md);
+  color: var(--c-text2);
+  text-align: center;
+}
+
+.item {
+  padding-bottom: 14px;
+}
+
+.item .card {
+  overflow: hidden;
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+  margin-bottom: 0;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+
+  > :last-child {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    box-shadow: none;
+  }
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: -1px;
+  /* Как полоса обхода мониторинга: подпись к карточке, а не вторая карточка. */
+  padding: 7px 10px 7px 14px;
+  border: 1px solid var(--c-border);
+  border-radius: 0 0 var(--r-xl) var(--r-xl);
+  background: var(--c-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.barText {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.barMeta {
+  color: var(--c-text3);
+  font-size: var(--fs-2xs);
+  font-weight: 500;
+}
+
+.tone_ok {
+  color: var(--c-resolved-text);
+}
+
+.tone_warn {
+  color: var(--c-progress-text);
+}
+
+.tone_info {
+  color: var(--c-medium);
+}
+
+.acceptBtn {
+  flex-shrink: 0;
+  min-height: 34px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 10px;
+  background: var(--c-accent);
+  color: #fff;
+  font-size: var(--fs-sm);
+  font-weight: 800;
+}
+
+/* ── Поля ── */
+.field {
+  display: grid;
+  gap: 8px;
+
+  > span {
+    color: var(--c-text3);
+    font-size: var(--fs-xs);
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  input,
+  select,
+  textarea {
+    width: 100%;
+    border: 1px solid var(--c-border);
+    border-radius: 16px;
+    background: var(--c-surface);
+    color: var(--c-text);
+    font: inherit;
+    font-size: var(--fs-lg);
+    outline: none;
+
+    &:focus {
+      border-color: var(--c-accent);
+    }
+  }
+
+  input,
+  select {
+    height: 54px;
+    padding: 0 16px;
+  }
+
+  textarea {
+    min-height: 96px;
+    padding: 14px 16px;
+    resize: vertical;
+  }
+}
+
+/* Три вопроса проверки ремонта — одной строкой; поля выровнены по низу,
+   даже если подпись соседнего вопроса перенеслась. */
+.row3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
+  gap: 8px;
+}
+
+.hint {
+  color: var(--c-text3);
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+}
+
+.segment {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 14px;
+  background: var(--c-bg);
+
+  button {
+    min-height: 44px;
+    border: none;
+    border-radius: 11px;
+    background: none;
+    color: var(--c-text3);
+    font-size: var(--fs-lg);
+    font-weight: 700;
+  }
+}
+
+.segmentActive {
+  background: var(--c-surface) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  color: var(--c-accent-text) !important;
+  font-weight: 800 !important;
+}
+
+.mtrRow {
+  display: flex;
+  gap: 12px;
+
+  > select,
+  > input {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.qtyInput {
+  flex: 0 0 110px !important;
+}
+
+.stepper {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 54px;
+  padding: 0 6px;
+  border: 1px solid var(--c-border);
+  border-radius: 16px;
+  background: var(--c-surface);
+
+  button {
+    width: 40px;
+    height: 44px;
+    border: none;
+    background: none;
+    color: var(--c-accent);
+    font-size: var(--fs-2xl);
+    font-weight: 700;
+  }
+
+  span {
+    min-width: 48px;
+    color: var(--c-ink);
+    font-size: var(--fs-lg);
+    font-weight: 800;
+    text-align: center;
+  }
+}
+
+.primary {
+  width: 100%;
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  border-radius: 16px;
+  background: var(--c-accent);
+  color: #fff;
+  font-size: var(--fs-lg);
+  font-weight: 800;
+
+  &:disabled {
+    opacity: 0.6;
+  }
+}
+
+/* ── Шторка «Отметить» ── */
+.sheetRoot {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--c-overlay);
+}
+
+.sheet {
+  position: relative;
+  max-height: calc(100dvh - 40px);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 20px;
+  overflow-y: auto;
+  border-radius: var(--r-sheet);
+  background: var(--c-surface);
+  box-shadow: var(--shadow-sheet);
+  outline: none;
+
+  @supports (padding-bottom: env(safe-area-inset-bottom)) {
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  }
+}
+
+.sheetHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+
+  h2 {
+    color: var(--c-ink);
+    font-size: var(--fs-xl);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+}
+
+.caption {
+  color: var(--c-text3);
+  font-size: var(--fs-xs);
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.iconBtn {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  background: var(--c-surface2);
+  color: var(--c-text2);
+}
+
+.choice {
+  display: grid;
+  gap: 8px;
+
+  button {
+    min-height: 48px;
+    padding: 0 16px;
+    border: 1px solid var(--c-border);
+    border-radius: 14px;
+    background: var(--c-surface);
+    color: var(--c-ink);
+    font-size: var(--fs-lg);
+    font-weight: 700;
+    text-align: left;
+  }
+}
+
+.choiceActive {
+  border: 1.5px solid var(--c-accent) !important;
+  background: var(--c-accent-surface) !important;
+  color: var(--c-accent-text) !important;
+}
+
+/* ── Экран на весь экран (7c, 7e) ── */
+.screen {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  flex-direction: column;
+  background: var(--c-surface2);
+  outline: none;
+}
+
+.screenHeader {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 20px;
+  background: var(--c-surface);
+  border-bottom: 1px solid var(--c-border);
+
+  @supports (padding-top: env(safe-area-inset-top)) {
+    padding-top: calc(14px + env(safe-area-inset-top));
+  }
+}
+
+.screenClose {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--c-border);
+  border-radius: 13px;
+  background: var(--c-surface2);
+  color: var(--c-text2);
+}
+
+.screenTitle {
+  min-width: 0;
+
+  h1,
+  h2 {
+    color: var(--c-ink);
+    font-size: var(--fs-2xl);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+  }
+
+  p {
+    margin-top: 3px;
+    color: var(--c-text3);
+    font-size: var(--fs-sm);
+    font-weight: 600;
+  }
+}
+
+.screenBody {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 20px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.screenFooter {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 20px;
+  background: var(--c-surface);
+  border-top: 1px solid var(--c-border);
+
+  @supports (padding-bottom: env(safe-area-inset-bottom)) {
+    padding-bottom: calc(14px + env(safe-area-inset-bottom));
+  }
+}
+
+/* Проверка ремонта — плотнее: на телефоне вопросы, МТР, координаты и снимок
+   помещаются почти без прокрутки. */
+.checkScreen {
+  .screenTitle {
+    h2 {
+      font-size: var(--fs-xl);
+    }
+
+    p {
+      font-size: var(--fs-xs);
+    }
+  }
+
+  .screenBody {
+    gap: 14px;
+    padding: 16px;
+  }
+
+  .field {
+    gap: 6px;
+
+    > span {
+      font-size: var(--fs-2xs);
+    }
+
+    input,
+    select,
+    textarea {
+      border-radius: 12px;
+      font-size: var(--fs-md);
+    }
+
+    input,
+    select {
+      height: 44px;
+      padding: 0 12px;
+    }
+
+    textarea {
+      min-height: 72px;
+      padding: 10px 12px;
+    }
+  }
+
+  .hint {
+    font-size: var(--fs-xs);
+  }
+
+  .segment button {
+    min-height: 38px;
+    font-size: var(--fs-sm);
+  }
+
+  .stepper {
+    height: 44px;
+    border-radius: 12px;
+
+    button {
+      height: 38px;
+      font-size: var(--fs-xl);
+    }
+
+    span {
+      font-size: var(--fs-md);
+    }
+  }
+
+  .qtyInput {
+    flex-basis: 90px !important;
+  }
+
+  .primary {
+    min-height: 48px;
+    border-radius: 14px;
+    font-size: var(--fs-lg);
+  }
+}
+
+/* ── Приёмка оборудования (7f) ── */
+.acceptancePage {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--c-surface2);
+}
+
+.pageHeader {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  display: grid;
+  gap: 14px;
+  padding: 14px 20px;
+  background: var(--c-surface);
+  border-bottom: 1px solid var(--c-border-soft);
+
+  @supports (padding-top: env(safe-area-inset-top)) {
+    padding-top: calc(14px + env(safe-area-inset-top));
+  }
+
+  h1 {
+    color: var(--c-ink);
+    font-size: var(--fs-2xl);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+  }
+}
+
+.pageHeaderRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.acceptanceBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 20px 24px;
+}
+
+.chipRow {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.chipOn,
+.chipOff {
+  flex: none;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+  border-radius: var(--r-pill);
+  font-size: var(--fs-sm);
+  font-weight: 800;
+
+  span {
+    opacity: 0.75;
+  }
+}
+
+.chipOn {
+  border: 1px solid var(--c-accent);
+  background: var(--c-accent);
+  color: #fff;
+}
+
+.chipOff {
+  border: 1px solid var(--c-border-soft);
+  background: var(--c-surface);
+  color: var(--c-ink);
+
+  span {
+    color: var(--c-text3);
+    opacity: 1;
+  }
+}
+
+.invoice {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-xl);
+  background: var(--c-surface);
+  box-shadow: var(--shadow-sm);
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--tone);
+  }
+}
+
+.invoice_accent {
+  --tone: var(--c-accent);
+  --tone-bg: var(--c-accent-surface);
+  --tone-text: var(--c-accent-text);
+}
+
+.invoice_warn {
+  --tone: var(--c-progress);
+  --tone-bg: var(--c-progress-bg);
+  --tone-text: var(--c-progress-text);
+}
+
+.invoice_ok {
+  --tone: var(--c-resolved);
+  --tone-bg: var(--c-resolved-bg);
+  --tone-text: var(--c-resolved-text);
+}
+
+.invoiceHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px 8px 16px;
+  border-bottom: 1px solid var(--c-border);
+  background: var(--tone-bg);
+
+  strong {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--c-text);
+    font-size: var(--fs-sm);
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  small {
+    color: var(--c-text3);
+    font-size: var(--fs-2xs);
+  }
+}
+
+.invoiceBadge {
+  padding: 2px 8px;
+  border: 1.5px solid currentColor;
+  border-radius: var(--r-pill);
+  color: var(--tone-text);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.invoiceBody {
+  display: grid;
+  gap: 3px;
+  padding: 12px 14px 12px 16px;
+  border-bottom: 1px solid var(--c-border);
+
+  strong {
+    color: var(--c-text);
+    font-size: var(--fs-lg);
+    font-weight: 700;
+  }
+
+  span {
+    color: var(--c-text2);
+    font-size: var(--fs-xs);
+  }
+}
+
+.invoiceFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px 10px 16px;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+}
+
+.okText {
+  color: var(--c-resolved-text);
+}
+
+.warnText {
+  color: var(--c-progress-text);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+}
+
+/* ── Новая приёмка (7e) ── */
+.fieldHeadRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+
+  em {
+    color: var(--c-text3);
+    font-style: normal;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+}
+
+.formCard {
+  overflow: hidden;
+  border: 1px solid var(--c-border);
+  border-radius: 18px;
+  background: var(--c-surface);
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  align-items: center;
+  min-height: 54px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--c-border);
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  span {
+    color: var(--c-text2);
+    font-size: var(--fs-md);
+  }
+
+  input {
+    min-height: 52px;
+    border: none;
+    background: none;
+    color: var(--c-ink);
+    font: inherit;
+    font-size: var(--fs-lg);
+    font-weight: 700;
+    outline: none;
+  }
+}
+
+.lineRow {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--c-border);
+}
+
+.lineHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  strong {
+    flex: 1;
+    min-width: 0;
+    color: var(--c-ink);
+    font-size: var(--fs-lg);
+    font-weight: 800;
+  }
+
+  input {
+    width: 64px;
+    height: 44px;
+    border: 1px solid var(--c-border);
+    border-radius: 12px;
+    background: var(--c-surface2);
+    color: var(--c-ink);
+    font: inherit;
+    font-size: var(--fs-lg);
+    font-weight: 800;
+    text-align: center;
+  }
+
+  small {
+    color: var(--c-text3);
+    font-size: var(--fs-sm);
+    font-weight: 700;
+    white-space: nowrap;
+  }
+}
+
+.qtyShort {
+  border-color: var(--c-progress-border) !important;
+  background: var(--c-progress-bg) !important;
+  color: var(--c-progress-text) !important;
+}
+
+.lineChips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.chipOk,
+.chipWarn {
+  min-height: 32px;
+  padding: 0 11px;
+  border-radius: var(--r-pill);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+
+.chipOk {
+  border: 1px solid var(--c-resolved-border);
+  background: var(--c-resolved-bg);
+  color: var(--c-resolved-text);
+}
+
+.chipWarn {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--c-progress-border);
+  background: var(--c-progress-bg);
+  color: var(--c-progress-text);
+}
+
+.linkBtn {
+  min-height: 32px;
+  border: none;
+  background: none;
+  color: var(--c-accent-text);
+  font-size: var(--fs-sm);
+  font-weight: 800;
+}
+
+.remarkInput,
+.remarkFilled {
+  border-color: var(--c-progress-border) !important;
+  background: var(--c-progress-bg) !important;
+  color: var(--c-progress-text) !important;
+}
+
+.remarkInput {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid;
+  border-radius: 12px;
+  font: inherit;
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+
+.addLine {
+  width: 100%;
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: none;
+  background: var(--c-surface2);
+  color: var(--c-accent);
+  text-align: left;
+
+  span {
+    display: grid;
+    gap: 2px;
+  }
+
+  strong {
+    color: var(--c-accent-text);
+    font-size: var(--fs-lg);
+  }
+
+  small {
+    color: var(--c-text3);
+    font-size: var(--fs-xs);
+  }
+}
+
+/* ── Ввод позиции (7g, 7h) ── */
+.qtyGroup {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  border: 1px solid var(--c-border);
+  border-radius: 16px;
+  background: var(--c-surface);
+
+  label {
+    display: grid;
+    gap: 2px;
+    padding: 10px 14px;
+    border-right: 1px solid var(--c-border);
+
+    small {
+      color: var(--c-text2);
+      font-size: var(--fs-xs);
+    }
+
+    input {
+      height: auto;
+      padding: 0;
+      border: none;
+      background: none;
+      font-size: var(--fs-xl);
+      font-weight: 800;
+    }
+  }
+}
+
+.unitPick {
+  position: relative;
+
+  > button {
+    height: 100%;
+    min-width: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 0 12px;
+    border: none;
+    border-radius: 0 16px 16px 0;
+    background: var(--c-surface2);
+    color: var(--c-ink);
+    font-size: var(--fs-lg);
+    font-weight: 800;
+  }
+}
+
+.unitList {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 2;
+  width: 200px;
+  overflow: hidden;
+  border: 1px solid var(--c-border-soft);
+  border-radius: 16px;
+  background: var(--c-surface);
+  box-shadow: var(--shadow-lg);
+  list-style: none;
+
+  button {
+    width: 100%;
+    min-height: 54px;
+    display: grid;
+    padding: 8px 16px;
+    border: none;
+    border-bottom: 1px solid var(--c-border);
+    background: none;
+    text-align: left;
+
+    strong {
+      color: var(--c-ink);
+      font-size: var(--fs-lg);
+    }
+
+    small {
+      color: var(--c-text3);
+      font-size: var(--fs-xs);
+    }
+  }
+}
+
+.unitActive {
+  background: var(--c-accent-surface) !important;
+
+  strong {
+    color: var(--c-accent-text) !important;
+  }
+}
+
+.checkGroup {
+  overflow: hidden;
+  border: 1px solid var(--c-border);
+  border-radius: 16px;
+  background: var(--c-surface);
+}
+
+.checkRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 58px;
+  padding: 6px 8px 6px 16px;
+  border-bottom: 1px solid var(--c-border);
+  color: var(--c-ink);
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.yesNo {
+  display: flex;
+  gap: 6px;
+
+  button {
+    min-width: 54px;
+    min-height: 44px;
+    border: 1px solid var(--c-border);
+    border-radius: 12px;
+    background: var(--c-surface2);
+    color: var(--c-text2);
+    font-size: var(--fs-lg);
+    font-weight: 700;
+  }
+}
+
+.yesActive {
+  border-color: var(--c-resolved) !important;
+  background: var(--c-resolved) !important;
+  color: #fff !important;
+}
+
+.noActive {
+  border-color: var(--c-progress) !important;
+  background: var(--c-progress) !important;
+  color: #fff !important;
+}
+
+.sheetActions {
+  display: flex;
+  gap: 10px;
+
+  .primary {
+    flex: 1;
+  }
+}
+
+.secondary {
+  flex: none;
+  min-height: 54px;
+  padding: 0 22px;
+  border: 1px solid var(--c-border);
+  border-radius: 16px;
+  background: var(--c-surface2);
+  color: var(--c-text2);
+  font-size: var(--fs-lg);
+  font-weight: 800;
+}
+
+.saveError {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--c-red, #d33);
+}

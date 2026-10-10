@@ -139,4 +139,15 @@ describe("Excel export cell values", () => {
     expect(normalizeExcelCellValue(false)).toBe(false);
     expect(normalizeExcelCellValue(null)).toBe("");
   });
+
+  it("keeps only the day in a date cell that has its own time column", () => {
+    const moment = new Date(2026, 8, 16, 14, 35, 20);
+    for (const key of ["date", "repairAt", "resolvedAt"]) {
+      const day = toExcelCellValue(key, moment.toISOString());
+      expect(day).toEqual(new Date(Date.UTC(2026, 8, 16)));
+    }
+    expect(toExcelCellValue("time", moment)).toBeCloseTo(
+      (14 * 3600 + 35 * 60 + 20) / 86_400,
+    );
+  });
 });

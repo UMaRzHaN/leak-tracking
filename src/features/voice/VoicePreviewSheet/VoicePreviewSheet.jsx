@@ -4,8 +4,18 @@ import { useModalDialog } from "@/hooks/useModalDialog";
 import { fieldLabel } from "@/utils/fieldLabels";
 import s from "./VoicePreviewSheet.module.scss";
 
+/**
+ * @param {{
+ *   pending: any,
+ *   heard?: {phrase: string, fields: Record<string, string>} | null,
+ *   steps: any,
+ *   onConfirm: (data: any) => void,
+ *   onDismiss: () => void,
+ * }} props
+ */
 export default function VoicePreviewSheet({
   pending,
+  heard = null,
   steps,
   onConfirm,
   onDismiss,
@@ -81,6 +91,15 @@ export default function VoicePreviewSheet({
           🎤
         </p>
 
+        {heard?.phrase ? (
+          <p className={s.phrase}>
+            {t("voice.preview.heard", {
+              defaultValue: "Heard",
+            })}
+            : «{heard.phrase}»
+          </p>
+        ) : null}
+
         {entries.length === 0 ? (
           <p className={s.empty}>
             {t("voice.preview.empty", {
@@ -91,6 +110,9 @@ export default function VoicePreviewSheet({
           <div className={s.list}>
             {entries.map(([key, value]) => {
               const label = labelMap[key] ?? fieldLabel(key, t);
+              // Словарь заменил сказанное — рядом показываем, что было
+              // сказано: «не работает», ставшее «В работе», иначе не заметить.
+              const said = heard?.fields?.[key];
               return (
                 <button
                   key={key}
@@ -104,7 +126,15 @@ export default function VoicePreviewSheet({
                     {selected.has(key) ? "✓" : ""}
                   </span>
                   <span className={s.fieldLabel}>{label}</span>
-                  <span className={s.value}>{String(value)}</span>
+                  <span className={s.value}>
+                    {String(value)}
+                    {said ? (
+                      <span className={s.said}>
+                        {t("voice.preview.heard", { defaultValue: "Heard" })}: «
+                        {said}»
+                      </span>
+                    ) : null}
+                  </span>
                 </button>
               );
             })}

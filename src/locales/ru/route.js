@@ -1,0 +1,23 @@
+export const route = {
+  title: "Маршрут по точкам",
+  summary: "Точек: {{count}} · {{distance}}",
+  empty: "Нет точек к проверке с координатами",
+  close: "Закрыть",
+  origin: "Моё местоположение",
+  gpsOn: "GPS",
+  gpsOff: "GPS выключен — порядок от первой точки",
+  tag: "№",
+  m: "м",
+  km: "км",
+  showMap: "На карте",
+  start: "Начать маршрут",
+  step: "Маршрут · точка {{step}} из {{total}}",
+  stepShort: "{{step}}/{{total}}",
+  finished: "Маршрут пройден",
+  finishedHint: "Все точки проверены",
+  check: "Проверить",
+  end: "Завершить маршрут",
+  endConfirmTitle: "Завершить маршрут?",
+  endConfirmDescription:
+    "Осталось точек: {{left}}. Маршрут придётся собирать заново.",
+};

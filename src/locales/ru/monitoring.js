@@ -10,7 +10,6 @@ export const monitoring = {
   currentState: "текущее состояние",
   physicalTag: "Физ. тег есть?",
   fiction: "Фикция?",
-  fictionBadge: "Фикция",
   yes: "Да",
   no: "Нет",
   comment: "Комментарий",
@@ -22,6 +21,8 @@ export const monitoring = {
   leakNumber: "№",
   close: "Закрыть",
   save: "Сохранить",
+  saveCheck: "Сохранить проверку",
+  checkTitle: "Проверка утечки",
   saving: "Сохранение…",
   saveFailed: "Не удалось сохранить результат мониторинга",
   required: "Заполните имя пользователя в профиле",
@@ -33,6 +34,14 @@ export const monitoring = {
   noActiveRound:
     "Активного обхода нет. Начните мониторинг, чтобы сформировать список к проверке.",
   startRound: "Начать мониторинг",
+  mergeAction: "Объединить с № {{number}}",
+  mergeTitle: "Объединить обход № {{number}} с № {{target}}?",
+  mergeDescription:
+    "Осмотры обхода № {{number}} перейдут в обход № {{target}}, и он снова станет текущим. Подходит, если новый обход начали по ошибке.",
+  mergeConfirm: "Объединить",
+  mergeDone:
+    "Обход № {{number}} снова текущий, осмотров перенесено у {{count}} утечек",
+  menuDue: "{{count}} к проверке",
   newRound: "Новый обход",
   finishRound: "Завершить обход",
   roundReady: "Все теги проверены",
@@ -43,6 +52,8 @@ export const monitoring = {
   resolvedResult: "Устранено",
   roundBadge: "Обход",
   roundCompletedNotice: "Обход успешно завершён",
+  roundBlockedByRepairs:
+    "Идёт обход ремонтов № {{number}}. Завершите его, прежде чем начинать обход мониторинга",
   photoSaveFailed: "Не удалось сохранить фотографию мониторинга",
   startNewRoundTitle: "Начать новый обход?",
   startMonitoringTitle: "Начать мониторинг?",

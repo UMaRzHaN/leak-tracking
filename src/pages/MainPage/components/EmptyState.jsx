@@ -2,7 +2,11 @@ import s from "@/pages/MainPage/MainPage.module.scss";
 import { useMemo } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 
-export default function EmptyState({ setPage, hasFilter }) {
+export default function EmptyState({
+  setPage,
+  canAdd = true,
+  hasFilter = false,
+}) {
   const { t } = useLanguage();
 
   const localeTexts = useMemo(
@@ -20,7 +24,7 @@ export default function EmptyState({ setPage, hasFilter }) {
       <p className={s.emptyTitle}>
         {hasFilter ? localeTexts.noFilteredRecords : localeTexts.noRecords}
       </p>
-      {!hasFilter && (
+      {canAdd && !hasFilter && (
         <>
           <p className={s.emptyHint}>{localeTexts.addFirstLeak}</p>
           <button className={s.emptyBtn} onClick={() => setPage("add")}>

@@ -1,6 +1,8 @@
 import { useRef, useId, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCamera } from "@/hooks/useCamera";
+import { isCameraCancel } from "@/hooks/cameraService";
+import { errorText } from "@/utils/appError";
 import s from "./PhotoInput.module.scss";
 
 export default function PhotoInput({
@@ -20,6 +22,20 @@ export default function PhotoInput({
 
   const { isNative, takePhoto, pickFromGallery, pickFromBrowser } = useCamera();
 
+  /*
+   * Отмена — не ошибка: человек закрыл камеру и передумал. Остальное — на
+   * языке интерфейса: у ошибки с кодом есть перевод, а сырой текст плагина
+   * или браузера («User cancelled photos app», «NotReadableError») человеку
+   * ничего не скажет — вместо него общее «не удалось» для этого действия.
+   */
+  const reportError = useCallback(
+    (/** @type {any} */ error, /** @type {string} */ fallbackKey) => {
+      if (isCameraCancel(error)) return;
+      setCameraError(error?.code ? errorText(error, t) : t(fallbackKey));
+    },
+    [t],
+  );
+
   useEffect(() => {
     aliveRef.current = true;
     return () => {
@@ -33,9 +49,9 @@ export default function PhotoInput({
       const photo = await takePhoto();
       if (photo && aliveRef.current) onChange(photo);
     } catch (/** @type {any} */ error) {
-      setCameraError(error?.message || "Unable to open camera");
+      reportError(error, "errors.CAMERA_FAILED");
     }
-  }, [takePhoto, onChange]);
+  }, [takePhoto, onChange, reportError]);
 
   const handleGallery = useCallback(async () => {
     setCameraError("");
@@ -44,12 +60,12 @@ export default function PhotoInput({
         const photo = await pickFromGallery();
         if (photo && aliveRef.current) onChange(photo);
       } catch (/** @type {any} */ error) {
-        setCameraError(error?.message || "Unable to open gallery");
+        reportError(error, "errors.GALLERY_FAILED");
       }
     } else {
       inputRef.current?.click();
     }
-  }, [isNative, pickFromGallery, onChange]);
+  }, [isNative, pickFromGallery, onChange, reportError]);
 
   const handleFile = useCallback(
     async (e) => {
@@ -60,12 +76,12 @@ export default function PhotoInput({
         const photo = await pickFromBrowser(file);
         if (photo && aliveRef.current) onChange(photo);
       } catch (/** @type {any} */ error) {
-        setCameraError(error?.message || "Unable to read photo");
+        reportError(error, "errors.PHOTO_READ_FAILED");
       } finally {
         e.target.value = "";
       }
     },
-    [pickFromBrowser, onChange],
+    [pickFromBrowser, onChange, reportError],
   );
 
   const hasPhoto = Boolean(value?.src);

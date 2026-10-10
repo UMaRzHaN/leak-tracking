@@ -1,4 +1,15 @@
 export const map = {
+  modules: {
+    leaks: "Leaks",
+    repairs: "Repairs",
+    inventory: "Inventory",
+    monitoring: "Monitoring",
+  },
+  card: { check: "Check", open: "Open record", photo: "Open photo" },
+  filters: "Map filters",
+  reset: "Reset",
+  done: "Done",
+  youAreHere: "You are here",
   noDataToExport: "No data to export",
   exportUnavailable: "Export is not available for this project",
   exportError: "Export error",
@@ -54,6 +65,14 @@ export const map = {
   },
 
   kml: {
+    monitoringDocumentName: "Monitoring round",
+    repairsDocumentName: "Repairs",
+    due: "To inspect",
+    checked: "Inspected this round",
+    lastInspection: "Last inspection",
+    neverInspected: "Never inspected",
+    brigade: "Crew",
+    exportLabel: "Export to KML: {{count}}",
     componentsDocumentName: "Components",
     schemeTag: "Drawing tag",
     documentName: "Leak Report",
@@ -64,13 +83,13 @@ export const map = {
 
   // Leaks and components are two bases of one project, and the map shows one
   // at a time: mixed pins would make neither of them countable.
-  baseLeaks: "Leaks",
-  baseComponents: "Assets",
+  tagFilter: "Physical tag filter",
+  tagWith: "Tag present",
+  tagWithout: "No tag",
 
   controls: {
     myLocation: "My location",
     searchLeaks: "Search leaks",
     downloadArea: "Download current area map",
-    base: "Switch base: leaks or components",
   },
 };

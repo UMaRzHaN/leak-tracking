@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  clearProjectSettings,
   normalizeProjectSettings,
   readProjectSettings,
   shouldApplyIncomingProjectSettings,
@@ -16,6 +17,8 @@ describe("projectSettings", () => {
       normalizeProjectSettings({
         hiddenFields: ["component", "photo", "photo_after", "component", 42],
         excelMonitoringExportMode: "unknown",
+        excelRepairLogExportMode: "full",
+        excelReconcileExportMode: "full",
         photoRequirements: {
           leakPhotoRequired: false,
           monitoringPhotoRequired: "no",
@@ -24,13 +27,23 @@ describe("projectSettings", () => {
       }),
     ).toEqual({
       hiddenFields: ["component"],
+      hiddenComponentFields: [],
       excelMonitoringExportMode: "full",
+      excelRepairLogExportMode: "full",
+      excelReconcileExportMode: "full",
       photoRequirements: {
         leakPhotoRequired: false,
         monitoringPhotoRequired: true,
         componentPhotoRequired: true,
+        repairPhotoRequired: true,
+        reconcilePhotoRequired: true,
       },
       voiceCorrections: [],
+      allowNewRounds: true,
+      allowFinishRounds: true,
+      allowMergeRounds: true,
+      reconcile: { allowNew: true, allowFinish: true, allowMerge: true },
+      repairs: { allowNew: true, allowFinish: true, allowMerge: true },
       updatedAt: 0,
     });
   });
@@ -50,13 +63,23 @@ describe("projectSettings", () => {
     const legacy = readProjectSettings("legacy");
     expect(legacy).toEqual({
       hiddenFields: ["component"],
+      hiddenComponentFields: [],
       excelMonitoringExportMode: "latest_per_round",
+      excelRepairLogExportMode: "full",
+      excelReconcileExportMode: "full",
       photoRequirements: {
         leakPhotoRequired: true,
         monitoringPhotoRequired: false,
         componentPhotoRequired: true,
+        repairPhotoRequired: true,
+        reconcilePhotoRequired: true,
       },
       voiceCorrections: [],
+      allowNewRounds: true,
+      allowFinishRounds: true,
+      allowMergeRounds: true,
+      reconcile: { allowNew: true, allowFinish: true, allowMerge: true },
+      repairs: { allowNew: true, allowFinish: true, allowMerge: true },
       updatedAt: 50,
     });
 
@@ -65,6 +88,35 @@ describe("projectSettings", () => {
     expect(
       localStorage.getItem("app:restored:monitoring_settings_v1"),
     ).toBeNull();
+  });
+
+  it("везёт скрытые поля карточки компонента и стирает их при сбросе", () => {
+    localStorage.setItem(
+      "app:source:hidden_component_fields_v1",
+      JSON.stringify(["note", "photo", "note"]),
+    );
+    const source = readProjectSettings("source");
+    expect(source.hiddenComponentFields).toEqual(["note", "photo"]);
+
+    writeProjectSettings("target", source);
+    expect(
+      JSON.parse(
+        localStorage.getItem("app:target:hidden_component_fields_v1") ?? "null",
+      ),
+    ).toEqual(["note", "photo"]);
+
+    clearProjectSettings("target");
+    expect(
+      localStorage.getItem("app:target:hidden_component_fields_v1"),
+    ).toBeNull();
+
+    // Разница только в полях компонента — тоже разные настройки: при равных
+    // метках одна из сторон обязана победить, а не считаться той же.
+    const bare = { hiddenComponentFields: [] };
+    const hidden = { hiddenComponentFields: ["note"] };
+    expect(shouldApplyIncomingProjectSettings(bare, hidden)).not.toBe(
+      shouldApplyIncomingProjectSettings(hidden, bare),
+    );
   });
 
   it("advances timestamps monotonically even when the clock does not move", () => {
@@ -95,5 +147,92 @@ describe("projectSettings", () => {
     const aAcceptsB = shouldApplyIncomingProjectSettings(tiedA, tiedB);
     const bAcceptsA = shouldApplyIncomingProjectSettings(tiedB, tiedA);
     expect(aAcceptsB).not.toBe(bAcceptsA);
+  });
+});
+
+describe("allowNewRounds", () => {
+  it("allows new rounds by default and remembers when they are locked", async () => {
+    const { readAllowNewRounds, writeAllowNewRounds, readProjectSettings } =
+      await import("./projectSettings");
+    localStorage.clear();
+    expect(readAllowNewRounds("p1")).toBe(true);
+    writeAllowNewRounds("p1", false);
+    expect(readAllowNewRounds("p1")).toBe(false);
+    expect(readProjectSettings("p1").updatedAt).toBeGreaterThan(0);
+    writeAllowNewRounds("p1", true);
+    expect(readAllowNewRounds("p1")).toBe(true);
+  });
+});
+
+describe("allowFinishRounds", () => {
+  it("allows finishing by default, locks it apart from new rounds", async () => {
+    const {
+      readAllowFinishRounds,
+      writeAllowFinishRounds,
+      readAllowNewRounds,
+      readProjectSettings,
+      writeProjectSettings,
+    } = await import("./projectSettings");
+    localStorage.clear();
+    expect(readAllowFinishRounds("p1")).toBe(true);
+    writeAllowFinishRounds("p1", false);
+    expect(readAllowFinishRounds("p1")).toBe(false);
+    expect(readAllowNewRounds("p1")).toBe(true);
+
+    // Доезжает с бэкапом и синхронизацией вместе с остальными настройками.
+    const settings = readProjectSettings("p1");
+    expect(settings.allowFinishRounds).toBe(false);
+    writeProjectSettings("p2", settings);
+    expect(readAllowFinishRounds("p2")).toBe(false);
+  });
+});
+
+describe("allowMergeRounds", () => {
+  it("allows merging by default and locks it on its own", async () => {
+    const {
+      readAllowMergeRounds,
+      writeAllowMergeRounds,
+      readAllowFinishRounds,
+      readProjectSettings,
+      writeProjectSettings,
+    } = await import("./projectSettings");
+    localStorage.clear();
+    expect(readAllowMergeRounds("p1")).toBe(true);
+    writeAllowMergeRounds("p1", false);
+    expect(readAllowMergeRounds("p1")).toBe(false);
+    expect(readAllowFinishRounds("p1")).toBe(true);
+
+    writeProjectSettings("p2", readProjectSettings("p1"));
+    expect(readAllowMergeRounds("p2")).toBe(false);
+  });
+});
+
+describe("reconcile settings", () => {
+  it("allows everything by default and keeps each permission apart", async () => {
+    const {
+      readRoundPermissions,
+      writeRoundPermissions,
+      readAllowNewRounds,
+      readProjectSettings,
+      writeProjectSettings,
+    } = await import("./projectSettings");
+    localStorage.clear();
+    expect(readRoundPermissions("p1", "reconcile")).toEqual({
+      allowNew: true,
+      allowFinish: true,
+      allowMerge: true,
+    });
+    writeRoundPermissions("p1", "reconcile", { allowMerge: false });
+    expect(readRoundPermissions("p1", "repairs").allowMerge).toBe(true);
+    expect(readRoundPermissions("p1", "reconcile")).toEqual({
+      allowNew: true,
+      allowFinish: true,
+      allowMerge: false,
+    });
+    // Разрешения сверки не трогают обходы мониторинга.
+    expect(readAllowNewRounds("p1")).toBe(true);
+
+    writeProjectSettings("p2", readProjectSettings("p1"));
+    expect(readRoundPermissions("p2", "reconcile").allowMerge).toBe(false);
   });
 });

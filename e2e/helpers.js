@@ -7,13 +7,18 @@ export const PHOTO_FIXTURE = path.resolve("public/vema_sa_logo.jpg");
 
 export async function createProject(page, name = "E2E Upstream") {
   await page.goto("/");
+  // Онбординг по шагам (1c): приветствие, имя (пропускаем — профиль
+  // заполняет setUserProfile), проект, готово.
+  await page.getByRole("button", { name: "Начало работы" }).click();
+  await page.getByRole("button", { name: "Пропустить" }).click();
   await expect(
     page.getByRole("heading", { name: "Журнал утечек", exact: true }),
   ).toBeVisible();
 
   await page.getByLabel("Название проекта", { exact: true }).fill(name);
   await page.getByRole("button", { name: /Upstream/ }).click();
-  await page.getByRole("button", { name: "Начать работу" }).click();
+  await page.getByRole("button", { name: "Продолжить" }).click();
+  await page.getByRole("button", { name: "Перейти к работе" }).click();
 
   await expect(page.getByText(name, { exact: true })).toBeVisible();
   await expect(
@@ -21,8 +26,26 @@ export async function createProject(page, name = "E2E Upstream") {
   ).toBeVisible();
 }
 
+// Профиль, настройки, реестр и обмен данными живут в бургер-меню шапки.
+export async function openMenuItem(page, name) {
+  await page.getByRole("button", { name: "Меню", exact: true }).click();
+  // Строка — точное имя; у пунктов со счётчиком («Ремонтные работы 3 в
+  // работе») имя передаётся выражением.
+  await page
+    .getByRole("dialog")
+    .getByRole(
+      "button",
+      typeof name === "string" ? { name, exact: true } : { name },
+    )
+    .click();
+}
+
+export async function openSettings(page) {
+  await openMenuItem(page, "Настройки проекта");
+}
+
 export async function setUserProfile(page, name = "E2E Inspector") {
-  await page.getByTitle("Пользователь").click();
+  await openMenuItem(page, "Изменить имя");
   await page.getByLabel("Имя", { exact: true }).fill(name);
   await page.getByRole("button", { name: "Сохранить", exact: true }).click();
   await expect(
@@ -106,19 +129,10 @@ export async function openLeakDetails(page, currentStatus = "Открыта") {
   await page.mouse.down();
   await page.mouse.move(startX + 100, y, { steps: 5 });
   await page.mouse.up();
+  // Статус в шапке карточки — плашка, а не кнопка: вручную его не меняют.
   await expect(
-    page.getByRole("button", { name: currentStatus, exact: true }),
+    page.getByRole("dialog").getByText(currentStatus, { exact: true }).first(),
   ).toBeVisible();
-}
-
-export async function chooseDetailsStatus(page, status) {
-  await page
-    .getByRole("button", {
-      name: /^(Открыта|В ремонте|Устранена)$/,
-      exact: true,
-    })
-    .click();
-  await page.getByRole("button", { name: status, exact: true }).click();
 }
 
 export async function attachModalPhoto(page) {
@@ -128,12 +142,30 @@ export async function attachModalPhoto(page) {
 }
 
 // Каждая вкладка подписана aria-label, поэтому выбирается по имени, а не по
-// номеру: у проекта с реестром вкладок шесть, без него — пять, и нумерация
-// уезжает от одного лишь типа проекта.
+// номеру.
 export function footerTab(page, name) {
   return page
     .getByRole("contentinfo")
     .getByRole("button", { name, exact: true });
+}
+
+// Обход живёт в модуле мониторинга: если нижняя панель ещё от LDAR, модуль
+// переключается из меню. После перезагрузки модуль сохраняется, и тогда
+// вкладка «Обход» уже на месте.
+export async function openRound(page) {
+  const round = footerTab(page, "Обход");
+  if (!(await round.isVisible())) await openMenuItem(page, "Мониторинг");
+  await round.click();
+  await expect(round).toHaveAttribute("aria-current", "page");
+}
+
+// Отборы карты — в шторке «Фильтры карты» (5d), а не столбцом кнопок.
+export async function openMapFilters(page) {
+  await page.getByRole("button", { name: "Фильтры карты" }).click();
+}
+
+export async function closeMapFilters(page) {
+  await page.getByRole("button", { name: "Готово", exact: true }).click();
 }
 
 export async function openDatabase(page) {
@@ -146,38 +178,61 @@ export async function openMap(page) {
   await expect(map).toHaveAttribute("aria-current", "page");
 }
 
+// Инвентаризация открывается на «Базе» — списке компонентов без заголовка;
+// «Реестр» в нижней панели теперь — схемы.
 export async function openComponentRegistry(page) {
-  const registry = footerTab(page, "Реестр");
-  await registry.click();
+  await openMenuItem(page, "Инвентаризация");
+  await expect(footerTab(page, "Сверка")).toBeVisible();
+  await footerTab(page, "База").click();
   await expect(
-    page.getByRole("heading", { name: "Реестр компонентов" }),
+    page.getByRole("textbox", { name: /^Номер, наименование/ }),
   ).toBeVisible();
 }
 
 export async function openHome(page) {
-  await footerTab(page, "Главная").click();
+  // Главная — у LDAR; из другого модуля возвращаемся через меню.
+  const home = footerTab(page, "Главная");
+  if (!(await home.isVisible())) await openMenuItem(page, /^LDAR/);
+  await home.click();
   await expect(
     page.getByRole("button", { name: "Добавить утечку", exact: true }),
   ).toBeVisible();
 }
 
-// The XLSX button lives on the DataBase screen and downloads a portable Excel
-// archive: the workbook plus the embedded backup the importer reads back.
+// Экран экспорта — на весь экран, без нижней панели. «Назад» с готового файла
+// возвращает к форме выгрузки, второе — уводит с экрана.
+export async function leaveExport(page) {
+  const heading = page.getByRole("heading", { name: "Экспорт отчёта" });
+  for (let step = 0; step < 2 && (await heading.isVisible()); step++) {
+    await page.getByRole("button", { name: "Назад", exact: true }).click();
+  }
+  await expect(heading).toHaveCount(0);
+}
+
+// The Excel archive comes from «Экспорт отчёта» in the menu: the workbook plus
+// the embedded backup the importer reads back. The list screens no longer
+// carry an XLSX button of their own. Returns to the database afterwards, where
+// the callers were.
 export async function exportExcelArchive(page, testInfo) {
+  await openMenuItem(page, "Экспорт отчёта");
+  await page.getByRole("button", { name: "Сформировать файл" }).click();
+  await expect(page.getByText("Файл сформирован")).toBeVisible();
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: /XLSX$/ }).click();
+  await page.getByRole("button", { name: "Сохранить в «Файлы»" }).click();
   const download = await downloadPromise;
   const archivePath = testInfo.outputPath(download.suggestedFilename());
   await download.saveAs(archivePath);
+  await leaveExport(page);
+  await openDatabase(page);
   return archivePath;
 }
 
 // Кнопка импорта одна на все форматы: тип определяется по содержимому файла,
 // а не по тому, какую из трёх кнопок нажали.
 export async function importFile(page, archivePath) {
-  await page.getByTitle("Настройки").click();
+  await openMenuItem(page, "Импорт данных");
   const fileChooserPromise = page.waitForEvent("filechooser");
-  await page.getByRole("button", { name: "Импорт", exact: true }).click();
+  await page.getByRole("button", { name: /^Выбрать файл/ }).click();
   const fileChooser = await fileChooserPromise;
   await fileChooser.setFiles(archivePath);
 }
@@ -246,4 +301,12 @@ export async function addComponentCard(page, card) {
   await expect(
     page.getByText(card.name, { exact: true }).first(),
   ).toBeVisible();
+}
+
+// Проект добавляют из меню (список проектов → «Добавить проект»): в
+// настройках остался только текущий.
+export async function openAddProject(page) {
+  await page.getByRole("button", { name: "Меню", exact: true }).click();
+  await page.getByTitle("Сменить проект").click();
+  await page.getByRole("button", { name: "Добавить проект" }).click();
 }

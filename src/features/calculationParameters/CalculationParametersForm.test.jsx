@@ -113,6 +113,17 @@ describe("CalculationParametersForm", () => {
     expect(applied()).toBe(base);
   });
 
+  it("не записывает стёртое поле нулём", () => {
+    open();
+
+    fireEvent.change(screen.getByLabelText("GWP"), { target: { value: "" } });
+    expect(applied()).toBe(base);
+
+    const [, flareNumber] = screen.getAllByRole("spinbutton");
+    fireEvent.change(flareNumber, { target: { value: "" } });
+    expect(applied()).toBe(base);
+  });
+
   it("подставляет плотность выбранного газа", () => {
     // Плотность не вводят руками — она свойство газа, и разойтись они не должны.
     open();

@@ -1,3 +1,4 @@
+import { getRepairStageMeta } from "@/utils/repairStage";
 import { Component } from "react";
 import {
   getMonitoringHistoryComment,
@@ -125,6 +126,10 @@ function ChangeHistory({ data, fields, localeTexts, t, lang }) {
               <div className={s.logBody}>
                 <span className={s.logAction}>
                   {localeTexts.actions[action] ?? action}
+                  {/* Проверка ремонта — со стадией, в которой ремонт оставили. */}
+                  {entry.stage
+                    ? ` · ${getRepairStageMeta(entry.stage, t).label}`
+                    : ""}
                 </span>
                 {user && (
                   <span className={s.logUser}>
@@ -153,6 +158,7 @@ function ChangeHistory({ data, fields, localeTexts, t, lang }) {
                             fields,
                             localeTexts,
                             t,
+                            lang,
                           )}
                         </span>
                         <span

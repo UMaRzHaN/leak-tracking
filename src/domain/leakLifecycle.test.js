@@ -10,8 +10,8 @@ import {
   collectLeakPhotoPaths,
   deleteLeakPhotosIfUnreferenced,
   deletePhotoIfUnreferenced,
-  getOrphanedOriginalPhoto,
   resolveLeakRecord,
+  returnLeakToWaiting,
   startLeakRepair,
 } from "./leakLifecycle";
 
@@ -138,16 +138,6 @@ describe("leakLifecycle", () => {
     ).toThrowError(
       expect.objectContaining({ code: "INVALID_LEAK_STATUS_TRANSITION" }),
     );
-  });
-
-  it("does not delete a photo that is reused as the after photo", () => {
-    expect(
-      getOrphanedOriginalPhoto({
-        status: "resolved",
-        photo: "idb://same",
-        photo_after: "idb://same",
-      }),
-    ).toBeNull();
   });
 
   it("changes status and collects every unique photo including monitoring", () => {
@@ -286,5 +276,13 @@ describe("МТР и примечание попытки", () => {
     expect(started.events.at(-1).note).toBeUndefined();
     // На самой записи прежнее значение остаётся — его никто не отменял.
     expect(started.materials_equipment).toBe("прежний МТР");
+  });
+
+  it("возвращает в «ожидает МТР» только ремонт, который идёт", () => {
+    expect(() =>
+      returnLeakToWaiting({ id: 1, status: "open" }, {}, { now: NOW }),
+    ).toThrowError(
+      expect.objectContaining({ code: "INVALID_LEAK_STATUS_TRANSITION" }),
+    );
   });
 });

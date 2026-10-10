@@ -1,3 +1,4 @@
+import { shortenPlaceName } from "@/utils/abbreviations";
 import { getStatusRepairMilestones } from "@/domain/leakEvents";
 import { useRenderMetric } from "@/utils/renderMetrics";
 import { memo, useEffect, useState } from "react";
@@ -12,7 +13,9 @@ import {
   formatNumber,
 } from "@/utils/locale";
 import {
+  getLastMonitoringFlag,
   getLatestMonitoringPhotoPath,
+  getLeakDetailsHeroPhotoPath,
   isLeakFiction,
 } from "@/utils/monitoring";
 import PhotoViewer from "@/features/photos/PhotoViewer/PhotoViewer";
@@ -45,15 +48,26 @@ function urgencyOf(createdAt, status) {
 
 function LeakCardCompact({
   leak,
-  onPickStatus,
   onMonitor,
   onOpenDetails,
   nearbyDist = /** @type {number|null} */ (null),
   selected = false,
   onToggleSelect = /** @type {((id: any) => void)|null} */ (null),
   className = "",
+  // До нажатия карточка свёрнута: в списке из сотен записей важнее увидеть
+  // больше строк сразу, а место и компонент раскрываются тапом. Экран,
+  // которому они нужны всегда, передаёт `collapsible={false}`.
   collapsible = true,
   defaultExpanded = false,
+  // Модуль ремонтов показывает в шапке стадию работ, а не статус записи, и
+  // добавляет чипы МТР (7a). Остальные экраны этих пропсов не передают.
+  badge = /** @type {{label: string, color: string, bg: string, border: string}|null} */ (
+    null
+  ),
+  extraChips = /** @type {string[]} */ ([]),
+  // Подпись свайпа влево, когда он ведёт не в мониторинг: в ремонтах —
+  // «Проверить ремонт».
+  monitorLabel = /** @type {string|null} */ (null),
 }) {
   useRenderMetric("LeakCardCompact");
 
@@ -61,7 +75,6 @@ function LeakCardCompact({
   const { swipeState, swipeOffset, close, handlers } = useSwipeCard({
     leak,
     onOpenDetails,
-    onPickStatus,
     onMonitor,
   });
 
@@ -70,11 +83,14 @@ function LeakCardCompact({
   const goingRight = swipeState === "right" || swipeOffset > 30;
 
   const status = leak.status ?? "open";
-  const meta = getStatusMeta(status, t);
+  const meta = badge ?? getStatusMeta(status, t);
   const ago = timeAgo(leak.createdAt, lang);
   const absoluteDate = formatLeakDate(leak.date, {}, lang);
   const urgency = urgencyOf(leak.createdAt, status);
   const fiction = isLeakFiction(leak);
+  // Фикция и «тега нет» — только окраской карточки, без плашек: те
+  // вытесняли номер бирки. Не осмотренная утечка не помечается.
+  const noTag = getLastMonitoringFlag(leak, "physicalTag") === false;
 
   const [viewerIndex, setViewerIndex] = useState(
     /** @type {number|null} */ (null),
@@ -91,6 +107,12 @@ function LeakCardCompact({
 
   const photoSrc = usePhotoSrc(leak.photo ?? null);
   const monitoringPhotoSrc = usePhotoSrc(getLatestMonitoringPhotoPath(leak));
+  // Открытая запись показывает тот же главный снимок, что шапка карточки и
+  // булавка на карте: последний снимок проверки — осмотра или ремонта. Снимок
+  // одного осмотра отставал, если после него была проверка ремонта.
+  const heroPhotoSrc = usePhotoSrc(
+    status === "open" ? getLeakDetailsHeroPhotoPath(leak) : null,
+  );
   // Снимки ремонта и устранения — по статусу, как в карточке и листе книги.
   const milestones = getStatusRepairMilestones(leak);
   const photoAfterSrc = usePhotoSrc(milestones.resolvedPhoto);
@@ -122,11 +144,12 @@ function LeakCardCompact({
   // «ремонта» у неё нет, есть только осмотр. Без этого карточка стояла пустой,
   // хотя шапка подробностей тот же снимок показывает.
   const displayPhotoSrc =
-    !showBook && status === "open" && monitoringPhotoSrc
-      ? monitoringPhotoSrc
+    !showBook && status === "open" && heroPhotoSrc
+      ? heroPhotoSrc
       : photoSrc || photoRepairSrc || photoAfterSrc || monitoringPhotoSrc;
   const hasPhoto = comparePairs.length > 0 || Boolean(displayPhotoSrc);
   const hasChips =
+    extraChips.length > 0 ||
     leak.leak_speed != null ||
     leak.pressure != null ||
     nearbyDist != null ||
@@ -149,11 +172,11 @@ function LeakCardCompact({
           </div>
         )}
 
-        {goingLeft && (
+        {goingLeft && onMonitor && (
           <div className={s.hintLeft}>
             <span className={s.hintIcon}>☰</span>
             <span className={s.hintText}>
-              {onMonitor ? t("cards.monitoring") : t("cards.status")}
+              {monitorLabel ?? t("cards.monitoring")}
             </span>
           </div>
         )}
@@ -163,9 +186,11 @@ function LeakCardCompact({
             collapsible && !expanded ? s.collapsed : ""
           } ${goingLeft ? s.swipeLeft : ""} ${goingRight ? s.swipeRight : ""}`}
           data-urgency={urgency}
+          data-status={status}
           data-priority={leak.priority ?? "none"}
           data-selected={selected ? "true" : "false"}
           data-fiction={fiction ? "true" : undefined}
+          data-no-tag={noTag ? "true" : undefined}
           onClick={toggleExpanded}
           style={{
             transform: `translateX(${swipeOffset}px)`,
@@ -204,11 +229,6 @@ function LeakCardCompact({
             >
               {meta.label}
             </span>
-            {fiction && (
-              <span className={s.fictionPill}>
-                {t("monitoring.fictionBadge")}
-              </span>
-            )}
             <span className={s.id}>
               {t("cards.tagPrefix")}
               {leak.leak_id ?? leak.index}
@@ -234,10 +254,12 @@ function LeakCardCompact({
             {(leak.location || leak.address) && (
               <div className={s.titleBlock}>
                 <span className={s.locationName}>
-                  {leak.location || leak.address}
+                  {shortenPlaceName(leak.location || leak.address)}
                 </span>
                 {leak.object && (
-                  <span className={s.objectName}>{leak.object}</span>
+                  <span className={s.objectName}>
+                    {shortenPlaceName(leak.object)}
+                  </span>
                 )}
               </div>
             )}
@@ -279,6 +301,11 @@ function LeakCardCompact({
           {hasFooter && (
             <div className={s.foot}>
               <div className={s.chips}>
+                {extraChips.map((chip) => (
+                  <span key={chip} className={s.chip}>
+                    {chip}
+                  </span>
+                ))}
                 {nearbyDist != null && (
                   <span className={s.chipNear}>
                     📌 {nearbyDist} {t("common.units.meters")}

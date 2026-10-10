@@ -13,8 +13,8 @@ import { filterComponentMarkers } from "@/pages/MapPage/componentMarkers";
  * @param {any} sharedFilters
  */
 export function useComponentStatusFilter(markers, sharedFilters) {
-  return useMemo(
-    () => ({
+  return useMemo(() => {
+    return {
       statuses: usedComponentStatuses(markers),
       selected: sharedFilters?.componentStatusFilter ?? [],
       onToggle: (status) =>
@@ -24,9 +24,8 @@ export function useComponentStatusFilter(markers, sharedFilters) {
             : [...current, status],
         ),
       onClear: () => sharedFilters?.setComponentStatusFilter?.([]),
-    }),
-    [markers, sharedFilters],
-  );
+    };
+  }, [markers, sharedFilters]);
 }
 
 /**

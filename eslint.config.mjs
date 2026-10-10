@@ -11,6 +11,7 @@ export default defineConfig(
       "android/**",
       "build/**",
       "coverage/**",
+      "design-handoff/**",
       "dist/**",
       "node_modules/**",
       "playwright-report/**",

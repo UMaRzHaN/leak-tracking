@@ -15,7 +15,7 @@ import {
   mergeFieldValuesEqual,
 } from "./mergeValues";
 import { hasOwn, mergeRecordArray } from "./recordArrayMerge";
-import { parseTime } from "./projectMeta";
+import { parseTime } from "./monitoringRoundResolution";
 import { normalizeLeakTag } from "@/utils/leakIdentity";
 import {
   normalizeSyncConflictValue,

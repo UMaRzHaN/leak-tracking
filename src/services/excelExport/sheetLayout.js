@@ -110,3 +110,32 @@ export async function styleBodyRows(sheet, rowCount) {
     row.alignment = { vertical: "middle", wrapText: true };
   }
 }
+
+/**
+ * Ссылки на снимки — только там, где файл в книге есть; снимок, который
+ * прочитать не удалось, назван словами, а не пустой ссылкой.
+ */
+export async function writePhotoLinks(
+  sheet,
+  rows,
+  keys,
+  photoColumns,
+  map,
+  texts,
+) {
+  for (const [rowIndex, row] of rows.entries()) {
+    if (rowIndex > 0 && rowIndex % EXPORT_YIELD_EVERY === 0) {
+      await yieldToMainThread();
+    }
+    for (const [key, mapKey] of photoColumns) {
+      const cell = sheet.getRow(rowIndex + 2).getCell(keys.indexOf(key) + 1);
+      const photoFile = map?.[row[mapKey]];
+      if (photoFile) {
+        cell.value = { text: texts.photo.open, hyperlink: photoFile };
+        cell.font = { color: { argb: "FF1155CC" }, underline: true };
+      } else {
+        cell.value = row[key] ? texts.photo.missing : "";
+      }
+    }
+  }
+}

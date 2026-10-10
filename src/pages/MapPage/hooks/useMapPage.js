@@ -1,12 +1,37 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useOfflineMapActions } from "./useOfflineMapActions";
 import { useMapFilters } from "./useMapFilters";
+import { mapFiltersFor } from "../mapModuleFilters";
+import { MAP_FOCUS_ZOOM, takeMapFocus } from "@/app/mapFocus";
 import { useMapSelection } from "./useMapSelection";
 import { useMapExport } from "./useMapExport";
 import { useProjectData } from "@/app/project/ProjectContext";
 import { useMapComponents } from "./useMapComponents";
 import { useMapComponentsView } from "./useMapComponentsView";
 import { MAP_BASE } from "@/pages/MapPage/mapBase";
+import { MODULE } from "@/app/modules/activeModule";
+import { hasValidCoordinates } from "@/utils/coordinates";
+
+// Поиск по бирке: номер утечки или присвоенный номер компонента — оба лежат
+// в `leak_id`. Выбранная из списка точка оставляет только себя: её номер
+// может входить в чужие («433» в «4334»), а номера бывают и одинаковыми.
+function filterByTag(items, query, pickedId = /** @type {any} */ (null)) {
+  if (pickedId != null) return items.filter((item) => item?.id === pickedId);
+  const normalized = query.trim().toLocaleLowerCase();
+  if (!normalized) return items;
+  return items.filter((item) =>
+    String(item.leak_id ?? "")
+      .toLocaleLowerCase()
+      .includes(normalized),
+  );
+}
 
 export function useMapPage({
   leaks,
@@ -15,6 +40,8 @@ export function useMapPage({
   sharedFilters = /** @type {any} */ (null),
   base: controlledBase = /** @type {string|null} */ (null),
   onBaseChange = /** @type {((base: string) => void)|null} */ (null),
+  // Модуль приложения: от него зависят отборы карты.
+  module = /** @type {string|undefined} */ (undefined),
 }) {
   const { activeProject } = useProjectData();
   const exportProjectFolder = activeProject?.folderName;
@@ -64,6 +91,15 @@ export function useMapPage({
 
   const [notification, setNotification] = useState(/** @type {any} */ (null));
   const [mapReady, setMapReady] = useState(false);
+  // Утечка, по которой тапнули (5d): карточка снизу. Хранится номер, а не
+  // сама запись — после правки в карточке на карте должна быть свежая.
+  const [selectedLeakId, setSelectedLeakId] = useState(
+    /** @type {any} */ (null),
+  );
+  const selectLeak = useCallback(
+    (leak) => setSelectedLeakId(leak?.id ?? null),
+    [],
+  );
   const [heatmapEnabled, setHeatmapEnabled] = useState(false);
   const {
     visibleLeaks,
@@ -83,6 +119,9 @@ export function useMapPage({
     statusFilters,
     fictionFilter,
     setFictionFilter,
+    tagFilter,
+    setTagFilter,
+    tagCounts,
     hasGps,
     setMonitoringFilter,
     setNearbyOnly,
@@ -101,6 +140,7 @@ export function useMapPage({
     activeProjectId: activeProject?.id ?? null,
     open,
     mapCenter,
+    filters: mapFiltersFor(module),
   });
 
   const showsComponents = base === MAP_BASE.COMPONENTS;
@@ -115,7 +155,47 @@ export function useMapPage({
     });
 
   const shownItems = showsComponents ? visibleComponents : visibleLeaks;
-  const shownMarkers = showsComponents ? visibleComponents : markerLeaks;
+  // Набранная в поиске бирка сужает и список, и булавки: искомая точка
+  // должна остаться на карте одна, а не теряться среди соседей.
+  const [tagText, setTagText] = useState("");
+  const [pickedTagId, setPickedTagId] = useState(/** @type {any} */ (null));
+  const deferredTagQuery = useDeferredValue(tagText);
+  // Правка текста руками — снова поиск по вхождению.
+  const setTagQuery = useCallback((value) => {
+    setPickedTagId(null);
+    setTagText(value);
+  }, []);
+  // Выбор из списка: номер встаёт в поле, на карте — только эта точка.
+  const pickTag = useCallback((item) => {
+    setPickedTagId(item?.id ?? null);
+    setTagText(String(item?.leak_id ?? ""));
+  }, []);
+  const searchedItems = useMemo(
+    () => filterByTag(shownItems, deferredTagQuery, pickedTagId),
+    [shownItems, deferredTagQuery, pickedTagId],
+  );
+  const shownMarkers = useMemo(
+    () =>
+      filterByTag(
+        showsComponents ? visibleComponents : markerLeaks,
+        deferredTagQuery,
+        pickedTagId,
+      ),
+    [
+      showsComponents,
+      visibleComponents,
+      markerLeaks,
+      deferredTagQuery,
+      pickedTagId,
+    ],
+  );
+  // Карточка берётся из той базы, что на экране: при смене базы чужая
+  // булавка просто не находится, и карточка пропадает сама.
+  const selectedLeak = useMemo(() => {
+    if (selectedLeakId == null) return null;
+    const pool = showsComponents ? componentMarkers : leaks;
+    return pool.find((leak) => leak?.id === selectedLeakId) ?? null;
+  }, [leaks, componentMarkers, selectedLeakId, showsComponents]);
 
   const notify = useCallback(
     (type, message) => setNotification({ type, message }),
@@ -181,6 +261,9 @@ export function useMapPage({
         invalidateTimeout = setTimeout(() => map.invalidateSize(), 250);
       });
 
+      // Тап по пустому месту карты убирает карточку булавки.
+      map.on("click", () => setSelectedLeakId(null));
+
       map.on("moveend", () => {
         if (map._suppressLeakClickMoveend) {
           map._suppressLeakClickMoveend = false;
@@ -208,6 +291,7 @@ export function useMapPage({
       if (invalidateFrame !== null) cancelAnimationFrame(invalidateFrame);
       if (invalidateTimeout !== null) clearTimeout(invalidateTimeout);
       mapRef.current.map?.off("moveend");
+      mapRef.current.map?.off("click");
       mapRef.current.destroy?.();
       fittedRef.current = false;
       mapRef.current = {
@@ -238,11 +322,22 @@ export function useMapPage({
       mapRef.current.markersLayer,
       shownMarkers,
       mapRef.current.map,
+      selectLeak,
     );
 
     if (fittedRef.current) return;
     const map = mapRef.current.map;
     if (!map) return;
+
+    // Карту открыли из карточки утечки: вид на её точку, а не на все сразу.
+    const focus = takeMapFocus();
+    if (focus) {
+      fittedRef.current = true;
+      map.setView([focus.lat, focus.lng], MAP_FOCUS_ZOOM, {
+        animate: false,
+      });
+      return;
+    }
 
     const validLeaks = shownMarkers.filter(
       (leak) => Number.isFinite(leak.lat) && Number.isFinite(leak.lng),
@@ -264,7 +359,7 @@ export function useMapPage({
         },
       );
     }
-  }, [shownMarkers, mapReady]);
+  }, [shownMarkers, mapReady, selectLeak]);
 
   useEffect(() => {
     mapRef.current.setHeatmap?.(heatmapEnabled ? shownMarkers : []);
@@ -272,11 +367,19 @@ export function useMapPage({
 
   const { tileProgress, downloading, handleDownloadArea, cancelDownload } =
     useOfflineMapActions({ mapRef, notify });
-  // Выгружается то, что на экране: переключив базу, человек ждёт от кнопки
-  // именно её, а не другую.
+  // Выгружается ровно то, что на карте: база, отборы, стадия и поиск. Файл
+  // раскладывается по смыслу карты — статус, обход, стадия ремонта.
+  const exportItems = useMemo(
+    () => shownMarkers.filter((item) => hasValidCoordinates(item)),
+    [shownMarkers],
+  );
   const { handleExportKML } = useMapExport({
-    visibleLeaks: shownItems,
+    visibleLeaks: exportItems,
     showsComponents,
+    mode:
+      module === MODULE.MONITORING || module === MODULE.REPAIRS
+        ? module
+        : "leaks",
     projectType: activeProject?.type,
     projectFolder: exportProjectFolder,
     notify,
@@ -291,6 +394,10 @@ export function useMapPage({
     tileProgress,
     downloading,
     visibleLeaks: shownItems,
+    searchedLeaks: searchedItems,
+    tagQuery: tagText,
+    setTagQuery,
+    pickTag,
     base,
     setBase,
     componentStatus,
@@ -314,6 +421,9 @@ export function useMapPage({
     statusFilters,
     fictionFilter,
     setFictionFilter,
+    tagFilter,
+    setTagFilter,
+    tagCounts,
     hasGps,
     setHeatmapEnabled,
     setMonitoringFilter,
@@ -328,7 +438,10 @@ export function useMapPage({
     handleDownloadArea,
     cancelDownload,
     handleExportKML,
+    exportCount: exportItems.length,
     focusLeak,
     locateMe,
+    selectedLeak,
+    selectLeak,
   };
 }

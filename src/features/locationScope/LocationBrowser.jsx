@@ -1,3 +1,4 @@
+import { shortenPlaceName } from "@/utils/abbreviations";
 import { useEffect, useMemo, useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { useModalDialog } from "@/hooks/useModalDialog";
@@ -129,7 +130,7 @@ export default function LocationBrowser({ open, scope, onClose, onApplied }) {
                 onClick={() => openLevel(draft.slice(0, index + 1))}
                 disabled={index === draft.length - 1}
               >
-                {value || unnamedLabel}
+                {shortenPlaceName(value) || unnamedLabel}
               </button>
             </span>
           ))}
@@ -185,7 +186,11 @@ export default function LocationBrowser({ open, scope, onClose, onApplied }) {
                         <span className={s.icon} aria-hidden="true">
                           {hasChildren ? "📁" : "📍"}
                         </span>
-                        <span className={s.name}>{name}</span>
+                        {/* На виду — с сокращениями из словаря, в
+                            подписи для диктора — полное название. */}
+                        <span className={s.name}>
+                          {shortenPlaceName(node.value) || unnamedLabel}
+                        </span>
                         <span className={s.count}>{node.count}</span>
                       </button>
                       {hasChildren && (

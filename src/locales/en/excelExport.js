@@ -4,11 +4,16 @@ export const excelExport = {
     history: "Leak History",
     monitoring: "Monitoring",
     repairs: "Repairs",
+    materials: "Materials used",
+    repairLog: "Repair log",
+    acceptance: "Equipment acceptance",
   },
 
   photo: {
     open: "Open photo",
     missing: "Present (file missing)",
+    // Папка обхода для записи без места первого уровня.
+    noPlace: "Not specified",
     folderStatus: {
       open: "leak present",
       in_progress: "under repair",
@@ -42,11 +47,75 @@ export const excelExport = {
       resolvedTime: "Finish time",
       durationHours: "Hours to repair",
       user: "Performed by",
+      brigade: "Crew",
       materials_equipment: "Materials",
       note: "Note",
       repairPhoto: "Start photo",
       donePhoto: "Finish photo",
     },
+  },
+
+  repairLog: {
+    headers: {
+      index: "No.",
+      leak_id: "Tag",
+      date: "Date",
+      time: "Time",
+      event: "Event",
+      brigade: "Crew",
+      materials_equipment: "Materials",
+      note: "Comment",
+      roundNumber: "Round",
+      physicalTag: "Physical tag",
+      fiction: "Fiction",
+      user: "By",
+      previousPhoto: "Photo before",
+      photo: "Photo",
+    },
+    events: {
+      repair_started: "Repair started",
+      repair_done: "Repair accepted",
+      returned: "Back to awaiting materials",
+      waiting_mtr: "Awaiting materials",
+      in_repair: "Under repair",
+      ready: "Ready for check",
+      resolved: "Confirmed resolved",
+    },
+  },
+
+  acceptance: {
+    headers: {
+      invoice: "Invoice",
+      supplier: "Supplier",
+      warehouse: "Warehouse",
+      status: "Invoice status",
+      batch: "Batch",
+      date: "Batch date",
+      time: "Time",
+      name: "Item",
+      unit: "Unit",
+      ordered: "Ordered",
+      qty: "Received in batch",
+      received: "Received total",
+      left: "Left",
+      complete: "Complete",
+      dnpnMatch: "DN/PN matches",
+      remark: "Remark",
+      user: "Received by",
+    },
+  },
+
+  materials: {
+    headers: {
+      index: "No.",
+      leak_id: "Tag",
+      date: "Date",
+      time: "Time",
+      source: "Source",
+      materials_equipment: "Materials",
+      user: "By",
+    },
+    sources: { repair: "Repair", monitoring: "Inspection" },
   },
 
   monitoring: {

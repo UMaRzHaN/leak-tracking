@@ -1,0 +1,325 @@
+/* Боковая панель меню (3a): выезжает слева поверх затемнённого экрана. */
+.root {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay);
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(20, 16, 38, 0.44);
+  backdrop-filter: blur(1px);
+  animation: fadeIn 0.2s ease;
+}
+
+.drawer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: min(305px, 86vw);
+  display: flex;
+  flex-direction: column;
+  background: var(--c-surface);
+  box-shadow: 24px 0 60px rgba(20, 16, 38, 0.28);
+  outline: none;
+  animation: slideIn 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.head {
+  flex: none;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--c-border-soft);
+
+  @supports (padding-top: env(safe-area-inset-top)) {
+    padding-top: calc(18px + env(safe-area-inset-top));
+  }
+}
+
+.user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.avatar {
+  flex: none;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--c-accent);
+  color: #fff;
+  font-size: var(--fs-lg);
+  font-weight: 800;
+}
+
+.userName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--c-ink);
+  font-size: var(--fs-lg);
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.close {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 13px;
+  background: none;
+  color: var(--c-text2);
+}
+
+.project {
+  margin-top: 16px;
+  width: 100%;
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 12px;
+  border: 1px solid var(--c-border-soft);
+  border-radius: 12px;
+  background: var(--c-surface-soft);
+  text-align: left;
+}
+
+.projectText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.caption {
+  color: var(--c-text3);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.projectName {
+  overflow: hidden;
+  color: var(--c-ink);
+  font-size: var(--fs-md);
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.projectIcon {
+  display: flex;
+  color: var(--c-accent);
+}
+
+.projectList {
+  /* Высота строки проекта — фиксированная, чтобы список показывал ровно
+     три проекта, а остальные уходили в прокрутку. */
+  --project-row: 56px;
+
+  margin-top: 8px;
+  overflow: hidden;
+  border: 1px solid var(--c-border-soft);
+  border-radius: 12px;
+  background: var(--c-surface);
+}
+
+.projectScroll {
+  /* Три строки и две черты между ними. */
+  max-height: calc(3 * var(--project-row) + 2px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+
+  li + li {
+    border-top: 1px solid var(--c-border-soft);
+  }
+}
+
+.projectOption,
+.projectOptionActive,
+.projectManage {
+  width: 100%;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  color: var(--c-accent);
+  text-align: left;
+}
+
+.projectOption,
+.projectOptionActive {
+  height: var(--project-row);
+}
+
+.projectOptionActive {
+  background: var(--c-accent-surface);
+
+  .projectName {
+    color: var(--c-accent-text);
+  }
+}
+
+.projectType {
+  overflow: hidden;
+  color: var(--c-text3);
+  font-size: var(--fs-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.projectManage {
+  border-top: 1px solid var(--c-border-soft);
+  color: var(--c-accent-text);
+  font-size: var(--fs-md);
+  font-weight: 700;
+}
+
+.list {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 12px;
+  overflow-y: auto;
+
+  @supports (padding-bottom: env(safe-area-inset-bottom)) {
+    padding-bottom: calc(14px + env(safe-area-inset-bottom));
+  }
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 13px;
+  background: none;
+  color: var(--c-ink);
+  text-align: left;
+  transition: background var(--t-fast);
+
+  &:active {
+    background: var(--c-accent-surface);
+  }
+}
+
+.itemIcon {
+  display: flex;
+  color: var(--c-text2);
+}
+
+.itemLabel {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-lg);
+  font-weight: 600;
+}
+
+.itemMeta {
+  max-width: 40%;
+  overflow: hidden;
+  color: var(--c-text3);
+  font-size: var(--fs-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta_danger {
+  color: var(--c-open-text);
+  font-weight: 700;
+}
+
+.meta_accent {
+  color: var(--c-accent-text);
+  font-weight: 700;
+}
+
+.meta_warning {
+  color: var(--c-progress-text);
+  font-weight: 700;
+}
+
+.itemActive {
+  background: var(--c-accent-surface);
+
+  .itemIcon {
+    color: var(--c-accent);
+  }
+
+  .itemLabel {
+    color: var(--c-accent-text);
+    font-weight: 800;
+  }
+}
+
+.divider {
+  height: 1px;
+  margin: 10px 12px;
+  background: var(--c-border-soft);
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawer,
+  .backdrop {
+    animation: none;
+  }
+}
+
+/* Окно «Новый проект» (из выбора проекта в меню). */
+.addProjectRoot {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--z-modal, 1000) + 10);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.addProjectBackdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.72);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
+.addProjectDialog {
+  position: relative;
+  width: min(100%, 520px);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  border-radius: 22px;
+  outline: none;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+}

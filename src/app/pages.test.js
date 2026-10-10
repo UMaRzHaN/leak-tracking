@@ -5,6 +5,7 @@ import {
   isFullScreenPage,
   isListPage,
   showsComponentTree,
+  showsLocationScope,
   LIST_PAGES,
   normalizePage,
 } from "@/app/pages";
@@ -59,6 +60,15 @@ describe("чьё дерево мест показывает экран", () => {
   it("на остальных экранах база карты ничего не решает", () => {
     for (const page of ["", "db", "monitoring", "add", "settings"]) {
       expect(showsComponentTree(page, MAP_BASE.COMPONENTS)).toBe(false);
+    }
+  });
+});
+
+describe("showsLocationScope", () => {
+  it("не предлагает выбор места там, где список им не фильтруется", () => {
+    expect(showsLocationScope("schemas")).toBe(false);
+    for (const page of ["", "db", "monitoring", "components", "map"]) {
+      expect(showsLocationScope(page)).toBe(true);
     }
   });
 });

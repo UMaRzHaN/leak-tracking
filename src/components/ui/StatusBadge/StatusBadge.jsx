@@ -5,42 +5,24 @@ import s from "./StatusBadge.module.scss";
 /**
  * Props:
  *  status   - "open" | "in_progress" | "resolved"
- *  onClick  - optional, makes it a clickable cycle button
  *  size     - "sm" | "md" (default "md")
+ *
+ * Только показывает статус: вручную его не меняют — это делают проверки
+ * мониторинга и ремонта.
  */
-export default function StatusBadge({
-  status = STATUS.OPEN,
-  onClick,
-  size = "md",
-}) {
+export default function StatusBadge({ status = STATUS.OPEN, size = "md" }) {
   const { t } = useLanguage();
   const meta = getStatusMeta(status, t);
 
-  const style = {
-    color: meta.color,
-    background: meta.bg,
-    borderColor: meta.border,
-  };
-
-  if (onClick) {
-    return (
-      <button
-        className={`${s.badge} ${s[size]} ${s.clickable}`}
-        style={style}
-        onClick={(e) => {
-          e.stopPropagation();
-          onClick();
-        }}
-        title={t("statusActions.fallback")}
-        type="button"
-      >
-        {meta.label}
-      </button>
-    );
-  }
-
   return (
-    <span className={`${s.badge} ${s[size]}`} style={style}>
+    <span
+      className={`${s.badge} ${s[size]}`}
+      style={{
+        color: meta.color,
+        background: meta.bg,
+        borderColor: meta.border,
+      }}
+    >
       {meta.label}
     </span>
   );

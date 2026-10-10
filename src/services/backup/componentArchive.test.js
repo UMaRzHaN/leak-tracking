@@ -230,6 +230,22 @@ describe("previewArchiveComponents", () => {
     await expect(previewArchiveComponents(file, project)).resolves.toBe(null);
   });
 
+  it("stays silent about a registry that inflates past the import limit", async () => {
+    const { inflatedArchive } = await import("@/test/zipBomb");
+    const file = await inflatedArchive(
+      { [COMPONENT_ARCHIVE_FILE]: archivePayload([card("c1", "4242")]) },
+      [COMPONENT_ARCHIVE_FILE],
+    );
+    await expect(previewArchiveComponents(file, project)).resolves.toBe(null);
+    await expect(restoreComponentsFromArchive(file, project)).resolves.toEqual({
+      added: 0,
+      updated: 0,
+      removed: 0,
+      conflicts: 0,
+    });
+    expect(mocks.save).not.toHaveBeenCalled();
+  });
+
   it("stays silent when the registry cannot be read", async () => {
     const file = await makeArchive({ [COMPONENT_ARCHIVE_FILE]: "не json" });
     await expect(previewArchiveComponents(file, project)).resolves.toBe(null);

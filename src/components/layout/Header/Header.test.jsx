@@ -13,7 +13,7 @@ vi.mock("@/app/hooks/useLanguage", () => ({
     lang: "ru",
     t: (key) =>
       ({
-        "header.appTitle": "Журнал утечек газа",
+        "header.menu": "Меню",
         "header.defaultProject": "Проект",
         "header.gpsOnTitle": "Выключить GPS",
         "header.gpsOffTitle": "Включить GPS",
@@ -21,7 +21,6 @@ vi.mock("@/app/hooks/useLanguage", () => ({
         "header.gpsOff": "GPS выкл",
         "header.gpsSearch": "Поиск GPS",
         "header.gpsError": "Ошибка GPS",
-        "header.settings": "Настройки",
       })[key] ?? key,
   }),
 }));
@@ -29,10 +28,10 @@ vi.mock("@/app/hooks/useLanguage", () => ({
 import Header from "./Header";
 
 describe("Header", () => {
-  it("keeps project information and actions separated in the compact layout", () => {
+  it("opens the menu, goes home and toggles GPS", () => {
     const setPage = vi.fn();
     const setGpsEnabled = vi.fn();
-    const onUserProfileOpen = vi.fn();
+    const onMenuOpen = vi.fn();
 
     render(
       <Header
@@ -40,22 +39,22 @@ describe("Header", () => {
         coords={{ lat: 0, lng: 69.232593 }}
         gpsEnabled
         setGpsEnabled={setGpsEnabled}
-        userProfile={{ name: "Inspector" }}
-        onUserProfileOpen={onUserProfileOpen}
+        onMenuOpen={onMenuOpen}
       />,
     );
 
     expect(screen.getByText("Копия !Database_LDAR_PHASE_II")).toBeTruthy();
-    expect(screen.getByText("0.000000 / 69.232593")).toBeTruthy();
+    // Координаты ушли из строки шапки в подсказку кнопки GPS.
+    expect(
+      screen.getByRole("button", { name: "Выключить GPS" }).title,
+    ).toContain("0.000000 / 69.232593");
 
     fireEvent.click(screen.getByTitle("Копия !Database_LDAR_PHASE_II"));
-    fireEvent.click(screen.getByRole("button", { name: "Inspector" }));
-    fireEvent.click(screen.getByRole("button", { name: "Настройки" }));
+    fireEvent.click(screen.getByRole("button", { name: "Меню" }));
     fireEvent.click(screen.getByRole("button", { name: "Выключить GPS" }));
 
-    expect(setPage).toHaveBeenNthCalledWith(1, "");
-    expect(setPage).toHaveBeenNthCalledWith(2, "settings");
-    expect(onUserProfileOpen).toHaveBeenCalledOnce();
+    expect(setPage).toHaveBeenCalledWith("");
+    expect(onMenuOpen).toHaveBeenCalledOnce();
     expect(setGpsEnabled).toHaveBeenCalledOnce();
   });
 
@@ -66,12 +65,12 @@ describe("Header", () => {
         coords={{ lat: 41.3, lng: 69.2 }}
         gpsEnabled={false}
         setGpsEnabled={vi.fn()}
-        userProfile={{ name: "Inspector" }}
-        onUserProfileOpen={vi.fn()}
       />,
     );
 
-    expect(screen.queryByText("41.300000 / 69.200000")).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Включить GPS" }).title,
+    ).not.toContain("41.300000");
     expect(screen.getByText("GPS выкл")).toBeTruthy();
   });
 
@@ -83,8 +82,6 @@ describe("Header", () => {
         coords={null}
         gpsEnabled={false}
         setGpsEnabled={vi.fn()}
-        userProfile={{ name: "Inspector" }}
-        onUserProfileOpen={vi.fn()}
         locationScope={{
           available: true,
           setPath: vi.fn(),
@@ -148,8 +145,6 @@ describe("Header", () => {
         coords={null}
         gpsEnabled={false}
         setGpsEnabled={vi.fn()}
-        userProfile={{ name: "Inspector" }}
-        onUserProfileOpen={vi.fn()}
         locationScope={{ available: false, path: [], setPath: vi.fn() }}
       />,
     );

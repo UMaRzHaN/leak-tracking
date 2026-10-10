@@ -23,7 +23,14 @@ export const APP_PAGES = new Set([
   "monitoring",
   "components",
   "component",
+  "schemas",
   "settings",
+  "repair-round",
+  "acceptance",
+  "reconcile",
+  "export",
+  "import",
+  "coverage",
 ]);
 
 /**
@@ -36,7 +43,14 @@ export const APP_PAGES = new Set([
  * twice before and the two copies drifted, which reads as a screen that
  * scrolls the wrong thing.
  */
-export const LIST_PAGES = new Set(["db", "monitoring", "components"]);
+export const LIST_PAGES = new Set([
+  "db",
+  "monitoring",
+  "components",
+  "schemas",
+  "repair-round",
+  "reconcile",
+]);
 
 /**
  * Pages that take over the screen: the app header and the bottom navigation are
@@ -47,7 +61,15 @@ export const LIST_PAGES = new Set(["db", "monitoring", "components"]);
  * Deliberately not list pages — these scroll the document, the way the leak form
  * does, rather than being pinned to the viewport.
  */
-export const FULL_SCREEN_PAGES = new Set(["add", "settings", "component"]);
+export const FULL_SCREEN_PAGES = new Set([
+  "add",
+  "settings",
+  "component",
+  "acceptance",
+  "export",
+  "import",
+  "coverage",
+]);
 
 export function isFullScreenPage(page) {
   return FULL_SCREEN_PAGES.has(page);
@@ -75,6 +97,27 @@ export function normalizePage(value) {
  * @returns {boolean}
  */
 export function showsComponentTree(page, mapBase) {
-  if (page === "components" || page === "component") return true;
+  if (
+    page === "components" ||
+    page === "component" ||
+    page === "schemas" ||
+    page === "reconcile"
+  )
+    return true;
   return page === "map" && mapBase === MAP_BASE.COMPONENTS;
+}
+
+/**
+ * Показывать ли выбор места в шапке на этом экране.
+ *
+ * У «Чертежей» места нет: чертёж добавляют файлом, без привязки, и поле
+ * `location` записи остаётся пустым. Выбор места там показывал дерево и
+ * счётчик железа, а список не менялся — фильтр, который ничего не фильтрует,
+ * хуже его отсутствия.
+ *
+ * @param {string} page
+ * @returns {boolean}
+ */
+export function showsLocationScope(page) {
+  return page !== "schemas";
 }

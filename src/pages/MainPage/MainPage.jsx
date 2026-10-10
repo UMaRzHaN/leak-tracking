@@ -1,25 +1,30 @@
-import { lazy, Suspense, useMemo } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { useMainPageActions } from "./hooks/useMainPageActions";
-import StatCard from "./components/StatCard";
+import CoverageCard from "./components/CoverageCard";
+import FilterChips from "@/components/ui/FilterChips/FilterChips";
 import EmptyState from "./components/EmptyState";
+import { groupRecentLeaks } from "./recentGroups";
 import RepairAnalytics from "./components/RepairAnalytics";
 import LeakCardCompact from "@/features/leakList/LeakCardCompact/LeakCardCompact";
 import Notification from "@/components/ui/Notification/Notification";
-import { STATUS, STATUS_META, getStatusMeta } from "@/utils/status";
+import { STATUS } from "@/utils/status";
+import {
+  countRepairStages,
+  getRepairLeaks,
+  getRepairStage,
+} from "@/domain/repairStages";
+import {
+  REPAIR_STAGE_ORDER,
+  getRepairStageMeta,
+  splitMaterials,
+} from "@/utils/repairStage";
 import { useLanguage } from "@/app/hooks/useLanguage";
+import { MODULE } from "@/app/modules/activeModule";
+import { useCanCheckRepair } from "@/pages/Repairs/useCanCheckRepair";
 import s from "./MainPage.module.scss";
 
 const LeakDetailsSheet = lazy(
   () => import("@/features/leakDetails/LeakDetailsSheet"),
-);
-const StatusPickerModal = lazy(
-  () => import("@/features/status/StatusPickerModal/StatusPickerModal"),
-);
-const ResolveModal = lazy(
-  () => import("@/features/resolve/ResolveModal/ResolveModal"),
-);
-const ReopenLeakModal = lazy(
-  () => import("@/features/status/ReopenLeakModal/ReopenLeakModal"),
 );
 
 export default function MainPage({
@@ -29,60 +34,52 @@ export default function MainPage({
   setData,
   onMonitorLeak,
   userProfile,
+  coverage = /** @type {any} */ (null),
+  module = /** @type {string} */ (MODULE.LDAR),
 }) {
   const { t } = useLanguage();
+
+  // Журнал ремонтов (7a) — те же записи с чипами по стадии работ вместо
+  // статуса: ожидают МТР, в ремонте, устранены.
+  const repairMode = module === MODULE.REPAIRS;
+  const canCheckRepair = useCanCheckRepair(repairMode);
+  const [stageFilter, setStageFilter] = useState("all");
+  const source = scopedData ?? data;
+  const repairLeaks = useMemo(
+    () => (repairMode ? getRepairLeaks(source) : null),
+    [repairMode, source],
+  );
+  const stageCounts = useMemo(
+    () => (repairLeaks ? countRepairStages(repairLeaks) : null),
+    [repairLeaks],
+  );
+  const listData = useMemo(() => {
+    if (!repairLeaks) return source;
+    return stageFilter === "all"
+      ? repairLeaks
+      : repairLeaks.filter((leak) => getRepairStage(leak) === stageFilter);
+  }, [repairLeaks, source, stageFilter]);
 
   const {
     activeLeak,
     setActiveLeak,
     statusFilter,
     setStatusFilter,
-    pickerLeak,
-    setPickerLeak,
-    resolveLeak,
-    setResolveLeak,
-    repairLeak,
-    setRepairLeak,
-    reopenLeak,
-    setReopenLeak,
-    vars,
     notification,
     setNotification,
     stats,
     recent,
     RECENT_COUNT,
     ALL,
-    toggleFilter,
-    handlePickStatus,
-    handleStatusSelect,
-    handleResolveConfirm,
-    handleRepairConfirm,
-    handleReopenConfirm,
     handleSaveLeak,
     handleDeleteLeak,
-  } = useMainPageActions({ data, scopedData, setData, userProfile });
+  } = useMainPageActions({
+    data,
+    scopedData: listData,
+    setData,
+  });
 
-  const localeTexts = useMemo(
-    () => ({
-      total: t("mainPage.total"),
-      open: t("mainPage.open"),
-      inProgress: t("mainPage.inProgress"),
-      resolved: t("mainPage.resolved"),
-      // Both counts describe what is on screen, not the ceiling. The heading
-      // used to announce RECENT_COUNT regardless, so five records were filed
-      // under "last 8 records".
-      recentRecords: (count) => t("mainPage.recentRecords", { count }),
-      showAll: (count) =>
-        t("mainPage.showAll", {
-          count,
-        }),
-      shownRecent: (count) => t("mainPage.shownRecent", { count }),
-    }),
-    [t],
-  );
-
-  const activeStatusMeta =
-    statusFilter !== ALL ? getStatusMeta(statusFilter, t) : null;
+  const groups = useMemo(() => groupRecentLeaks(recent), [recent]);
 
   return (
     <div className={s.page}>
@@ -91,87 +88,107 @@ export default function MainPage({
         onClose={() => setNotification(null)}
       />
 
-      <section className={s.statsRow}>
-        <StatCard
-          value={stats.total}
-          label={localeTexts.total}
-          accent="var(--c-blue)"
-          active={statusFilter === ALL}
-          onClick={() => setStatusFilter(ALL)}
+      {repairMode ? (
+        <FilterChips
+          label={t("repairs.chipsLabel")}
+          all={{
+            key: "all",
+            label: t("repairs.all"),
+            count: stageCounts?.all ?? 0,
+          }}
+          items={REPAIR_STAGE_ORDER.map((stage) => ({
+            key: stage,
+            label: t(`repairs.stages.${stage}`),
+            count: stageCounts?.[stage] ?? 0,
+            dot: getRepairStageMeta(stage, t).dot,
+          }))}
+          value={stageFilter}
+          onChange={setStageFilter}
         />
-        <StatCard
-          value={stats.open}
-          label={localeTexts.open}
-          accent="var(--c-open)"
-          active={statusFilter === STATUS.OPEN}
-          onClick={() => toggleFilter(STATUS.OPEN)}
+      ) : module === MODULE.MONITORING ? (
+        <FilterChips
+          label={t("mainPage.chips.label")}
+          all={{ key: ALL, label: t("mainPage.chips.all"), count: stats.total }}
+          items={[
+            [STATUS.OPEN, "open", stats.open, "var(--c-open)"],
+            [
+              STATUS.IN_PROGRESS,
+              "inProgress",
+              stats.inProgress,
+              "var(--c-progress)",
+            ],
+            [STATUS.RESOLVED, "resolved", stats.resolved, "var(--c-resolved)"],
+          ].map(([key, label, count, dot]) => ({
+            key,
+            label: t(`mainPage.chips.${label}`),
+            count,
+            dot,
+          }))}
+          value={statusFilter}
+          onChange={setStatusFilter}
         />
-        <StatCard
-          value={stats.inProgress}
-          label={localeTexts.inProgress}
-          accent="var(--c-progress)"
-          active={statusFilter === STATUS.IN_PROGRESS}
-          onClick={() => toggleFilter(STATUS.IN_PROGRESS)}
-        />
-        <StatCard
-          value={stats.resolved}
-          label={localeTexts.resolved}
-          accent="var(--c-resolved)"
-          active={statusFilter === STATUS.RESOLVED}
-          onClick={() => toggleFilter(STATUS.RESOLVED)}
-        />
-      </section>
-
-      <RepairAnalytics leaks={scopedData} onOpenLeak={setActiveLeak} />
-
-      {activeStatusMeta && (
-        <div className={s.filterLabel}>
-          <span
-            className={s.filterDot}
-            style={{ background: STATUS_META[statusFilter]?.color }}
-          />
-          {activeStatusMeta.label} - {localeTexts.shownRecent(recent.length)}
-          <button
-            className={s.filterClear}
-            onClick={() => setStatusFilter(ALL)}
-          >
-            ✕
-          </button>
-        </div>
+      ) : (
+        <>
+          {coverage && (
+            <CoverageCard
+              coverage={coverage}
+              onOpen={() => setPage("coverage")}
+            />
+          )}
+          <RepairAnalytics leaks={scopedData} onOpenLeak={setActiveLeak} />
+        </>
       )}
 
-      <section className={s.section}>
-        <div className={s.sectionHead}>
-          <h2 className={s.sectionTitle}>
-            {statusFilter === ALL
-              ? localeTexts.recentRecords(recent.length)
-              : activeStatusMeta?.label}
-          </h2>
-          {/* Counts the selected location, not the project: the button leads
-              to the database, which is scoped too, so a project-wide number
-              would promise records that screen will not show. stats.total is
-              the same count the summary tile above displays. */}
-          {stats.total > RECENT_COUNT && (
-            <button className={s.viewAll} onClick={() => setPage("db")}>
-              {localeTexts.showAll(stats.total)}
-            </button>
-          )}
-        </div>
+      {recent.length ? (
+        groups.map((group, index) => (
+          <section key={group.key} className={s.section}>
+            <div className={s.sectionHead}>
+              <h2 className={s.sectionTitle}>
+                {t(`mainPage.groups.${group.key}`)}
+              </h2>
+              {/* Counts the selected location, not the project: the button
+                  leads to the database, which is scoped too, so a
+                  project-wide number would promise records that screen will
+                  not show. */}
+              {index === 0 && stats.total > RECENT_COUNT && (
+                <button className={s.viewAll} onClick={() => setPage("db")}>
+                  {t("mainPage.showAll", { count: stats.total })}
+                </button>
+              )}
+            </div>
 
-        {recent.length ? (
-          recent.map((leak) => (
-            <LeakCardCompact
-              key={leak.id}
-              leak={leak}
-              onOpenDetails={setActiveLeak}
-              onPickStatus={handlePickStatus}
-              onMonitor={onMonitorLeak}
-            />
-          ))
-        ) : (
-          <EmptyState setPage={setPage} hasFilter={statusFilter !== ALL} />
-        )}
-      </section>
+            <div className={s.list}>
+              {group.leaks.map((leak) => (
+                <LeakCardCompact
+                  key={leak.id}
+                  leak={leak}
+                  badge={
+                    repairMode
+                      ? getRepairStageMeta(getRepairStage(leak), t)
+                      : null
+                  }
+                  extraChips={
+                    repairMode ? splitMaterials(leak.materials_equipment) : []
+                  }
+                  onOpenDetails={setActiveLeak}
+                  // В ремонтах свайп влево — проверка ремонта, и у принятого
+                  // тоже; в идущем обходе — кроме принятых до него.
+                  onMonitor={canCheckRepair(leak) ? onMonitorLeak : undefined}
+                  monitorLabel={repairMode ? t("repairs.checkSwipe") : null}
+                />
+              ))}
+            </div>
+          </section>
+        ))
+      ) : (
+        <EmptyState
+          setPage={setPage}
+          // Во время обхода утечек не заводят — предлагать это пустой список
+          // мониторинга не должен.
+          canAdd={module === MODULE.LDAR}
+          hasFilter={repairMode ? stageFilter !== "all" : statusFilter !== ALL}
+        />
+      )}
 
       <Suspense fallback={null}>
         {activeLeak && (
@@ -182,40 +199,6 @@ export default function MainPage({
             onSave={handleSaveLeak}
             onDelete={handleDeleteLeak}
             userProfile={userProfile}
-          />
-        )}
-
-        {pickerLeak && (
-          <StatusPickerModal
-            current={pickerLeak.status ?? STATUS.OPEN}
-            onSelect={handleStatusSelect}
-            onClose={() => setPickerLeak(null)}
-          />
-        )}
-
-        {resolveLeak && (
-          <ResolveModal
-            leak={resolveLeak}
-            onConfirm={handleResolveConfirm}
-            onClose={() => setResolveLeak(null)}
-          />
-        )}
-
-        {repairLeak && (
-          <ResolveModal
-            leak={repairLeak}
-            mode="repair"
-            onConfirm={handleRepairConfirm}
-            onClose={() => setRepairLeak(null)}
-          />
-        )}
-
-        {reopenLeak && (
-          <ReopenLeakModal
-            leak={reopenLeak}
-            vars={vars}
-            onConfirm={handleReopenConfirm}
-            onClose={() => setReopenLeak(null)}
           />
         )}
       </Suspense>

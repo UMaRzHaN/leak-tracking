@@ -10,13 +10,6 @@ import {
   isProjectDataReadWarningBlocking,
 } from "@/repositories/projectDataReadState";
 import { isMissingNativeFileError } from "@/repositories/nativeFileErrors";
-import {
-  deleteNativeProjectStorage,
-  loadNativeProject,
-  readNativeSnapshot,
-  saveNativeProject,
-  writeNativeProjectSnapshot,
-} from "@/repositories/nativeLeakStorage";
 import { createNativeSqliteMutation } from "@/repositories/nativeSqliteMutation";
 import {
   compareWebEnvelopes,
@@ -47,6 +40,11 @@ import {
   PRESERVED_INVALID_RECORDS,
   filterValidLeaks,
 } from "./leakRecordValidation";
+
+// Хранилище Android (SQLite, прежние снимки и журналы) грузится по первому
+// обращению: в браузере оно не нужно вовсе, а в стартовом чанке занимало
+// несколько килобайт до первого экрана.
+const nativeStorage = () => import("@/repositories/nativeLeakStorage");
 
 export class ProjectDataReadError extends Error {
   /** @param {string} message @param {any} [options] */
@@ -123,7 +121,9 @@ async function recoverLegacyNativeArray(
     let legacyData;
     try {
       legacyData = (
-        await readNativeSnapshot(candidate.path, candidate.directory)
+        await (
+          await nativeStorage()
+        ).readNativeSnapshot(candidate.path, candidate.directory)
       ).data;
     } catch (error) {
       if (isMissingNativeFileError(error)) continue;
@@ -134,7 +134,9 @@ async function recoverLegacyNativeArray(
     }
 
     try {
-      await writeNativeProjectSnapshot(folderName, legacyData);
+      await (
+        await nativeStorage()
+      ).writeNativeProjectSnapshot(folderName, legacyData);
     } catch (error) {
       logger.warn(
         `[LeakRepository] Read legacy data from "${candidate.path}", but could not copy it to current storage:`,
@@ -161,10 +163,23 @@ export function getEmbeddedProjectSyncState(leaks) {
 }
 
 export const LeakRepository = {
-  async getAll({ projectId, folderName, legacyStorageType = null }) {
+  /**
+   * `peek: true` — посмотреть, не взяв в работу: для предпросмотра импорта.
+   * Ревизия не запоминается, копии не чинятся. В памяти вкладки при этом
+   * остаётся то, что было прочитано раньше, и отметка свежей ревизии отключила
+   * бы страж второй вкладки: старый набор из памяти молча затёр бы свежий.
+   */
+  async getAll({
+    projectId,
+    folderName,
+    legacyStorageType = null,
+    peek = false,
+  }) {
     if (isNative) {
       try {
-        const loaded = await loadNativeProject(folderName);
+        const loaded = await (
+          await nativeStorage()
+        ).loadNativeProject(folderName);
         if (loaded) {
           if (loaded.recovered) {
             logger.warn(
@@ -208,7 +223,7 @@ export const LeakRepository = {
 
     try {
       indexedEnvelope = normalizeWebEnvelope(
-        await readWebData(projectId),
+        await readWebData(projectId, { remember: !peek }),
         `IndexedDB[${projectId}]`,
       );
     } catch (error) {
@@ -221,7 +236,7 @@ export const LeakRepository = {
 
     try {
       mirrorEnvelope = normalizeWebEnvelope(
-        await readMirrorData(projectId),
+        await readMirrorData(projectId, { remember: !peek }),
         `IndexedDB-mirror[${projectId}]`,
       );
     } catch (error) {
@@ -296,7 +311,7 @@ export const LeakRepository = {
       compareWebEnvelopes(candidate, latest) > 0 ? candidate : latest,
     );
     // На этой копии основано унесённое отсюда — а починка ниже умеет не состояться.
-    rememberLeakDataRevision(projectId, selected.revision);
+    if (!peek) rememberLeakDataRevision(projectId, selected.revision);
 
     // Repair only stores that were read successfully. A transient read error
     // must never cause an older fallback copy to overwrite an unknown version.
@@ -304,7 +319,7 @@ export const LeakRepository = {
     // IndexedDB is unavailable, writeWebData/writeMirrorData resolve to
     // `false` without throwing, and that must NOT be treated as success.
     let indexedHoldsSelected = sameWebEnvelope(indexedEnvelope, selected);
-    if (!indexedDbError && !indexedHoldsSelected) {
+    if (!peek && !indexedDbError && !indexedHoldsSelected) {
       indexedHoldsSelected = await writeWebData(projectId, selected).catch(
         (error) => {
           logger.warn(
@@ -316,7 +331,7 @@ export const LeakRepository = {
       );
     }
     let mirrorHoldsSelected = sameWebEnvelope(mirrorEnvelope, selected);
-    if (!mirrorError && !mirrorHoldsSelected) {
+    if (!peek && !mirrorError && !mirrorHoldsSelected) {
       mirrorHoldsSelected = await writeMirrorData(projectId, selected).catch(
         (error) => {
           logger.warn(
@@ -332,7 +347,11 @@ export const LeakRepository = {
     // is unavailable entirely, both repairs silently no-op (they resolve
     // `false`, not an error), and the legacy copy is the only durable data —
     // clearing it here would delete the project.
-    if (legacyEnvelope && (indexedHoldsSelected || mirrorHoldsSelected)) {
+    if (
+      !peek &&
+      legacyEnvelope &&
+      (indexedHoldsSelected || mirrorHoldsSelected)
+    ) {
       clearLegacyLocalStorageEnvelope(projectId);
     }
 
@@ -382,7 +401,9 @@ export const LeakRepository = {
     { projectId, folderName, syncState = null, previousLeaks = null },
   ) {
     if (isNative) {
-      await saveNativeProject(folderName, leaks, { syncState, previousLeaks });
+      await (
+        await nativeStorage()
+      ).saveNativeProject(folderName, leaks, { syncState, previousLeaks });
       return;
     }
 
@@ -475,7 +496,9 @@ export const LeakRepository = {
 
   async clear({ projectId, folderName, syncState = null }) {
     if (isNative) {
-      await saveNativeProject(folderName, [], {
+      await (
+        await nativeStorage()
+      ).saveNativeProject(folderName, [], {
         syncState,
         forceSnapshot: true,
       });
@@ -535,9 +558,13 @@ export const LeakRepository = {
 
   async purge({ projectId, folderName }) {
     if (isNative) {
-      const deleted = await deleteNativeProjectStorage(folderName);
+      const deleted = await (
+        await nativeStorage()
+      ).deleteNativeProjectStorage(folderName);
       if (!deleted) {
-        await saveNativeProject(folderName, [], { forceSnapshot: true });
+        await (
+          await nativeStorage()
+        ).saveNativeProject(folderName, [], { forceSnapshot: true });
       }
       return;
     }

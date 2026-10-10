@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import {
   PROJECT_SETTINGS_UPDATED_EVENT,
+  emitSettingsUpdated,
   touchProjectSettings,
 } from "@/app/project/projectSettings";
 import {
@@ -60,6 +61,8 @@ export function useHiddenFields(projectId, scope = HIDDEN_FIELD_SCOPES.LEAKS) {
           localStorage.setItem(storageKey, JSON.stringify([...set]));
         }
         touchProjectSettings(projectId);
+        // Свою копию обновляет ревизия ниже, чужие экземпляры хука — событие.
+        emitSettingsUpdated(projectId);
       }
       setRevision((r) => r + 1);
     },

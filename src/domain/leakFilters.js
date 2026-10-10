@@ -31,3 +31,28 @@ export const FICTION_FILTER = {
   ONLY: "only",
   EXCLUDE: "exclude",
 };
+
+/**
+ * Отбор по физическому тегу — ответу «Физ. тег есть?» последнего осмотра,
+ * где об этом спросили. Не осмотренная ни разу утечка не попадает ни в
+ * «есть», ни в «нет»: про её тег ещё никто не отвечал.
+ */
+export const TAG_FILTER = {
+  ALL: "all",
+  WITH: "with",
+  WITHOUT: "without",
+};
+
+/**
+ * Где искать строку поиска. По умолчанию — во всех полях; выбранное поле
+ * сужает поиск до него одного: «Иванов» в проверяющих не найдёт утечку, где
+ * Иванов упомянут в примечании.
+ */
+export const SEARCH_SCOPE = {
+  ALL: "all",
+  TAG: "tag",
+  PLACE: "place",
+  OBJECT: "object",
+  DESCRIPTION: "description",
+  INSPECTOR: "inspector",
+};

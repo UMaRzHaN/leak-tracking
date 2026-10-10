@@ -78,6 +78,15 @@ function collectReferencedPhotos(leaks = []) {
         }
       }
     }
+
+    // Карточка реестра держит снимок каждого осмотра в своей истории — тот
+    // же список, что уносит в архив componentPhotoArchive. Без него снимок
+    // сверки считался сиротой и удалялся первой же уборкой после перезапуска.
+    if (Array.isArray(leak.history)) {
+      for (const entry of leak.history) {
+        if (entry?.photo) referenced.add(entry.photo);
+      }
+    }
   }
   return referenced;
 }

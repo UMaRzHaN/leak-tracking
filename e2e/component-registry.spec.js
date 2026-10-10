@@ -1,13 +1,17 @@
 import { expect, test } from "@playwright/test";
 import {
+  openMenuItem,
+  leaveExport,
+  openHome,
   createProject,
   fillLeakStepOne,
-  footerTab,
   importFile,
   leaveSettings,
   addComponentCard,
+  attachModalPhoto,
   openComponentRegistry,
   setUserProfile,
+  openAddProject,
 } from "./helpers.js";
 
 /*
@@ -45,18 +49,17 @@ test("заводит карточку компонента и показывае
   await setUserProfile(page);
   await openComponentRegistry(page);
 
-  await expect(page.getByText("Заведено: 0")).toBeVisible();
   await expect(page.getByText("Реестр пуст.", { exact: false })).toBeVisible();
 
   await addComponentCard(page, VALVE);
 
-  await expect(page.getByText("Заведено: 1")).toBeVisible();
+  await expect(page.getByText(/^1 запись/)).toBeVisible();
   await expect(page.getByText("ЗД-32", { exact: false }).first()).toBeVisible();
 
   // Реестр живёт в той же базе, что и утечки, — перезагрузка это проверяет.
   await page.reload();
   await openComponentRegistry(page);
-  await expect(page.getByText("Заведено: 1")).toBeVisible();
+  await expect(page.getByText(/^1 запись/)).toBeVisible();
   await expect(
     page.getByText("Задвижка", { exact: true }).first(),
   ).toBeVisible();
@@ -72,18 +75,21 @@ test("выгружает инвентаризацию и вливает её в 
 
   await addComponentCard(page, VALVE);
   await addComponentCard(page, GAUGE);
-  await expect(page.getByText("Заведено: 2")).toBeVisible();
+  await expect(page.getByText(/^2 записи/)).toBeVisible();
 
+  // Утечек в проекте нет: «Экспорт отчёта» выгружает один реестр — тем же
+  // архивом, что раньше отдавала кнопка XLSX на экране реестра.
+  await openMenuItem(page, "Экспорт отчёта");
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: /XLSX$/ }).click();
+  await page.getByRole("button", { name: "Сформировать файл" }).click();
   const download = await downloadPromise;
   const archivePath = testInfo.outputPath(download.suggestedFilename());
   await download.saveAs(archivePath);
+  await leaveExport(page);
 
   // Второй проект того же типа: архив не несёт ни имени, ни типа, и тип
   // выводится как единственный, у которого объявлен реестр.
-  await page.getByTitle("Настройки").click();
-  await page.getByRole("button", { name: "+ Добавить", exact: true }).click();
+  await openAddProject(page);
   await expect(
     page.getByRole("heading", { name: "Новый проект", exact: true }),
   ).toBeVisible();
@@ -94,10 +100,13 @@ test("выгружает инвентаризацию и вливает её в 
   // настройках — по-русски.
   await page.getByRole("button", { name: "⛽ Добыча Добыча" }).click();
   await page.getByRole("button", { name: "Создать", exact: true }).click();
-  await leaveSettings(page);
+  // Окно закрывается вместе с меню — настройки не открывались.
+  await expect(
+    page.getByRole("heading", { name: "Новый проект", exact: true }),
+  ).toHaveCount(0);
 
   await openComponentRegistry(page);
-  await expect(page.getByText("Заведено: 0")).toBeVisible();
+  await expect(page.getByText("Реестр пуст.", { exact: false })).toBeVisible();
 
   await importFile(page, archivePath);
   await expect(page.getByRole("alert")).toContainText("Инвентаризация", {
@@ -107,7 +116,7 @@ test("выгружает инвентаризацию и вливает её в 
   await leaveSettings(page);
 
   await openComponentRegistry(page);
-  await expect(page.getByText("Заведено: 2")).toBeVisible();
+  await expect(page.getByText(/^2 записи/)).toBeVisible();
   await expect(
     page.getByText("Задвижка", { exact: true }).first(),
   ).toBeVisible();
@@ -130,7 +139,7 @@ test("привязывает утечку к карточке компонент
   await openComponentRegistry(page);
   await addComponentCard(page, VALVE);
 
-  await footerTab(page, "Главная").click();
+  await openHome(page);
   await page
     .getByRole("button", { name: "Добавить утечку", exact: true })
     .click();
@@ -169,7 +178,7 @@ test("открепляет карточку, оставляя заполненн
   await openComponentRegistry(page);
   await addComponentCard(page, VALVE);
 
-  await footerTab(page, "Главная").click();
+  await openHome(page);
   await page
     .getByRole("button", { name: "Добавить утечку", exact: true })
     .click();
@@ -185,4 +194,54 @@ test("открепляет карточку, оставляя заполненн
     page.getByRole("button", { name: "Выбрать из реестра" }),
   ).toBeVisible();
   await expect(page.getByLabel(/^Компонент$/)).toHaveValue("Задвижка");
+});
+
+test("сверяет компонент в разделе «Сверка»", async ({ page }) => {
+  await createProject(page, "Reconcile E2E");
+  await setUserProfile(page);
+  await openComponentRegistry(page);
+  await addComponentCard(page, {
+    uid: "9101",
+    tag: "ЗД-1",
+    location: "Цех 2",
+    name: "Задвижка",
+  });
+
+  await page
+    .getByRole("contentinfo")
+    .getByRole("button", { name: "Сверка", exact: true })
+    .click();
+  await expect(page.getByRole("button", { name: "К сверке 1" })).toBeVisible();
+  await page.getByRole("button", { name: "Сверить", exact: true }).click();
+  // Сверки ещё нет — как в мониторинге, сначала вопрос о новой.
+  await page
+    .getByRole("dialog", { name: "Начать новую сверку?" })
+    .getByRole("button", { name: "Начать сверку", exact: true })
+    .click();
+  // Осмотр — экраном, как проверка мониторинга; снимок по умолчанию обязателен.
+  await expect(
+    page.getByRole("heading", { name: "Осмотр компонента" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Сохранить осмотр" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Осмотр компонента" }),
+  ).toBeVisible();
+  await page.getByLabel("Состояние на момент осмотра").selectOption("В работе");
+  await attachModalPhoto(page);
+  await page.getByRole("button", { name: "Сохранить осмотр" }).click();
+
+  await expect(page.getByRole("button", { name: "Сверено 1" })).toBeVisible();
+  await expect(page.getByText("Сверка № 1")).toBeVisible();
+
+  // Всё сверено — карточка завершения, как у обхода мониторинга.
+  await expect(page.getByText("Всё сверено", { exact: true })).toBeVisible();
+  await page
+    .getByRole("button", { name: "Завершить сверку", exact: true })
+    .click();
+  await expect(
+    page.getByText("Сверка завершена", { exact: true }).first(),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Новая сверка", exact: true }),
+  ).toBeVisible();
 });

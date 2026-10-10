@@ -4,11 +4,16 @@ export const excelExport = {
     history: "История",
     monitoring: "Мониторинг",
     repairs: "Ремонты",
+    materials: "Расход МТР",
+    repairLog: "Журнал ремонтов",
+    acceptance: "Приёмка оборудования",
   },
 
   photo: {
     open: "Открыть фото",
     missing: "Есть (файл не найден)",
+    // Папка обхода для записи без места первого уровня.
+    noPlace: "Не указано",
     folderStatus: {
       open: "утечка есть",
       in_progress: "в ремонте",
@@ -42,11 +47,75 @@ export const excelExport = {
       resolvedTime: "Время завершения",
       durationHours: "Часов на ремонт",
       user: "Исполнитель",
+      brigade: "Бригада",
       materials_equipment: "МТР ремонта",
       note: "Примечание",
       repairPhoto: "Фото начала",
       donePhoto: "Фото завершения",
     },
+  },
+
+  repairLog: {
+    headers: {
+      index: "№",
+      leak_id: "Бирка",
+      date: "Дата",
+      time: "Время",
+      event: "Событие",
+      brigade: "Бригада",
+      materials_equipment: "МТР",
+      note: "Комментарий",
+      roundNumber: "Обход",
+      physicalTag: "Физ. тег",
+      fiction: "Фикция",
+      user: "Кто",
+      previousPhoto: "Фото до",
+      photo: "Фото",
+    },
+    events: {
+      repair_started: "Начат ремонт",
+      repair_done: "Ремонт принят",
+      returned: "Вернули: ожидает МТР",
+      waiting_mtr: "Ожидает МТР",
+      in_repair: "В ремонте",
+      ready: "Готово к проверке",
+      resolved: "Подтверждено устранение",
+    },
+  },
+
+  acceptance: {
+    headers: {
+      invoice: "Накладная",
+      supplier: "Поставщик",
+      warehouse: "Склад",
+      status: "Статус накладной",
+      batch: "Партия",
+      date: "Дата партии",
+      time: "Время",
+      name: "Позиция",
+      unit: "Ед.",
+      ordered: "Заказано",
+      qty: "Пришло в партии",
+      received: "Принято всего",
+      left: "Остаток",
+      complete: "Комплектно",
+      dnpnMatch: "DN/PN совпадает",
+      remark: "Замечание",
+      user: "Принял",
+    },
+  },
+
+  materials: {
+    headers: {
+      index: "№",
+      leak_id: "Бирка",
+      date: "Дата",
+      time: "Время",
+      source: "Откуда",
+      materials_equipment: "МТР",
+      user: "Кто",
+    },
+    sources: { repair: "Ремонт", monitoring: "Осмотр" },
   },
 
   monitoring: {

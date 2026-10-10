@@ -1,6 +1,7 @@
 package com.leak.tracking;
 
 import android.content.ContentResolver;
+import android.content.ContentUris;
 import android.content.ContentValues;
 import android.database.Cursor;
 import android.net.Uri;
@@ -226,61 +227,75 @@ public class PublicFileWriterPlugin extends Plugin {
         Uri collection = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY);
         String relativePath = Environment.DIRECTORY_DOCUMENTS + (folder.isEmpty() ? "/" : "/" + folder + "/");
 
-        // Before creating, not after: MediaStore refuses to collide, and asked
-        // for a name that is taken it silently stores "report (1).zip" instead.
-        // Deleting afterwards left that suffix on the file for good, so every
-        // export added another numbered copy and the message on screen named a
-        // file nobody had written. Nothing can be lost by clearing the way
-        // first — what is about to be published is already a complete file in
-        // the app's own storage, and this method only copies it out.
-        deleteExistingFile(resolver, collection, relativePath, fileName, null);
-
-        ContentValues values = new ContentValues();
-        values.put(MediaStore.MediaColumns.DISPLAY_NAME, fileName);
-        values.put(MediaStore.MediaColumns.MIME_TYPE, mimeType);
-        values.put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath);
-        values.put(MediaStore.MediaColumns.IS_PENDING, 1);
-
-        Uri item = resolver.insert(collection, values);
-        if (item == null) {
-            throw new Exception("Unable to create export file");
-        }
-
-        boolean published = false;
-        try {
-            try (OutputStream stream = resolver.openOutputStream(item, "w")) {
-                if (stream == null) {
-                    throw new Exception("Unable to open export file");
+        // Прошлый файл с тем же именем — это прошлый бэкап, и удалять его до
+        // записи нового нельзя: нехватка места или убитый процесс оставляли
+        // без обеих копий. Новый пишется под временным именем, старый
+        // убирается, только когда новый опубликован, и лишь потом новому
+        // возвращается запрошенное имя (MediaStore не даёт занять чужое имя —
+        // молча сохранил бы "report (1).zip").
+        String storedName = ReplacingExport.write(
+            new ReplacingExport.Store<Uri>() {
+                @Override
+                public Uri createPending(String name) {
+                    ContentValues values = new ContentValues();
+                    values.put(MediaStore.MediaColumns.DISPLAY_NAME, name);
+                    values.put(MediaStore.MediaColumns.MIME_TYPE, mimeType);
+                    values.put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath);
+                    values.put(MediaStore.MediaColumns.IS_PENDING, 1);
+                    return resolver.insert(collection, values);
                 }
-                byte[] buffer = new byte[64 * 1024];
-                int read;
-                while ((read = source.read(buffer)) >= 0) {
-                    stream.write(buffer, 0, read);
+
+                @Override
+                public void write(Uri item, InputStream input) throws Exception {
+                    try (OutputStream stream = resolver.openOutputStream(item, "w")) {
+                        if (stream == null) {
+                            throw new Exception("Unable to open export file");
+                        }
+                        byte[] buffer = new byte[64 * 1024];
+                        int read;
+                        while ((read = input.read(buffer)) >= 0) {
+                            stream.write(buffer, 0, read);
+                        }
+                        stream.flush();
+                    }
                 }
-                stream.flush();
-            }
 
-            ContentValues done = new ContentValues();
-            done.put(MediaStore.MediaColumns.IS_PENDING, 0);
-            if (resolver.update(item, done, null, null) != 1) {
-                throw new Exception("Unable to publish export file");
-            }
-            published = true;
+                @Override
+                public void publish(Uri item) throws Exception {
+                    ContentValues done = new ContentValues();
+                    done.put(MediaStore.MediaColumns.IS_PENDING, 0);
+                    if (resolver.update(item, done, null, null) != 1) {
+                        throw new Exception("Unable to publish export file");
+                    }
+                }
 
-            // A name can still be taken by a file this app may not delete —
-            // one written by another build of it, for instance. Then the export
-            // keeps the suffix MediaStore gave it, and the caller is told the
-            // name the file actually carries rather than the one it asked for.
-            String storedName = renameToRequested(resolver, item, fileName);
+                @Override
+                public void deleteOthersNamed(String name, Uri keep) {
+                    deleteExistingFile(resolver, collection, relativePath, name, keep);
+                }
 
-            return "Documents/" + (folder.isEmpty() ? "" : folder + "/") + storedName;
-        } finally {
-            if (!published) {
-                try {
-                    resolver.delete(item, null, null);
-                } catch (Exception ignored) {}
-            }
-        }
+                @Override
+                public void deleteTemporariesOf(String name, Uri keep) {
+                    deleteTemporaryExports(resolver, collection, relativePath, name, keep);
+                }
+
+                @Override
+                public String renameTo(Uri item, String name) {
+                    return renameToRequested(resolver, item, name);
+                }
+
+                @Override
+                public void discard(Uri item) {
+                    try {
+                        resolver.delete(item, null, null);
+                    } catch (Exception ignored) {}
+                }
+            },
+            fileName,
+            source
+        );
+
+        return "Documents/" + (folder.isEmpty() ? "" : folder + "/") + storedName;
     }
 
     /**
@@ -309,7 +324,9 @@ public class PublicFileWriterPlugin extends Plugin {
         try {
             ContentValues rename = new ContentValues();
             rename.put(MediaStore.MediaColumns.DISPLAY_NAME, fileName);
-            if (resolver.update(item, rename, null, null) == 1) return fileName;
+            // Ответ update() не говорит, какое имя досталось: занятое имя
+            // MediaStore молча дополняет суффиксом. Поэтому имя перечитывается.
+            resolver.update(item, rename, null, null);
         } catch (Exception ignored) {
             // Scoped storage may refuse the rename; the export itself stands.
         }
@@ -341,8 +358,6 @@ public class PublicFileWriterPlugin extends Plugin {
         Uri keepItem
     ) {
         String[] projection = new String[] { MediaStore.MediaColumns._ID };
-        // keepItem is null when clearing the way before a write: there is
-        // nothing to spare yet.
         String selection = MediaStore.MediaColumns.DISPLAY_NAME + "=? AND " + MediaStore.MediaColumns.RELATIVE_PATH + "=?";
         String[] args = new String[] { fileName, relativePath };
 
@@ -353,7 +368,7 @@ public class PublicFileWriterPlugin extends Plugin {
             while (cursor.moveToNext()) {
                 long id = cursor.getLong(idColumn);
                 Uri item = Uri.withAppendedPath(collection, String.valueOf(id));
-                if (keepItem != null && item.equals(keepItem)) continue;
+                if (keepItem != null && id == ContentUris.parseId(keepItem)) continue;
                 try {
                     resolver.delete(item, null, null);
                 } catch (SecurityException ignored) {
@@ -363,6 +378,41 @@ public class PublicFileWriterPlugin extends Plugin {
             }
         } catch (Exception ignored) {
             // Export should still proceed even if cleanup is blocked by scoped storage.
+        }
+    }
+
+    private void deleteTemporaryExports(
+        ContentResolver resolver,
+        Uri collection,
+        String relativePath,
+        String fileName,
+        Uri keepItem
+    ) {
+        String[] projection = new String[] {
+            MediaStore.MediaColumns._ID,
+            MediaStore.MediaColumns.DISPLAY_NAME,
+        };
+        // LIKE только сужает выборку; точное правило имени — в ReplacingExport.
+        String selection = MediaStore.MediaColumns.DISPLAY_NAME + " LIKE ? AND " + MediaStore.MediaColumns.RELATIVE_PATH + "=?";
+        String[] args = new String[] { "export-%", relativePath };
+
+        try (Cursor cursor = resolver.query(collection, projection, selection, args, null)) {
+            if (cursor == null) return;
+
+            int idColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID);
+            int nameColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME);
+            while (cursor.moveToNext()) {
+                long id = cursor.getLong(idColumn);
+                if (keepItem != null && id == ContentUris.parseId(keepItem)) continue;
+                if (!ReplacingExport.isTemporaryOf(cursor.getString(nameColumn), fileName)) continue;
+                try {
+                    resolver.delete(Uri.withAppendedPath(collection, String.valueOf(id)), null, null);
+                } catch (SecurityException ignored) {
+                    // Чужую копию Android удалить не даст — она просто останется.
+                }
+            }
+        } catch (Exception ignored) {
+            // Уборка не должна ронять уже удавшийся экспорт.
         }
     }
 

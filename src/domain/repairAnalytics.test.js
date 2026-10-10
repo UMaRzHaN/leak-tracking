@@ -109,3 +109,73 @@ describe("аналитика ремонтов", () => {
     expect(summary.returned).toBe(0);
   });
 });
+
+describe("аналитика ремонтов: обрыв без завершения", () => {
+  const inspection = (id, days, result) => ({
+    id,
+    type: LEAK_EVENT_TYPES.INSPECTION,
+    date: at(days),
+    result,
+  });
+
+  it("не держит в работе ремонт, возвращённый в «ожидает МТР»", () => {
+    const leak = {
+      id: "1",
+      status: "open",
+      events: [started("a", 0)],
+      history: [
+        { action: "status_changed", to: "in_progress", date: at(0) },
+        { action: "status_changed", to: "open", date: at(2) },
+      ],
+    };
+
+    const summary = buildRepairAnalytics([leak], START + 30 * DAY);
+
+    expect(summary.inProgress).toBe(0);
+    expect(summary.abandoned).toBe(1);
+    expect(summary.longestOpenRepair).toBeNull();
+  });
+
+  it("считает ремонт, закрытый осмотром, завершённым, а не идущим", () => {
+    const leak = {
+      id: "1",
+      status: "resolved",
+      events: [started("a", 0), inspection("b", 3, "resolved")],
+    };
+
+    const summary = buildRepairAnalytics([leak], START + 30 * DAY);
+
+    expect(summary.inProgress).toBe(0);
+    expect(summary.completed).toBe(1);
+    expect(summary.longestOpenRepair).toBeNull();
+  });
+
+  it("не называет возвратом ремонт, который бросили и начали заново", () => {
+    const leak = {
+      id: "1",
+      status: "resolved",
+      events: [started("a", 0), started("c", 5), done("d", 6)],
+      history: [{ action: "status_changed", to: "open", date: at(2) }],
+    };
+
+    const summary = buildRepairAnalytics([leak], START + 30 * DAY);
+
+    expect(summary.returned).toBe(0);
+    expect(summary.completed).toBe(1);
+    expect(summary.abandoned).toBe(1);
+  });
+
+  it("называет возвратом устранённую осмотром утечку, которую чинят снова", () => {
+    const leak = {
+      id: "1",
+      events: [
+        started("a", 0),
+        inspection("b", 2, "resolved"),
+        started("c", 5),
+        done("d", 6),
+      ],
+    };
+
+    expect(buildRepairAnalytics([leak], START + 30 * DAY).returned).toBe(1);
+  });
+});

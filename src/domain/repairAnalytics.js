@@ -42,6 +42,7 @@ export function buildRepairAnalytics(leaks, now = Date.now()) {
   let repairedLeaks = 0;
   let completed = 0;
   let inProgress = 0;
+  let abandoned = 0;
   const durations = [];
   const returned = [];
   let longestOpenRepair = 0;
@@ -53,9 +54,16 @@ export function buildRepairAnalytics(leaks, now = Date.now()) {
     repairedLeaks += 1;
     durations.push(...getRepairDurations(leak));
 
-    for (const { started, done } of iterations) {
-      if (done) {
+    for (const { started, done, interrupted } of iterations) {
+      // Закрытый осмотром ремонт кончился тем, ради чего его начинали.
+      if (done || interrupted?.reason === "closed") {
         completed += 1;
+        continue;
+      }
+      // Брошенный (вернули в «ожидает МТР», осмотр снова нашёл течь) — не в
+      // работе: иначе он висел бы «самым долгим» и рос бы каждый день.
+      if (interrupted) {
+        abandoned += 1;
         continue;
       }
       inProgress += 1;
@@ -65,9 +73,14 @@ export function buildRepairAnalytics(leaks, now = Date.now()) {
       }
     }
 
-    // Больше одной попытки — значит, утечка вернулась после починки. Это и
-    // есть тот случай, ради которого стоит идти к железу второй раз.
-    if (iterations.length > 1) {
+    // Утечка вернулась после починки, если за доведённой попыткой была ещё
+    // одна. Это и есть тот случай, ради которого стоит идти к железу второй
+    // раз. Брошенная попытка, за которой начали заново, — не возврат: ремонт
+    // не доводили, и вернуться было не после чего.
+    const finished = iterations.findIndex(
+      ({ done, interrupted }) => done || interrupted?.reason === "closed",
+    );
+    if (finished >= 0 && finished < iterations.length - 1) {
       returned.push({
         leak,
         attempts: iterations.length,
@@ -85,6 +98,7 @@ export function buildRepairAnalytics(leaks, now = Date.now()) {
     repairedLeaks,
     completed,
     inProgress,
+    abandoned,
     returnedLeaks: returned,
     returned: returned.length,
     medianDuration: median(durations),

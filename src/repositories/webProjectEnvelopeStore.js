@@ -88,12 +88,15 @@ export function createWebDatasetStore(dataset, { legacyMirror = false } = {}) {
    * here keeps that one-time move invisible to LeakRepository. The copy is
    * returned whether or not the move succeeds — a project that cannot be
    * migrated yet must still be readable.
+   *
+   * `remember: false` — взгляд, а не чтение: предпросмотр смотрит в хранилище,
+   * но память вкладки остаётся прежней. См. `readAndRemember`.
    */
-  async function readMirror(projectId) {
+  async function readMirror(projectId, { remember = true } = {}) {
     const key = keyOf(projectId);
     const current = await readEnvelope(openMirrorDb, key);
     if (current != null) {
-      rememberRevision(key, current.revision);
+      if (remember) rememberRevision(key, current.revision);
       return current;
     }
     if (!legacyMirror) return null;
@@ -103,7 +106,7 @@ export function createWebDatasetStore(dataset, { legacyMirror = false } = {}) {
     // Отметка нужна и здесь: копия из схемы v2 — такое же прочитанное
     // значение, и без неё страж молчал бы ровно у тех проектов, что ещё не
     // переехали.
-    rememberRevision(key, legacy.revision);
+    if (remember) rememberRevision(key, legacy.revision);
 
     try {
       const migrated = await writeEnvelope(openMirrorDb, key, legacy);
@@ -138,10 +141,14 @@ export function createWebDatasetStore(dataset, { legacyMirror = false } = {}) {
    * Каждое чтение и каждая запись отмечаются в памяти ревизий. Именно здесь, а
    * не у вызывающих: пропущенная отметка обернулась бы ложным «проект изменён
    * в другой вкладке», а такой отказ хуже ошибки, ради которой всё затевалось.
+   *
+   * Исключение одно — `remember: false` для предпросмотра. Он читает
+   * хранилище, но в памяти вкладки остаётся прежний набор, и отметка свежей
+   * ревизии разрешила бы этому старому набору затереть свежий.
    */
-  async function readAndRemember(projectId) {
+  async function readAndRemember(projectId, { remember = true } = {}) {
     const envelope = await readEnvelope(openWebDataDb, keyOf(projectId));
-    rememberRevision(keyOf(projectId), envelope?.revision);
+    if (remember) rememberRevision(keyOf(projectId), envelope?.revision);
     return envelope;
   }
 
@@ -173,6 +180,16 @@ export function createWebDatasetStore(dataset, { legacyMirror = false } = {}) {
     deleteMirror,
     readMirrorRevision: (projectId) =>
       readStoredRevision(openMirrorDb, keyOf(projectId)),
+    /**
+     * Отказ затирать набор, который другая вкладка записала после того, как
+     * эта его прочитала. То же, что `assertLeakDataUnchanged`, для любого
+     * набора: ключ ревизий строится здесь.
+     *
+     * @param {string} projectId
+     * @param {Array<unknown>} storedRevisions ревизии всех копий набора
+     */
+    assertUnchanged: (projectId, storedRevisions) =>
+      assertNotOverwritingNewer(keyOf(projectId), storedRevisions),
   };
 }
 

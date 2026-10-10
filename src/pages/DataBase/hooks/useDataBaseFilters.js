@@ -5,8 +5,14 @@ import { matchesLeakLocationFilter } from "@/utils/locationFilter";
 import { compareLeakRecency } from "@/utils/leakOrder";
 
 export const ALL = "all";
-import { FICTION_FILTER, NEARBY, NEARBY_RADIUS_M } from "@/domain/leakFilters";
-import { isLeakFiction } from "@/utils/monitoring";
+import {
+  FICTION_FILTER,
+  NEARBY,
+  NEARBY_RADIUS_M,
+  SEARCH_SCOPE,
+  TAG_FILTER,
+} from "@/domain/leakFilters";
+import { getLastMonitoringFlag, isLeakFiction } from "@/utils/monitoring";
 
 export const NEARBY_RADIUS_OPTIONS = [100, 500, 1000];
 
@@ -33,6 +39,7 @@ export function useDataBaseFilters({
 }) {
   const [localSearchInput, setLocalSearchInput] = useState("");
   const [search, setSearch] = useState(() => sharedFilters?.search ?? "");
+  const [localSearchScope, setLocalSearchScope] = useState(SEARCH_SCOPE.ALL);
   const [localStatusFilter, setLocalStatusFilter] = useState(
     /** @type {string[]} */ ([]),
   );
@@ -42,6 +49,7 @@ export function useDataBaseFilters({
   const [localFictionFilter, setLocalFictionFilter] = useState(
     FICTION_FILTER.ALL,
   );
+  const [localTagFilter, setLocalTagFilter] = useState(TAG_FILTER.ALL);
   const [localMainLocationFilter, setLocalMainLocationFilter] = useState(
     /** @type {string|null} */ (null),
   );
@@ -57,6 +65,8 @@ export function useDataBaseFilters({
 
   const searchInput = sharedFilters?.search ?? localSearchInput;
   const setSearchInput = sharedFilters?.setSearch ?? setLocalSearchInput;
+  const searchScope = sharedFilters?.searchScope ?? localSearchScope;
+  const setSearchScope = sharedFilters?.setSearchScope ?? setLocalSearchScope;
   const statusFilter = normalizeMultiFilter(
     sharedFilters?.statusFilter ?? localStatusFilter,
   );
@@ -67,6 +77,9 @@ export function useDataBaseFilters({
   const setPriorityFilter =
     sharedFilters?.setPriorityFilter ?? setLocalPriorityFilter;
   const fictionFilter = sharedFilters?.fictionFilter ?? localFictionFilter;
+  // Отбор по физ. тегу общий для базы, обхода и карты.
+  const tagFilter = sharedFilters?.tagFilter ?? localTagFilter;
+  const setTagFilter = sharedFilters?.setTagFilter ?? setLocalTagFilter;
   const setFictionFilter =
     sharedFilters?.setFictionFilter ?? setLocalFictionFilter;
   const hasSharedMainLocationFilter =
@@ -153,8 +166,10 @@ export function useDataBaseFilters({
   );
   const searchIndex = useMemo(() => {
     if (searchTokens.length === 0) return null;
-    return new Map(data.map((leak) => [leak, buildLeakSearchText(leak)]));
-  }, [data, searchTokens.length]);
+    return new Map(
+      data.map((leak) => [leak, buildLeakSearchText(leak, searchScope)]),
+    );
+  }, [data, searchTokens.length, searchScope]);
 
   // Счётчики и список должны видеть одну и ту же выборку, поэтому отбор по
   // месту, поиску и приоритету вынесен отдельно: статус применяется только к
@@ -222,7 +237,7 @@ export function useDataBaseFilters({
     };
   }, [beforeFiction]);
 
-  const scoped = useMemo(() => {
+  const beforeTag = useMemo(() => {
     if (fictionFilter === FICTION_FILTER.ONLY) {
       const fictions = getFictionSet();
       return beforeFiction.filter((leak) => fictions.has(leak));
@@ -233,6 +248,28 @@ export function useDataBaseFilters({
     }
     return beforeFiction;
   }, [beforeFiction, getFictionSet, fictionFilter]);
+
+  // Физ. тег — ответ последнего осмотра, где о нём спросили. Не осмотренная
+  // ни разу утечка не попадает ни в «есть», ни в «нет».
+  const getTagAnswers = useMemo(() => {
+    let cached = /** @type {Map<any, boolean|null>|null} */ (null);
+    return () => {
+      cached ??= new Map(
+        beforeTag.map((leak) => [
+          leak,
+          getLastMonitoringFlag(leak, "physicalTag"),
+        ]),
+      );
+      return cached;
+    };
+  }, [beforeTag]);
+
+  const scoped = useMemo(() => {
+    if (tagFilter === TAG_FILTER.ALL) return beforeTag;
+    const want = tagFilter === TAG_FILTER.WITH;
+    const answers = getTagAnswers();
+    return beforeTag.filter((leak) => answers.get(leak) === want);
+  }, [beforeTag, getTagAnswers, tagFilter]);
 
   const displayed = useMemo(() => {
     // The toggle above this list is labelled "date", and it sorted by
@@ -284,12 +321,23 @@ export function useDataBaseFilters({
         enumerable: true,
         get: () => beforeFiction.length - getFictionSet().size,
       },
+      tagWith: {
+        enumerable: true,
+        get: () =>
+          [...getTagAnswers().values()].filter((v) => v === true).length,
+      },
+      tagWithout: {
+        enumerable: true,
+        get: () =>
+          [...getTagAnswers().values()].filter((v) => v === false).length,
+      },
     });
     return c;
   }, [
     scoped,
     beforeFiction,
     getFictionSet,
+    getTagAnswers,
     hasGps,
     coords,
     nearbyRadius,
@@ -299,12 +347,16 @@ export function useDataBaseFilters({
   return {
     search: searchInput,
     setSearch: setSearchInput,
+    searchScope,
+    setSearchScope,
     statusFilter,
     setFilter,
     priorityFilter,
     setPriorityFilter,
     fictionFilter,
     setFictionFilter,
+    tagFilter,
+    setTagFilter,
     mainLocationFilter,
     setMainLocationFilter,
     mainLocationKey,

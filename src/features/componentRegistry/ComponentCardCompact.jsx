@@ -1,8 +1,9 @@
 import { memo, useRef, useState } from "react";
 import { useSwipeActions } from "@/hooks/useSwipeActions";
-import { usePhotoSrc } from "@/hooks/usePhotoSrc";
+import { useComponentPhotoSrc } from "./useComponentPhotoSrc";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { formatLeakDate } from "@/utils/locale";
+import PhotoViewer from "@/features/photos/PhotoViewer/PhotoViewer";
 import { timeAgo } from "@/utils/timeAgo";
 import s from "./ComponentCardCompact.module.scss";
 
@@ -14,6 +15,10 @@ import s from "./ComponentCardCompact.module.scss";
  * Swipe directions match the leak card exactly: right-to-left reaches the state
  * of the thing, left-to-right opens it in full. One gesture vocabulary across
  * both lists — a hand that learned it on leaks does not have to unlearn it here.
+ *
+ * Тап карточку не открывает — только свайп: в длинном списке случайное касание
+ * при прокрутке открывало чужую карточку. Тап по фото открывает его на весь
+ * экран, как у карточки утечки.
  */
 function ComponentCardCompact({
   component,
@@ -34,7 +39,8 @@ function ComponentCardCompact({
    * card on top. The flag outlives that reset by one event.
    */
   const swipedRef = useRef(false);
-  const photoSrc = usePhotoSrc(component.photo ?? null);
+  const photoSrc = useComponentPhotoSrc(component);
+  const [viewerOpen, setViewerOpen] = useState(false);
 
   const swipe = useSwipeActions({
     onSwipeMove: (dx) => {
@@ -47,12 +53,9 @@ function ComponentCardCompact({
     onSwipeRight: () => onOpenDetails?.(component),
   });
 
-  const openIfNotSwiping = () => {
-    if (swipedRef.current) {
-      swipedRef.current = false;
-      return;
-    }
-    onOpenDetails?.(component);
+  const openPhotoIfNotSwiping = (event) => {
+    event.stopPropagation();
+    if (!swipedRef.current) setViewerOpen(true);
   };
   const status = String(component.component_status ?? "").trim();
   /*
@@ -82,10 +85,17 @@ function ComponentCardCompact({
         className={`${s.card} ${selected ? s.cardSelected : ""}`}
         data-selected={selected ? "true" : undefined}
         style={{ transform: `translateX(${offset}px)` }}
-        onTouchStart={swipe.onTouchStart}
+        // Новое касание — новый жест: прошлый свайп тап по фото не глушит.
+        onTouchStart={(event) => {
+          swipedRef.current = false;
+          swipe.onTouchStart(event);
+        }}
         onTouchMove={swipe.onTouchMove}
         onTouchEnd={swipe.onTouchEnd}
-        onMouseDown={swipe.onMouseDown}
+        onMouseDown={(event) => {
+          swipedRef.current = false;
+          swipe.onMouseDown(event);
+        }}
         onMouseMove={swipe.onMouseMove}
         onMouseUp={swipe.onMouseUp}
       >
@@ -111,18 +121,18 @@ function ComponentCardCompact({
           </button>
         )}
 
-        <button type="button" className={s.body} onClick={openIfNotSwiping}>
-          <span className={s.thumb}>
-            {photoSrc ? (
+        <div className={s.body}>
+          {/* Без фото миниатюры нет вовсе: пустая рамка только занимала место. */}
+          {photoSrc && (
+            <button
+              type="button"
+              className={s.thumb}
+              onClick={openPhotoIfNotSwiping}
+              aria-label={t("components.openPhoto")}
+            >
               <img src={photoSrc} alt="" loading="lazy" />
-            ) : (
-              /* An empty frame rather than a hidden one: the gap is the point,
-                 it says this card has no evidence behind it yet. */
-              <span className={s.thumbEmpty} aria-hidden="true">
-                ⬚
-              </span>
-            )}
-          </span>
+            </button>
+          )}
 
           <span className={s.text}>
             <span className={s.head}>
@@ -151,8 +161,12 @@ function ComponentCardCompact({
               {status && <span className={s.status}>{status}</span>}
             </span>
           </span>
-        </button>
+        </div>
       </div>
+
+      {viewerOpen && photoSrc && (
+        <PhotoViewer src={photoSrc} onClose={() => setViewerOpen(false)} />
+      )}
     </li>
   );
 }

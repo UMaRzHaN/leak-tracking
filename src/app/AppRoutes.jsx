@@ -1,6 +1,9 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useCallback, useRef, useState } from "react";
+import { repairRound, repairsToCheck } from "@/pages/Repairs/repairRoundStore";
+import { useRoundStartGate } from "@/app/project/hooks/useRoundStartGate";
 import { useLanguage } from "./hooks/useLanguage";
 import { isListPage } from "@/app/pages";
+import { MODULE } from "@/app/modules/activeModule";
 import { useModalDialog } from "@/hooks/useModalDialog";
 import { saveRecoveryFile } from "@/services/storage/saveRecoveryFile";
 
@@ -10,6 +13,13 @@ const MainPage = lazy(() => import("@/pages/MainPage/MainPage"));
 const DataBase = lazy(() => import("@/pages/DataBase/DataBase"));
 const MapPage = lazy(() => import("@/pages/MapPage/MapPage"));
 const Monitoring = lazy(() => import("@/pages/Monitoring/Monitoring"));
+const RepairRound = lazy(() => import("@/pages/Repairs/RepairRound"));
+const RepairCheck = lazy(() => import("@/pages/Repairs/RepairCheck"));
+const AcceptanceList = lazy(() => import("@/pages/Repairs/AcceptanceList"));
+const Reconcile = lazy(() => import("@/pages/Reconcile/Reconcile"));
+const ExportPage = lazy(() => import("@/pages/Export/ExportPage"));
+const CoveragePage = lazy(() => import("@/pages/Coverage/CoveragePage"));
+const SchemasPage = lazy(() => import("@/pages/Schemas/SchemasPage"));
 const ComponentRegistry = lazy(
   () => import("@/pages/ComponentRegistry/ComponentRegistry"),
 );
@@ -133,11 +143,27 @@ export default function AppRoutes({
   requestMonitoringQueue,
   requestedMonitoringLeakId,
   requestedMonitoringLeakIds,
+  monitoringReturnPage = /** @type {string|null} */ (null),
+  notifyApp = /** @type {((type: string, message: string) => void)|null} */ (
+    null
+  ),
+  setMonitoringReturnPage = /** @type {(page: string|null) => void} */ (
+    () => {}
+  ),
   retryLoad,
   save,
   setGpsEnabled,
   scopedData,
+  // Выбор места — для строки области на экране экспорта (8a).
+  leakScope = /** @type {any} */ (null),
+  onLocationScopeOpen = /** @type {(() => void)|undefined} */ (undefined),
   setPage,
+  settingsSection = /** @type {string|null} */ (null),
+  coverage = /** @type {any} */ (null),
+  module = /** @type {string|undefined} */ (undefined),
+  routeProgress = /** @type {any} */ (null),
+  componentAddRequest = 0,
+  onEndRoute = /** @type {(() => void)|undefined} */ (undefined),
   setRequestedMonitoringLeakId,
   setRequestedMonitoringLeakIds,
   sharedFilters,
@@ -146,6 +172,62 @@ export default function AppRoutes({
   userProfile,
 }) {
   const listPage = isListPage(page);
+  const { t } = useLanguage();
+  // В модуле ремонтов свайп по карточке и «Проверить» у выбранных ведут не в
+  // мониторинг, а в проверку ремонта (7c) — поверх той же страницы. Свайп
+  // открывает и принятый ремонт: его перепроверяют (см. applyRepairCheck).
+  // Выбранные — по тому же правилу, по очереди; крестик очередь прерывает.
+  const [repairQueue, setRepairQueue] = useState(
+    /** @type {{ ids: any[], total: number }} */ ({ ids: [], total: 0 }),
+  );
+  const repairMode = module === MODULE.REPAIRS;
+  // Без идущего обхода — сначала вопрос о новом, как у мониторинга.
+  const repairGate = useRoundStartGate({
+    projectId: activeProject?.id ?? null,
+    kind: "repairs",
+    store: repairRound,
+    texts: {
+      disabled: t("repairs.round.disabled"),
+      title: t("repairs.round.newRoundTitle"),
+      description: t("repairs.round.newRoundDescription"),
+      confirm: t("repairs.round.newRoundConfirm"),
+    },
+    notify: (notice) => notifyApp?.(notice.type, notice.message),
+    onReady: (ids) => setRepairQueue({ ids, total: ids.length }),
+  });
+  const startRepairQueue = (leaks) => {
+    const open = repairsToCheck(activeProject?.id ?? null, leaks);
+    if (!open.length) {
+      notifyApp?.("warning", t("repairs.accept.alreadyAccepted"));
+      return;
+    }
+    repairGate.request(open.map((leak) => leak.id));
+  };
+  const checkLeak = repairMode
+    ? (leak) => repairGate.request([leak.id])
+    : requestMonitoring;
+  const checkLeaks = repairMode ? startRepairQueue : requestMonitoringQueue;
+  const repairCheckLeak =
+    repairQueue.ids.length > 0
+      ? (data.find((leak) => leak.id === repairQueue.ids[0]) ?? null)
+      : null;
+  const checkLabel = repairMode ? t("repairs.checkSwipe") : null;
+  // «Сверить» у булавки компонента на карте — как «Проверить» в
+  // мониторинге: осмотр на экране сверки, затем назад.
+  const [reconcileRequest, setReconcileRequest] = useState(
+    /** @type {{ id: any }|null} */ (null),
+  );
+  const reconcileReturnRef = useRef(/** @type {string|null} */ (null));
+  const consumeReconcileRequest = useCallback(
+    () => setReconcileRequest(null),
+    [],
+  );
+  const requestReconcile = (component) => {
+    if (component?.id == null) return;
+    reconcileReturnRef.current = page;
+    setReconcileRequest({ id: component.id });
+    setPage("reconcile");
+  };
 
   return (
     <div
@@ -175,8 +257,10 @@ export default function AppRoutes({
             data={data}
             scopedData={scopedData}
             setData={save}
-            onMonitorLeak={requestMonitoring}
+            onMonitorLeak={checkLeak}
             userProfile={userProfile}
+            coverage={coverage}
+            module={module}
           />
         )}
 
@@ -194,19 +278,23 @@ export default function AppRoutes({
           />
         )}
 
-        {dataLoaded && !loadError && page === "settings" && (
-          <Settings
-            setPage={setPage}
-            onBack={() => goBack(prevPage)}
-            data={data}
-            setData={save}
-            clearDatabase={clear}
-            onImportZip={handleImportZip}
-            onImportIntoExisting={handleImportIntoExisting}
-            onCreateExcelCopy={handleCreateExcelCopy}
-            onImportInventory={handleSetupImportInventory}
-          />
-        )}
+        {dataLoaded &&
+          !loadError &&
+          (page === "settings" || page === "import") && (
+            <Settings
+              view={page === "import" ? "import" : "settings"}
+              setPage={setPage}
+              focusSection={settingsSection}
+              onBack={() => goBack(prevPage)}
+              data={data}
+              setData={save}
+              clearDatabase={clear}
+              onImportZip={handleImportZip}
+              onImportIntoExisting={handleImportIntoExisting}
+              onCreateExcelCopy={handleCreateExcelCopy}
+              onImportInventory={handleSetupImportInventory}
+            />
+          )}
 
         {dataLoaded && !isImportingProject && !loadError && page === "db" && (
           <DataBase
@@ -214,11 +302,73 @@ export default function AppRoutes({
             setData={save}
             coords={coords}
             sharedFilters={sharedFilters}
-            onMonitorLeak={requestMonitoring}
-            onMonitorLeaks={requestMonitoringQueue}
+            onMonitorLeak={checkLeak}
+            onMonitorLeaks={checkLeaks}
+            monitorLabel={checkLabel}
+            repairMode={repairMode}
             userProfile={userProfile}
           />
         )}
+
+        {dataLoaded && !loadError && page === "coverage" && (
+          <CoveragePage
+            data={data}
+            placePath={leakScope ? leakScope.path : []}
+            onBack={() => goBack(prevPage)}
+          />
+        )}
+
+        {dataLoaded && !loadError && page === "export" && (
+          <ExportPage
+            data={data}
+            scopedData={scopedData}
+            locationScope={leakScope}
+            onLocationScopeOpen={onLocationScopeOpen}
+            onBack={() => goBack(prevPage)}
+          />
+        )}
+
+        {dataLoaded && !loadError && page === "reconcile" && (
+          <Reconcile
+            project={activeProject}
+            sharedFilters={sharedFilters}
+            userProfile={userProfile}
+            requestedComponentId={reconcileRequest?.id ?? null}
+            onRequestedComponentConsumed={consumeReconcileRequest}
+            // Как у проверки мониторинга: назад туда, откуда позвали, а итог
+            // сохранения — уведомлением там.
+            onLeaveCheck={(event) => {
+              const back = reconcileReturnRef.current;
+              reconcileReturnRef.current = null;
+              if (back == null) return false;
+              setPage(back);
+              if (event?.saved) notifyApp?.("success", event.saved);
+              if (event?.warning) notifyApp?.("warning", event.warning);
+              return true;
+            }}
+          />
+        )}
+
+        {dataLoaded && !loadError && page === "acceptance" && (
+          <AcceptanceList
+            onBack={() => goBack(prevPage)}
+            userProfile={userProfile}
+          />
+        )}
+
+        {dataLoaded &&
+          !isImportingProject &&
+          !loadError &&
+          page === "repair-round" && (
+            <RepairRound
+              data={data}
+              scopedData={scopedData}
+              setData={save}
+              coords={coords}
+              sharedFilters={sharedFilters}
+              userProfile={userProfile}
+            />
+          )}
 
         {dataLoaded &&
           !isImportingProject &&
@@ -233,6 +383,16 @@ export default function AppRoutes({
               requestedLeakIds={requestedMonitoringLeakIds}
               onRequestedLeakConsumed={() => setRequestedMonitoringLeakId(null)}
               onRequestedLeaksConsumed={() => setRequestedMonitoringLeakIds([])}
+              // Проверка, позванная с другого экрана, — по крестику и после
+              // сохранения назад туда; итог сохранения — уведомлением там.
+              onLeaveCheck={(event) => {
+                const back = monitoringReturnPage;
+                setMonitoringReturnPage(null);
+                if (back == null) return false;
+                setPage(back);
+                if (event?.saved) notifyApp?.("success", event.saved);
+                return true;
+              }}
               userProfile={userProfile}
             />
           )}
@@ -259,9 +419,15 @@ export default function AppRoutes({
               // молча ничего не отбирал.
               sharedFilters={sharedFilters}
               onOpenCard={() => setPage("component")}
+              addRequest={componentAddRequest}
               onCloseCard={() => setPage("components")}
             />
           )}
+
+        {dataLoaded &&
+          !isImportingProject &&
+          !loadError &&
+          page === "schemas" && <SchemasPage project={activeProject} />}
 
         {dataLoaded && !isImportingProject && !loadError && page === "map" && (
           <MapPage
@@ -271,6 +437,41 @@ export default function AppRoutes({
             sharedFilters={sharedFilters}
             base={mapBase}
             onBaseChange={onMapBaseChange}
+            routeProgress={routeProgress}
+            onRouteEnd={onEndRoute}
+            module={module}
+            setData={save}
+            userProfile={userProfile}
+            onMonitor={checkLeak}
+            onReconcile={requestReconcile}
+            repairMode={module === "repairs"}
+          />
+        )}
+        {repairGate.element}
+        {repairCheckLeak && (
+          <RepairCheck
+            // Новый ключ — чистая форма для следующей утечки очереди.
+            key={repairCheckLeak.id}
+            leak={repairCheckLeak}
+            data={data}
+            setData={save}
+            userProfile={userProfile}
+            progress={
+              repairQueue.total > 1
+                ? {
+                    index: repairQueue.total - repairQueue.ids.length + 1,
+                    total: repairQueue.total,
+                  }
+                : null
+            }
+            onSaved={() =>
+              setRepairQueue((queue) => ({
+                ...queue,
+                ids: queue.ids.slice(1),
+              }))
+            }
+            onClose={() => setRepairQueue({ ids: [], total: 0 })}
+            onNotify={({ type, message }) => notifyApp?.(type, message)}
           />
         )}
       </Suspense>

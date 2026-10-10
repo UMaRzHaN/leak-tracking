@@ -1,11 +1,15 @@
 import { useState, memo } from "react";
 import { STATUS_META, STATUS_ORDER, getStatusMeta } from "@/utils/status";
+import { getRepairStage } from "@/domain/repairStages";
+import { getRepairStageMeta } from "@/utils/repairStage";
 import { PRIORITY_ORDER, getPriorityMeta } from "@/utils/priority";
 import { useLanguage } from "@/app/hooks/useLanguage";
-import { FICTION_FILTER } from "@/domain/leakFilters";
+import { FICTION_FILTER, SEARCH_SCOPE, TAG_FILTER } from "@/domain/leakFilters";
 import s from "@/pages/DataBase/DataBase.module.scss";
+import Icon from "@/components/ui/Icon/Icon";
 
 const ALL = "all";
+const SEARCH_SCOPES = Object.values(SEARCH_SCOPE);
 
 function normalizeSelected(value) {
   if (Array.isArray(value)) return value;
@@ -22,12 +26,18 @@ function toggleSelected(current, value) {
 function FilterBar({
   search,
   setSearch,
+  // Где искать: во всех полях или в одном выбранном.
+  searchScope = SEARCH_SCOPE.ALL,
+  setSearchScope = /** @type {((value: string) => void)|null} */ (null),
   statusFilter,
   setFilter,
   priorityFilter,
   setPriorityFilter,
   fictionFilter = FICTION_FILTER.ALL,
   setFictionFilter = /** @type {((value: string) => void)|null} */ (null),
+  // Физ. тег — только в обходе; в базе группы нет.
+  tagFilter = TAG_FILTER.ALL,
+  setTagFilter = /** @type {((value: string) => void)|null} */ (null),
   nearbyFilter,
   setNearbyFilter,
   nearbyRadius,
@@ -35,16 +45,22 @@ function FilterBar({
   nearbyRadiusOptions,
   counts,
   hasGps,
+  // В модуле ремонтов статус показывается стадией ремонта: открытая утечка —
+  // «Ожидает МТР». Отбор тот же — по статусу записи.
+  repairMode = false,
 }) {
   const { t } = useLanguage();
   const selectedStatuses = normalizeSelected(statusFilter);
   const selectedPriorities = normalizeSelected(priorityFilter);
   // Location is chosen in the header's folder browser, not here: two controls
   // over the same three filters would drift apart and duplicate the logic.
+  const scoped = setSearchScope !== null && searchScope !== SEARCH_SCOPE.ALL;
   const hasActiveFilter =
+    scoped ||
     selectedStatuses.length > 0 ||
     selectedPriorities.length > 0 ||
     fictionFilter !== FICTION_FILTER.ALL ||
+    (setTagFilter !== null && tagFilter !== TAG_FILTER.ALL) ||
     nearbyFilter;
   const [open, setOpen] = useState(false);
   const formatRadius = (radius) =>
@@ -55,10 +71,16 @@ function FilterBar({
     <>
       <div className={s.searchRow}>
         <div className={s.searchWrap}>
-          <span className={s.searchIcon}>🔍</span>
+          <span className={s.searchIcon}>
+            <Icon name="search" size={18} />
+          </span>
           <input
             className={s.searchInput}
-            placeholder={t("database.searchPlaceholder")}
+            placeholder={
+              scoped
+                ? t(`database.searchIn.${searchScope}`)
+                : t("database.searchPlaceholder")
+            }
             value={search}
             aria-label={t("database.searchLeaks")}
             autoComplete="off"
@@ -72,7 +94,7 @@ function FilterBar({
               type="button"
               aria-label={t("database.clearSearch")}
             >
-              ✕
+              <Icon name="close" size={16} strokeWidth={2} />
             </button>
           )}
         </div>
@@ -106,8 +128,38 @@ function FilterBar({
 
       {open && (
         <div className={s.filtersPanel}>
+          {setSearchScope && (
+            <>
+              <div className={s.filterSection}>
+                <span className={s.filterLabel}>
+                  {t("database.searchScope")}
+                </span>
+                <div className={s.filters}>
+                  {SEARCH_SCOPES.map((scope) => {
+                    const isActive = searchScope === scope;
+                    return (
+                      <button
+                        key={scope}
+                        type="button"
+                        className={`${s.filterTab} ${isActive ? s.filterActive : ""}`}
+                        aria-pressed={isActive}
+                        onClick={() => setSearchScope(scope)}
+                      >
+                        {t(`database.searchScopes.${scope}`)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className={s.filterDivider} />
+            </>
+          )}
+
           <div className={s.filterSection}>
-            <span className={s.filterLabel}>{t("database.status")}</span>
+            <span className={s.filterLabel}>
+              {repairMode ? t("repairs.stageFilter") : t("database.status")}
+            </span>
             <div className={s.filters}>
               <FilterTab
                 id={ALL}
@@ -117,19 +169,24 @@ function FilterBar({
                 onSelect={setFilter}
               />
               {STATUS_ORDER.map((status) => {
-                const meta = getStatusMeta(status, t);
+                const meta = repairMode
+                  ? getRepairStageMeta(getRepairStage({ status }), t)
+                  : {
+                      ...STATUS_META[status],
+                      label: getStatusMeta(status, t).short,
+                    };
 
                 return (
                   <FilterTab
                     key={status}
                     id={status}
-                    label={meta.short}
+                    label={meta.label}
                     count={counts[status]}
                     active={selectedStatuses.includes(status)}
                     onSelect={setFilter}
-                    color={STATUS_META[status].color}
-                    bg={STATUS_META[status].bg}
-                    border={STATUS_META[status].border}
+                    color={meta.color}
+                    bg={meta.bg}
+                    border={meta.border}
                   />
                 );
               })}
@@ -148,9 +205,9 @@ function FilterBar({
                 style={
                   selectedPriorities.length === 0
                     ? {
-                        color: "var(--c-blue)",
-                        background: "var(--c-blue-dim)",
-                        borderColor: "var(--c-blue)",
+                        color: "var(--c-accent)",
+                        background: "var(--c-accent-dim)",
+                        borderColor: "var(--c-accent)",
                       }
                     : undefined
                 }
@@ -233,6 +290,66 @@ function FilterBar({
                         style={style}
                         aria-pressed={isActive}
                         onClick={() => setFictionFilter(id)}
+                      >
+                        {label}
+                        {count > 0 && (
+                          <span className={s.filterCount}>{count}</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
+
+          {setTagFilter && (
+            <>
+              <div className={s.filterDivider} />
+
+              <div className={s.filterSection}>
+                <span className={s.filterLabel}>
+                  {t("database.physicalTag")}
+                </span>
+                <div className={s.filters}>
+                  {[
+                    [
+                      TAG_FILTER.ALL,
+                      t("database.all"),
+                      counts.tagWith + counts.tagWithout,
+                    ],
+                    [TAG_FILTER.WITH, t("database.tagWith"), counts.tagWith],
+                    [
+                      TAG_FILTER.WITHOUT,
+                      t("database.tagWithout"),
+                      counts.tagWithout,
+                    ],
+                  ].map(([id, label, count]) => {
+                    const isActive = tagFilter === id;
+                    // «Тег есть» — зелёным, «тега нет» — жёлтым, как
+                    // штриховка карточки без тега.
+                    const tone =
+                      id === TAG_FILTER.WITH
+                        ? "var(--c-low)"
+                        : id === TAG_FILTER.WITHOUT
+                          ? "var(--c-no-tag)"
+                          : null;
+                    const style =
+                      isActive && tone
+                        ? {
+                            color: tone,
+                            background: `color-mix(in srgb, ${tone} 14%, transparent)`,
+                            borderColor: tone,
+                          }
+                        : undefined;
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        className={`${s.filterTab} ${isActive ? s.filterActive : ""}`}
+                        style={style}
+                        aria-pressed={isActive}
+                        onClick={() => setTagFilter(id)}
                       >
                         {label}
                         {count > 0 && (

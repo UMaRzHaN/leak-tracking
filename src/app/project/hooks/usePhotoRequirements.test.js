@@ -41,6 +41,17 @@ describe("usePhotoRequirements", () => {
       leakPhotoRequired: false,
       monitoringPhotoRequired: false,
       componentPhotoRequired: true,
+      repairPhotoRequired: true,
+      reconcilePhotoRequired: true,
     });
+  });
+
+  it("доносит правку до другого экземпляра хука того же проекта", () => {
+    const settingsScreen = renderHook(() => usePhotoRequirements("project-a"));
+    const form = renderHook(() => usePhotoRequirements("project-a"));
+
+    act(() => settingsScreen.result.current.setLeakPhotoRequired(false));
+
+    expect(form.result.current.leakPhotoRequired).toBe(false);
   });
 });

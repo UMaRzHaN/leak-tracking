@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import s from "./Notification.module.scss";
@@ -18,11 +18,25 @@ export default function Notification({
   const { t } = useLanguage();
   const effectiveAutoCloseMs = notification?.autoCloseMs ?? autoCloseMs;
 
+  /*
+   * Обработчик закрытия — в ref, а не в зависимостях таймера: вызывающие
+   * передают новую стрелку на каждый рендер, и карта, которая перерисовывается
+   * с каждой отметкой GPS раз в секунду, перезапускала таймер раньше, чем он
+   * успевал сработать, — тост не закрывался вовсе.
+   */
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
   useEffect(() => {
     if (!notification || effectiveAutoCloseMs === 0) return;
-    const timer = setTimeout(onClose, effectiveAutoCloseMs);
+    const timer = setTimeout(
+      () => onCloseRef.current?.(),
+      effectiveAutoCloseMs,
+    );
     return () => clearTimeout(timer);
-  }, [notification, onClose, effectiveAutoCloseMs]);
+  }, [notification, effectiveAutoCloseMs]);
 
   if (!notification) return null;
 

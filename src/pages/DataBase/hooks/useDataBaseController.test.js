@@ -21,16 +21,11 @@ vi.mock("./useBulkActions", () => ({
   useBulkActions: vi.fn(),
 }));
 
-vi.mock("./useDataBaseExport", () => ({
-  useDataBaseExport: vi.fn(),
-}));
-
 const projectDataModule = await import("@/app/hooks/useProjectData");
 const photoStorageModule = await import("@/hooks/usePhotoStorage");
 const filtersModule = await import("./useDataBaseFilters");
 const leakActionsModule = await import("./useLeakActions");
 const bulkActionsModule = await import("./useBulkActions");
-const exportModule = await import("./useDataBaseExport");
 const { useDataBaseController } = await import("./useDataBaseController");
 
 describe("useDataBaseController", () => {
@@ -52,38 +47,6 @@ describe("useDataBaseController", () => {
     bulkActionsModule.useBulkActions.mockReturnValue({
       handleBulkStatusChange: vi.fn(),
     });
-    exportModule.useDataBaseExport.mockReturnValue({
-      handleExport: vi.fn(),
-    });
-  });
-
-  it("opens bulk picker, delegates status change and closes it", () => {
-    const handleBulkStatusChange = vi.fn();
-    bulkActionsModule.useBulkActions.mockReturnValue({
-      handleBulkStatusChange,
-    });
-
-    const { result } = renderHook(() =>
-      useDataBaseController({
-        data: [{ id: "l1" }],
-        setData: vi.fn(),
-        coords: null,
-      }),
-    );
-
-    expect(result.current.bulkPickerOpen).toBe(false);
-
-    act(() => {
-      result.current.openBulkPicker();
-    });
-    expect(result.current.bulkPickerOpen).toBe(true);
-
-    act(() => {
-      result.current.handleBulkPickerSelect("resolved");
-    });
-
-    expect(handleBulkStatusChange).toHaveBeenCalledWith("resolved");
-    expect(result.current.bulkPickerOpen).toBe(false);
   });
 
   it("stores and clears notifications", () => {

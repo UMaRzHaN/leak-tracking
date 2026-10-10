@@ -144,3 +144,32 @@ describe("inspections", () => {
     expect(result.component_status).toBe("В работе");
   });
 });
+
+describe("inspections during a reconcile round", () => {
+  it("carry the round number, so the export can keep the last one", () => {
+    const inspected = recordComponentInspected(
+      { id: "a" },
+      { status: "В работе", user: "Азиз", roundNumber: 4 },
+    );
+    expect(inspected.history.at(-1).roundNumber).toBe(4);
+    const outside = recordComponentInspected(
+      { id: "a" },
+      { status: "В работе", user: "Азиз" },
+    );
+    expect(outside.history.at(-1)).not.toHaveProperty("roundNumber");
+  });
+});
+
+describe("inspections from the check screen", () => {
+  it("move the point without a radius when GPS gave none", () => {
+    const inspected = recordComponentInspected(
+      { id: "a", lat: 38.5, lng: 66.1, coords_accuracy: 30 },
+      { user: "Азиз", coords: { lat: 38.5, lng: 66.2 }, comment: "  " },
+    );
+    expect(inspected.coords_accuracy).toBeUndefined();
+    const entry = inspected.history.at(-1);
+    // Широта та же — в изменениях только долгота; пустое замечание не пишется.
+    expect(entry.changes.map((change) => change.key)).toEqual(["lng"]);
+    expect(entry).not.toHaveProperty("comment");
+  });
+});

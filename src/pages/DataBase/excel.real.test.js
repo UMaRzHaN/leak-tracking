@@ -70,6 +70,59 @@ describe("real Excel workbook output", () => {
     expect(sheet.getCell("H3").value).toBe(24);
   }, 60_000);
 
+  it("оставляет в книге только выбранные листы (8a)", async () => {
+    const event = (id, type, iso) => ({ id, type, date: iso });
+    const buffer = await buildWorkbookBufferLocally({
+      orderedLeaks: [
+        {
+          id: 1,
+          leak_id: "A-42",
+          events: [
+            event("e1", "repair_started", "2026-08-01T08:00:00.000Z"),
+            event("e2", "repair_done", "2026-08-01T14:00:00.000Z"),
+          ],
+        },
+      ],
+      orderedRows: [{ leak_id: "A-42" }],
+      headers: ["Tag"],
+      keysOrder: ["leak_id"],
+      photoMap: {},
+      texts: buildExcelExportTexts(translate),
+      monitoringExportMode: "full",
+      archivePayload: null,
+      sheets: { monitoring: false, repairs: false },
+    });
+
+    const { default: ExcelJS } = await import("exceljs");
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buffer);
+
+    expect(workbook.getWorksheet("Leaks")).toBeDefined();
+    expect(workbook.getWorksheet("Repairs")).toBeUndefined();
+    expect(workbook.getWorksheet("Monitoring")).toBeUndefined();
+  }, 60_000);
+
+  it("выгружает без листа утечек и его «Истории», если их сняли", async () => {
+    const buffer = await buildWorkbookBufferLocally({
+      orderedLeaks: [{ id: 1, leak_id: "A-42" }],
+      orderedRows: [{ leak_id: "A-42" }],
+      headers: ["Tag"],
+      keysOrder: ["leak_id"],
+      photoMap: {},
+      texts: buildExcelExportTexts(translate),
+      monitoringExportMode: "full",
+      archivePayload: null,
+      sheets: { leaks: false },
+    });
+
+    const { default: ExcelJS } = await import("exceljs");
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buffer);
+
+    expect(workbook.getWorksheet("Leaks")).toBeUndefined();
+    expect(workbook.getWorksheet("Leak History")).toBeUndefined();
+  }, 60_000);
+
   it("не заводит лист ремонтов, когда чинить было нечего", async () => {
     const buffer = await buildWorkbookBufferLocally({
       orderedLeaks: [{ id: 1, leak_id: "A-42" }],
@@ -128,10 +181,11 @@ describe("real Excel workbook output", () => {
     await workbook.xlsx.load(buffer);
     const sheet = workbook.getWorksheet("Repairs");
 
-    expect(sheet.getCell("L2").value).toMatchObject({
+    // «Бригада» стоит перед МТР, поэтому снимки — в M и N.
+    expect(sheet.getCell("M2").value).toMatchObject({
       hyperlink: "photos/leak-1/events/event-1.jpg",
     });
     // Про снимок, которого в книге нет, сказано словами, а не ссылкой в никуда.
-    expect(sheet.getCell("M2").value).toBe("Present (file missing)");
+    expect(sheet.getCell("N2").value).toBe("Present (file missing)");
   }, 60_000);
 });

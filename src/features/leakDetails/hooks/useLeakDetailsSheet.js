@@ -20,6 +20,7 @@ export const TAB = {
   PARAMS: "params",
   COORDS: "coords",
   MONITORING: "monitoring",
+  REPAIRS: "repairs",
   LOG: "log",
 };
 
@@ -56,10 +57,6 @@ export function useLeakDetailsSheet({
   const [viewerOpen, setViewerOpen] = useState(false);
   const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
   const [deleteArmed, setDeleteArmed] = useState(false);
-  const [resolveOpen, setResolveOpen] = useState(false);
-  const [repairOpen, setRepairOpen] = useState(false);
-  const [reopenOpen, setReopenOpen] = useState(false);
-  const [statusPickerOpen, setStatusPickerOpen] = useState(false);
 
   const deleteTimerRef = useRef(
     /** @type {ReturnType<typeof setTimeout>|undefined} */ (undefined),
@@ -98,6 +95,8 @@ export function useLeakDetailsSheet({
     dirtyFields,
     calcParamsDirty,
     isDirty,
+    recordEdits,
+    setRecordEdits,
     resetDraft,
   } = useLeakDetailsForm({
     leak,
@@ -157,15 +156,7 @@ export function useLeakDetailsSheet({
     setCloseConfirmOpen(false);
   }, []);
 
-  const {
-    saving,
-    handleSave,
-    handleStatusChange,
-    handleStatusSelect,
-    handleResolveConfirm,
-    handleRepairConfirm,
-    handleReopenConfirm,
-  } = useLeakDetailsPersistence({
+  const { saving, handleSave } = useLeakDetailsPersistence({
     leak,
     allLeaks,
     onSave,
@@ -175,6 +166,7 @@ export function useLeakDetailsSheet({
     editFields,
     localEdit,
     localCalcParams,
+    recordEdits,
     dirtyFields,
     calcParamsDirty,
     originalCalcParams,
@@ -187,10 +179,6 @@ export function useLeakDetailsSheet({
     setNotification,
     setActiveTab,
     requireHistoryUser,
-    setStatusPickerOpen,
-    setResolveOpen,
-    setRepairOpen,
-    setReopenOpen,
     paramsTab: TAB.PARAMS,
   });
 
@@ -253,6 +241,7 @@ export function useLeakDetailsSheet({
             id: TAB.MONITORING,
             label: t("leakDetails.tabs.monitoring"),
           },
+          { id: TAB.REPAIRS, label: t("leakDetails.tabs.repairs") },
           { id: TAB.LOG, label: t("leakDetails.tabs.log") },
         ]
       : [
@@ -266,6 +255,12 @@ export function useLeakDetailsSheet({
             id: TAB.COORDS,
             label: t("leakDetails.tabs.coordinates"),
           },
+          // Записанные осмотры и проверки ремонта — ответы и текст.
+          {
+            id: TAB.MONITORING,
+            label: t("leakDetails.tabs.monitoring"),
+          },
+          { id: TAB.REPAIRS, label: t("leakDetails.tabs.repairs") },
         ];
 
   return {
@@ -283,14 +278,6 @@ export function useLeakDetailsSheet({
     setViewerOpen,
     closeConfirmOpen,
     deleteArmed,
-    resolveOpen,
-    setResolveOpen,
-    repairOpen,
-    setRepairOpen,
-    reopenOpen,
-    setReopenOpen,
-    statusPickerOpen,
-    setStatusPickerOpen,
     fileInputRef,
     fileInputAfterRef,
     fileInputRepairRef,
@@ -299,6 +286,8 @@ export function useLeakDetailsSheet({
     srcRepair,
     isNative,
     isDirty,
+    recordEdits,
+    setRecordEdits,
     projectConfig,
     vars,
     status,
@@ -310,11 +299,6 @@ export function useLeakDetailsSheet({
     handleClose,
     confirmClose,
     cancelClose,
-    handleStatusChange,
-    handleStatusSelect,
-    handleResolveConfirm,
-    handleRepairConfirm,
-    handleReopenConfirm,
     handleEdit,
     handleCancel,
     armDelete,

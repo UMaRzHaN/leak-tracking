@@ -45,6 +45,7 @@ export function useSettingsTexts() {
       dangerZone: t("settings.dangerZone"),
       dangerHint: t("settings.dangerHint"),
       clearDatabase: t("settings.clearDatabase"),
+      deleteProject: t("settings.deleteProject"),
       notifications: {
         parametersSaved: t("settings.notifications.parametersSaved"),
         changesCanceled: t("settings.notifications.changesCanceled"),

@@ -1,9 +1,13 @@
 export const footer = {
   home: "Главная",
-  add: "Добавить",
   database: "База",
   map: "Карта",
   addLeak: "Добавить утечку",
-  components: "Реестр",
-  monitoring: "Мониторинг",
+  records: "Записи",
+  round: "Обход",
+  acceptance: "Приёмка оборудования",
+  registry: "Реестр",
+  reconcile: "Сверка",
+  coverage: "Охват",
+  route: "Построить маршрут",
 };

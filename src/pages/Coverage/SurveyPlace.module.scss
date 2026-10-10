@@ -1,0 +1,36 @@
+// Место группы обследования: подпись на экране «Охват» и строка привязки
+// в раскрытой группе на экране «Обследовано».
+
+.groupPlace {
+  margin-top: -6px;
+  color: var(--c-text2);
+  font-size: var(--fs-sm);
+}
+
+.placeRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+
+  small {
+    min-width: 0;
+    color: var(--c-text2);
+    font-size: var(--fs-sm);
+    overflow-wrap: anywhere;
+  }
+
+  button {
+    min-height: 44px;
+    max-width: 100%;
+    padding: 0 14px;
+    border: 1px solid var(--c-border-soft);
+    border-radius: 13px;
+    background: var(--c-accent-surface);
+    color: var(--c-accent-text);
+    font-size: var(--fs-md);
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+}

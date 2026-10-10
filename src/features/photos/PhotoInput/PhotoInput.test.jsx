@@ -25,6 +25,7 @@ vi.mock("@/hooks/useCamera", () => ({
 }));
 
 const PhotoInput = (await import("./PhotoInput")).default;
+const { appError } = await import("@/utils/appError");
 
 const photo = { raw: new Blob(["jpeg"]), src: "blob:снимок" };
 
@@ -76,15 +77,33 @@ describe("PhotoInput в браузере", () => {
   });
 
   it("показывает причину, а не молчит, если файл не прочитался", async () => {
-    mocks.pickFromBrowser.mockRejectedValue(new Error("Файл повреждён"));
+    mocks.pickFromBrowser.mockRejectedValue(
+      appError("PHOTO_NOT_IMAGE", "Selected file is not an image"),
+    );
     const { container, onChange } = renderInput();
 
     fireEvent.change(container.querySelector('input[type="file"]'), {
       target: { files: [new File(["x"], "leak.jpg")] },
     });
 
-    expect(await screen.findByText("Файл повреждён")).toBeInTheDocument();
+    expect(
+      await screen.findByText("The selected file is not an image"),
+    ).toBeInTheDocument();
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("сырой текст браузера на экран не попадает", async () => {
+    mocks.pickFromBrowser.mockRejectedValue(new Error("NotReadableError"));
+    const { container } = renderInput();
+
+    fireEvent.change(container.querySelector('input[type="file"]'), {
+      target: { files: [new File(["x"], "leak.jpg")] },
+    });
+
+    expect(
+      await screen.findByText("Could not read the photo"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("NotReadableError")).not.toBeInTheDocument();
   });
 
   it("пустой выбор ничего не меняет", () => {
@@ -122,13 +141,15 @@ describe("PhotoInput на телефоне", () => {
   });
 
   it("отказ камеры виден на экране", async () => {
-    mocks.takePhoto.mockRejectedValue(new Error("Нет разрешения на камеру"));
+    mocks.takePhoto.mockRejectedValue(
+      appError("CAMERA_PERMISSION_REQUIRED", "Camera permission denied"),
+    );
     const { onChange } = renderInput();
 
     fireEvent.click(screen.getByText("Camera"));
 
     expect(
-      await screen.findByText("Нет разрешения на камеру"),
+      await screen.findByText("Allow the app to use the camera"),
     ).toBeInTheDocument();
     expect(onChange).not.toHaveBeenCalled();
   });
@@ -146,6 +167,27 @@ describe("PhotoInput на телефоне", () => {
     expect(container.querySelector("[class*=fieldError]")).toBeNull();
   });
 
+  it("закрытая галерея или камера — молча, без ошибки на экране", async () => {
+    // Плагин отменяет и исключением: старый путь — текстом «User cancelled
+    // photos app», новый — кодом из CameraErrorCode.
+    mocks.pickFromGallery.mockRejectedValue(
+      new Error("User cancelled photos app"),
+    );
+    const { container, onChange } = renderInput();
+
+    fireEvent.click(screen.getByText("Gallery"));
+    await waitFor(() => expect(mocks.pickFromGallery).toHaveBeenCalled());
+
+    mocks.takePhoto.mockRejectedValue(
+      Object.assign(new Error("cancelled"), { code: "OS-PLUG-CAMR-0006" }),
+    );
+    fireEvent.click(screen.getByText("Camera"));
+    await waitFor(() => expect(mocks.takePhoto).toHaveBeenCalled());
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(container.querySelector("[class*=fieldError]")).toBeNull();
+  });
+
   it("галерея отдаёт снимок и сообщает о своём отказе отдельно", async () => {
     mocks.pickFromGallery.mockResolvedValue(photo);
     const { onChange } = renderInput();
@@ -155,7 +197,9 @@ describe("PhotoInput на телефоне", () => {
 
     mocks.pickFromGallery.mockRejectedValue(new Error("Галерея недоступна"));
     fireEvent.click(screen.getByText("Gallery"));
-    expect(await screen.findByText("Галерея недоступна")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Could not open the gallery"),
+    ).toBeInTheDocument();
   });
 });
 

@@ -1,7 +1,5 @@
 import { expect, test } from "@playwright/test";
 import {
-  attachModalPhoto,
-  chooseDetailsStatus,
   createLeak,
   createProject,
   footerTab,
@@ -9,6 +7,7 @@ import {
   openHome,
   openLeakDetails,
   setUserProfile,
+  openMenuItem,
 } from "./helpers.js";
 
 // The point of the folder view is that picking a place replaces filter
@@ -104,7 +103,9 @@ test("summarises only the chosen location on the main page", async ({
   await seedProject(page);
 
   await openHome(page);
-  await expect(page.getByText("Последние", { exact: false })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Охват обследования" }),
+  ).toBeVisible();
   await expect(page.getByText("№ 7003", { exact: true })).toBeVisible();
 
   await openLocationBrowser(page);
@@ -114,10 +115,8 @@ test("summarises only the chosen location on the main page", async ({
     .click();
   await openHome(page);
 
-  // The summary, the recent list and the footer badge all describe the same
-  // set now, so a disagreement between them is the regression to catch.
-  const total = page.locator("text=ВСЕГО").locator("..");
-  await expect(total).toContainText("2");
+  // The recent list and the footer badge describe the same set now, so a
+  // disagreement between them is the regression to catch.
   await expect(page.getByText("№ 7001", { exact: true })).toBeVisible();
   await expect(page.getByText("№ 7003", { exact: true })).toHaveCount(0);
   await expect(footerTab(page, "База")).toContainText("2");
@@ -139,13 +138,16 @@ test("keeps leaks outside the location when one inside it is edited", async ({
   // would delete every record outside it, and only a later reload would show
   // the loss.
   await openLeakDetails(page);
-  await chooseDetailsStatus(page, "В ремонте");
+  await page
+    .getByRole("button", { name: "Редактировать", exact: true })
+    .click();
+  await page
+    .getByLabel("Описание утечки", { exact: true })
+    .fill("Правка внутри папки");
+  await page.getByRole("button", { name: "Сохранить", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "Утечка в ремонте" }),
+    page.getByText("Правка внутри папки", { exact: true }).first(),
   ).toBeVisible();
-  await attachModalPhoto(page);
-  await page.getByRole("button", { name: "Подтвердить" }).click();
-  await expect(page.getByText(/^В ремонте$/i).first()).toBeVisible();
 
   await page.reload();
   await page.getByRole("button", { name: "Сбросить выбор объекта" }).click();
@@ -172,4 +174,26 @@ test("drills to the third level without leaving the sheet", async ({
   await expect(page.getByText("№ 7002", { exact: true })).toBeVisible();
   await expect(page.getByText("№ 7001", { exact: true })).toHaveCount(0);
   await expect(page.getByText("№ 7003", { exact: true })).toHaveCount(0);
+});
+
+test("chooses the report place right on the export screen", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await seedProject(page);
+
+  await openMenuItem(page, "Экспорт отчёта");
+  await expect(page.getByText("Весь проект · 3 зап.")).toBeVisible();
+  await page.getByRole("button", { name: "Выбрать место для отчёта" }).click();
+  await page
+    .getByRole("dialog", { name: "Выбор объекта" })
+    .getByRole("button", { name: /Южное УПГ\s*1/ })
+    .click();
+
+  // Остаёмся на экспорте, а отчёт теперь — по выбранному месту.
+  await expect(
+    page.getByRole("heading", { name: "Экспорт отчёта" }),
+  ).toBeVisible();
+  await expect(page.getByText(/Южное УПГ · 1 зап\./)).toBeVisible();
+  await expect(page.getByText(/^Записей: 1 ·/)).toBeVisible();
 });

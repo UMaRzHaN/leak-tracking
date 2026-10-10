@@ -1,6 +1,7 @@
 import { buildComponentSheet } from "@/services/excelExport/componentSheet";
 import { buildComponentHistorySheet } from "@/services/inventory/componentHistorySheet";
 import { addInventoryBackupSheet } from "@/services/inventory/inventoryBackupSheet";
+import { buildReconcileSheet } from "@/services/inventory/reconcileSheet";
 
 /**
  * Сборка книги инвентаризации: спецификация листа на входе, буфер на выходе.
@@ -22,9 +23,10 @@ const getExcelJS = () => import("exceljs");
  * thousand-record report off the main thread, and paying its round trip for a
  * single table would be slower, not faster.
  *
- * @param {{name?: string, headers: string[], keysOrder: string[], rows: Record<string, any>[], ids?: string[], components?: Record<string, any>[], fields?: {key?: string, label?: string}[]}} sheetSpec
- * @param {{photoPaths?: Record<string, string>, texts?: Record<string, any>, backup?: Record<string, any>[]|null}} [options]
- *   `backup` — карточки целиком, как они уедут в служебный лист.
+ * @param {{name?: string, headers: string[], keysOrder: string[], rows: Record<string, any>[], ids?: string[], components?: Record<string, any>[], fields?: {key?: string, label?: string}[], reconcileExportMode?: string}} sheetSpec
+ * @param {{photoPaths?: Record<string, string>, texts?: Record<string, any>, backup?: Record<string, any>[]|null, archivedPhotos?: string[]}} [options]
+ *   `backup` — карточки целиком, как они уедут в служебный лист;
+ *   `archivedPhotos` — снимки, которые легли в архив рядом с книгой.
  */
 export async function buildInventoryWorkbookBuffer(sheetSpec, options = {}) {
   const ExcelJS = (await getExcelJS()).default;
@@ -40,6 +42,14 @@ export async function buildInventoryWorkbookBuffer(sheetSpec, options = {}) {
     components: sheetSpec?.components ?? [],
     fields: sheetSpec?.fields ?? [],
     texts: options.texts?.componentHistory ?? {},
+  });
+  // Обходы сверки — своим листом, после истории: что нашли на площадке.
+  await buildReconcileSheet(workbook, {
+    components: sheetSpec?.components ?? [],
+    texts: options.texts?.reconcileSheet ?? {},
+    mode: sheetSpec?.reconcileExportMode,
+    archived: options.backup ?? null,
+    archivedPhotos: options.archivedPhotos ?? [],
   });
   // Последним и скрытым: это страница для машины, и открывший книгу должен
   // сначала увидеть то, ради чего её открыл.
