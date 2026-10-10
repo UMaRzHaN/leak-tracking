@@ -4,7 +4,6 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
-import android.database.sqlite.SQLiteOpenHelper;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -16,7 +15,6 @@ import org.json.JSONTokener;
 
 final class LeakDatabaseStore implements AutoCloseable {
     static final String DATABASE_NAME = "leak_tracking.db";
-    private static final int DATABASE_VERSION = 1;
     private static final int STORAGE_SCHEMA_VERSION = 1;
 
     static final class ProjectData {
@@ -103,11 +101,11 @@ final class LeakDatabaseStore implements AutoCloseable {
     }
 
     private final Context context;
-    private final DatabaseHelper helper;
+    private final LeakDatabaseHelper helper;
 
     LeakDatabaseStore(Context context) {
         this.context = context.getApplicationContext();
-        this.helper = new DatabaseHelper(this.context);
+        this.helper = new LeakDatabaseHelper(this.context);
         this.helper.setWriteAheadLoggingEnabled(true);
     }
 
@@ -513,52 +511,5 @@ final class LeakDatabaseStore implements AutoCloseable {
     @Override
     public synchronized void close() {
         helper.close();
-    }
-
-    private static final class DatabaseHelper extends SQLiteOpenHelper {
-        DatabaseHelper(Context context) {
-            super(context, DATABASE_NAME, null, DATABASE_VERSION);
-        }
-
-        @Override
-        public void onConfigure(SQLiteDatabase database) {
-            super.onConfigure(database);
-            database.setForeignKeyConstraintsEnabled(true);
-        }
-
-        @Override
-        public void onCreate(SQLiteDatabase database) {
-            database.execSQL(
-                "CREATE TABLE projects (" +
-                    "project_key TEXT PRIMARY KEY NOT NULL," +
-                    "sync_state_json TEXT," +
-                    "updated_at INTEGER NOT NULL," +
-                    "schema_version INTEGER NOT NULL," +
-                    "last_write_mode TEXT NOT NULL," +
-                    "last_change_count INTEGER NOT NULL DEFAULT 0" +
-                ")"
-            );
-            database.execSQL(
-                "CREATE TABLE leaks (" +
-                    "project_key TEXT NOT NULL," +
-                    "leak_id TEXT NOT NULL," +
-                    "position INTEGER NOT NULL," +
-                    "payload_json TEXT NOT NULL," +
-                    "PRIMARY KEY(project_key, leak_id)," +
-                    "FOREIGN KEY(project_key) REFERENCES projects(project_key) ON DELETE CASCADE" +
-                ")"
-            );
-            database.execSQL(
-                "CREATE UNIQUE INDEX leaks_project_position " +
-                    "ON leaks(project_key, position)"
-            );
-        }
-
-        @Override
-        public void onUpgrade(SQLiteDatabase database, int oldVersion, int newVersion) {
-            throw new IllegalStateException(
-                "Unsupported leak database migration from " + oldVersion + " to " + newVersion
-            );
-        }
     }
 }
