@@ -65,35 +65,9 @@ export function useMapPage({
   const [notification, setNotification] = useState(/** @type {any} */ (null));
   const [mapReady, setMapReady] = useState(false);
   const [heatmapEnabled, setHeatmapEnabled] = useState(false);
-  const {
-    visibleLeaks,
-    markerLeaks,
-    monitoringFilter,
-    hasMonitoringRound,
-    mainLocations,
-    mainLocationLabel,
-    enabledMainLocations,
-    locations,
-    locationLabel,
-    enabledLocations,
-    nearbyOnly,
-    nearbyRadius,
-    nearbyRadiusOptions,
-    priorityFilters,
-    statusFilters,
-    fictionFilter,
-    setFictionFilter,
-    hasGps,
-    setMonitoringFilter,
-    setNearbyOnly,
-    setNearbyRadius,
-    togglePriorityFilter,
-    clearPriorityFilters,
-    toggleStatusFilter,
-    clearStatusFilters,
-    toggleMainLocation,
-    toggleLocation,
-  } = useMapFilters({
+  // Фильтры уходят наружу как есть; сам хук берёт из них только то, что
+  // показывается на карте.
+  const filters = useMapFilters({
     leaks,
     coords,
     gpsEnabled,
@@ -109,13 +83,15 @@ export function useMapPage({
       markers: componentMarkers,
       showsComponents,
       sharedFilters,
-      nearbyOnly,
-      nearbyRadius,
+      nearbyOnly: filters.nearbyOnly,
+      nearbyRadius: filters.nearbyRadius,
       coords,
     });
 
-  const shownItems = showsComponents ? visibleComponents : visibleLeaks;
-  const shownMarkers = showsComponents ? visibleComponents : markerLeaks;
+  const shownItems = showsComponents ? visibleComponents : filters.visibleLeaks;
+  const shownMarkers = showsComponents
+    ? visibleComponents
+    : filters.markerLeaks;
 
   const notify = useCallback(
     (type, message) => setNotification({ type, message }),
@@ -283,6 +259,7 @@ export function useMapPage({
   });
 
   return {
+    ...filters,
     containerRef,
     open,
     setOpen,
@@ -297,34 +274,9 @@ export function useMapPage({
     componentsAvailable,
     componentsLoading,
     showsComponents,
-    monitoringFilter,
-    hasMonitoringRound,
-    mainLocations,
-    mainLocationLabel,
-    enabledMainLocations,
-    locations,
-    locationLabel,
-    enabledLocations,
     activeProject,
     heatmapEnabled,
-    nearbyOnly,
-    nearbyRadius,
-    nearbyRadiusOptions,
-    priorityFilters,
-    statusFilters,
-    fictionFilter,
-    setFictionFilter,
-    hasGps,
     setHeatmapEnabled,
-    setMonitoringFilter,
-    setNearbyOnly,
-    setNearbyRadius,
-    togglePriorityFilter,
-    clearPriorityFilters,
-    toggleStatusFilter,
-    clearStatusFilters,
-    toggleMainLocation,
-    toggleLocation,
     handleDownloadArea,
     cancelDownload,
     handleExportKML,
