@@ -235,3 +235,60 @@ describe("deleting a project's registry", () => {
     await expect(deleteNativeComponents(FOLDER)).resolves.toBe(true);
   });
 });
+
+describe("component storage edges", () => {
+  it("does not mistake a database error for a missing plugin", async () => {
+    plugin.load.mockRejectedValueOnce(new Error("database or disk is full"));
+    await expect(loadNativeComponents(FOLDER)).rejects.toThrow(
+      "database or disk is full",
+    );
+  });
+
+  it("reads an empty payload as an empty registry", async () => {
+    plugin.load.mockResolvedValueOnce({ found: true, recordsJson: "" });
+    await expect(loadNativeComponents(FOLDER)).resolves.toEqual([]);
+  });
+
+  it("rejects stored rows that are not an array", async () => {
+    plugin.load.mockResolvedValueOnce({ found: true, recordsJson: "{}" });
+    await expect(loadNativeComponents(FOLDER)).rejects.toThrow(
+      "Native SQLite component records must be an array",
+    );
+  });
+
+  it("does not hide an unreadable JSON file behind an empty registry", async () => {
+    store.unavailable = true;
+    const { Filesystem } = await import("@capacitor/filesystem");
+    vi.mocked(Filesystem.readFile).mockRejectedValueOnce(
+      new Error("Permission denied"),
+    );
+    await expect(loadNativeComponents(FOLDER)).rejects.toThrow(
+      "Permission denied",
+    );
+  });
+
+  it("reads a file without a recognisable list as empty", async () => {
+    store.unavailable = true;
+    store.files.set(JSON_PATH, JSON.stringify({ version: 1 }));
+    await expect(loadNativeComponents(FOLDER)).resolves.toEqual([]);
+  });
+
+  // Дельта для реестра, которого база не знает, становится полной записью.
+  it("writes the whole registry when a diff targets a missing dataset", async () => {
+    const previous = [card("a")];
+    await saveNativeComponents(FOLDER, [...previous, card("b")], { previous });
+
+    expect(plugin.applyChanges).toHaveBeenCalledOnce();
+    expect(store.projects.get(KEY)).toHaveLength(2);
+  });
+
+  it("reports a recovery file that could not be deleted", async () => {
+    const { Filesystem } = await import("@capacitor/filesystem");
+    vi.mocked(Filesystem.deleteFile).mockRejectedValueOnce(
+      new Error("Permission denied"),
+    );
+    await expect(deleteNativeComponents(FOLDER)).rejects.toThrow(
+      "Permission denied",
+    );
+  });
+});
