@@ -4,6 +4,7 @@ import { PRIORITY_ORDER, getPriorityMeta } from "@/utils/priority";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { FICTION_FILTER } from "@/domain/leakFilters";
 import s from "@/pages/DataBase/DataBase.module.scss";
+import NearbyFilterSection from "./NearbyFilterSection";
 
 const ALL = "all";
 
@@ -47,10 +48,6 @@ function FilterBar({
     fictionFilter !== FICTION_FILTER.ALL ||
     nearbyFilter;
   const [open, setOpen] = useState(false);
-  const formatRadius = (radius) =>
-    radius >= 1000
-      ? `${radius / 1000} ${t("database.radiusKm")}`
-      : `${radius} ${t("database.radiusM")}`;
   return (
     <>
       <div className={s.searchRow}>
@@ -247,50 +244,14 @@ function FilterBar({
           )}
 
           {hasGps && (
-            <>
-              <div className={s.filterDivider} />
-              <button
-                className={`${s.nearbyToggle} ${
-                  nearbyFilter ? s.nearbyToggleActive : ""
-                }`}
-                onClick={() => setNearbyFilter((value) => !value)}
-              >
-                <span className={s.nearbyLeft}>
-                  <span className={s.nearbyIcon}>📌</span>
-                  <span className={s.nearbyLabel}>{t("database.nearMe")}</span>
-                  {counts.nearby > 0 && (
-                    <span className={s.nearbyCount}>{counts.nearby}</span>
-                  )}
-                </span>
-                <span
-                  className={`${s.nearbyTrack} ${
-                    nearbyFilter ? s.nearbyTrackOn : ""
-                  }`}
-                >
-                  <span
-                    className={`${s.nearbyThumb} ${
-                      nearbyFilter ? s.nearbyThumbOn : ""
-                    }`}
-                  />
-                </span>
-              </button>
-              {nearbyFilter && (
-                <div className={s.nearbyRadiusGroup}>
-                  {nearbyRadiusOptions.map((radius) => (
-                    <button
-                      key={radius}
-                      type="button"
-                      className={`${s.nearbyRadiusBtn} ${
-                        nearbyRadius === radius ? s.nearbyRadiusBtnActive : ""
-                      }`}
-                      onClick={() => setNearbyRadius(radius)}
-                    >
-                      {formatRadius(radius)}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </>
+            <NearbyFilterSection
+              enabled={nearbyFilter}
+              onToggle={() => setNearbyFilter((value) => !value)}
+              count={counts.nearby}
+              radius={nearbyRadius}
+              radiusOptions={nearbyRadiusOptions}
+              onRadiusChange={setNearbyRadius}
+            />
           )}
         </div>
       )}
