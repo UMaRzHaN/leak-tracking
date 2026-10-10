@@ -96,6 +96,29 @@ describe("useProjectBackupExport (menu ZIP backup)", () => {
     click.mockRestore();
   });
 
+  it("не выгружает архив, пока данные нового проекта не загружены", async () => {
+    // Проект уже сменили, а в `data` ещё утечки прежнего: архив получил бы
+    // имя нового проекта и чужие записи.
+    const notify = vi.fn();
+    const { result } = renderHook(() =>
+      useProjectBackupExport({
+        data: [{ id: "old-leak" }],
+        activeProject: { id: "new-1", folderName: "new" },
+        dataLoaded: false,
+        notify,
+      }),
+    );
+
+    expect(result.current.canExport).toBe(false);
+    await act(async () => {
+      await result.current.exportBackup();
+    });
+
+    expect(servicesModule.buildProjectBackupZip).not.toHaveBeenCalled();
+    expect(servicesModule.streamProjectBackupZip).not.toHaveBeenCalled();
+    expect(notify).not.toHaveBeenCalled();
+  });
+
   it("streams native ZIP export without building a complete Blob", async () => {
     platformState.isNative = true;
     servicesModule.streamProjectBackupZip.mockImplementation(

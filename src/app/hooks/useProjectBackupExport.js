@@ -8,16 +8,26 @@ import { usePhotoStorage } from "@/hooks/usePhotoStorage";
  * настройках; там остались только параметры проекта, а действия с данными
  * собраны в одном месте.
  *
- * @param {{ data: any[], activeProject: any, notify: (type: string, message: string, options?: any) => void }} options
+ * `dataLoaded` — данные загружены именно для `activeProject`. Сразу после
+ * смены проекта `activeProject` уже новый, а `data` ещё старого: архив
+ * получил бы имя нового проекта и утечки прежнего. До загрузки выгрузка не
+ * начинается, а меню кнопку не показывает (`canExport`).
+ *
+ * @param {{ data: any[], activeProject: any, dataLoaded?: boolean, notify: (type: string, message: string, options?: any) => void }} options
  */
-export function useProjectBackupExport({ data, activeProject, notify }) {
+export function useProjectBackupExport({
+  data,
+  activeProject,
+  dataLoaded = true,
+  notify,
+}) {
   const { lang, t } = useLanguage();
   const { getPhoto: idbGetPhoto } = usePhotoStorage();
   const { vars } = useProjectVars(activeProject?.id ?? null);
   const [isExporting, setIsExporting] = useState(false);
 
   const exportBackup = useCallback(async () => {
-    if (isExporting) return;
+    if (isExporting || !dataLoaded || !activeProject) return;
     const { runProjectBackupExport } = await import("./projectBackupExportRun");
     await runProjectBackupExport({
       data,
@@ -29,7 +39,21 @@ export function useProjectBackupExport({ data, activeProject, notify }) {
       vars,
       setBusy: setIsExporting,
     });
-  }, [activeProject, data, idbGetPhoto, isExporting, lang, notify, t, vars]);
+  }, [
+    activeProject,
+    data,
+    dataLoaded,
+    idbGetPhoto,
+    isExporting,
+    lang,
+    notify,
+    t,
+    vars,
+  ]);
 
-  return { exportBackup, isExporting };
+  return {
+    exportBackup,
+    isExporting,
+    canExport: Boolean(activeProject) && dataLoaded,
+  };
 }

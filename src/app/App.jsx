@@ -243,9 +243,16 @@ export default function App() {
       setAppNotice({ type, message, ...options }),
     [],
   );
-  const { exportBackup, isExporting: exportingBackup } = useProjectBackupExport(
-    { data, activeProject, notify: notifyApp },
-  );
+  const {
+    exportBackup,
+    isExporting: exportingBackup,
+    canExport: canExportBackup,
+  } = useProjectBackupExport({
+    data,
+    activeProject,
+    dataLoaded,
+    notify: notifyApp,
+  });
 
   // Сколько тегов осталось в текущем обходе — для меню и бейджа «Обхода» в
   // нижней панели мониторинга. Вне мониторинга считается, только пока меню
@@ -438,7 +445,7 @@ export default function App() {
             repairCount={repairCount}
             monitoringDueCount={monitoringDueCount}
             reconcileDueCount={reconcileDue}
-            onExportBackup={activeProject ? exportBackup : null}
+            onExportBackup={canExportBackup ? exportBackup : null}
             exportingBackup={exportingBackup}
             showRegistry={showRegistry}
           />
