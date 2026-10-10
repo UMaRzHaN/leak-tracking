@@ -34,6 +34,17 @@ describe("component cards as map pins", () => {
     const [marker] = toComponentMarkers([card({ lat: "38.4", lng: "66.1" })]);
     expect(marker.lat).toBe(38.4);
   });
+
+  it("не ставит на карту координаты вне допустимого диапазона", () => {
+    expect(
+      toComponentMarkers([
+        card({ id: "lat", lat: 384, lng: 66.1 }),
+        card({ id: "lng", lat: 38.4, lng: 661 }),
+        card({ id: "nan", lat: "abc", lng: 66.1 }),
+        card({ id: "ok" }),
+      ]).map((marker) => marker.id),
+    ).toEqual(["ok"]);
+  });
 });
 
 describe("filters that mean something for equipment", () => {
