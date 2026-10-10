@@ -21,6 +21,7 @@
  */
 import { _android as android } from "playwright";
 import fs from "node:fs/promises";
+import { createStepRunner, openTab } from "./manual-capture-steps.mjs";
 import path from "node:path";
 import { MANUAL_CAPTURE_TIME } from "./manual-capture-time.mjs";
 import {
@@ -66,6 +67,7 @@ function wanted(section) {
 
 const done = [];
 const failed = [];
+const step = createStepRunner(failed);
 
 async function main() {
   await fs.mkdir(OUT_DIR, { recursive: true });
@@ -122,42 +124,12 @@ async function main() {
   }
 }
 
-/**
- * Вкладка выбирается по названию, а не по номеру.
- *
- * Номера съехали, как только у Upstream появился «Реестр»: он встал между
- * «Мониторингом» и «Картой», и `nth(4)` начал открывать реестр вместо карты —
- * снимок «27-map» показывал не то, а «28-map-filters» падал, потому что у
- * реестра нет фильтра по мониторингу. Название переживёт и следующую вкладку.
- *
- * Съёмка доходит до английского интерфейса, поэтому имя — регулярное выражение
- * на оба языка: после переключения «Главная» становится «Home».
- */
-async function openTab(page, name) {
-  await page
-    .getByRole("contentinfo")
-    .getByRole("button", {
-      name: name instanceof RegExp ? name : new RegExp(name),
-    })
-    .first()
-    .click();
-}
-
 async function shot(device, name, options = {}) {
   await hideKeyboard();
   await wait(options.settle ?? 600);
   await device.screenshot({ path: path.join(OUT_DIR, `${name}.png`) });
   done.push(name);
   console.log("  ✓", name);
-}
-
-async function step(name, fn) {
-  try {
-    await fn();
-  } catch (error) {
-    failed.push(`${name}: ${error.message.split("\n")[0]}`);
-    console.log("  ✗", name, "—", error.message.split("\n")[0]);
-  }
 }
 
 async function resetToHome(page) {
