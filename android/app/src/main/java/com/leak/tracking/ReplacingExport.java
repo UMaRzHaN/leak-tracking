@@ -13,7 +13,7 @@ import java.util.UUID;
  * недописанная копия так и остаётся в IS_PENDING, где её подбирает сам
  * MediaStore. Хуже всего — процесс убит между публикацией и переименованием:
  * тогда рядом лежат обе копии, старая и новая под временным именем, но
- * пропавших нет.
+ * пропавших нет; временную убирает следующий удачный экспорт.
  */
 final class ReplacingExport {
     /** Хранилище, куда пишется экспорт: на устройстве — MediaStore. */
@@ -28,6 +28,12 @@ final class ReplacingExport {
 
         /** Удаляет файлы с именем name, кроме keep; отказ в удалении — не ошибка. */
         void deleteOthersNamed(String name, T keep);
+
+        /**
+         * Удаляет файлы, имя которых — временное имя экспорта fileName
+         * (см. {@link #isTemporaryOf}), кроме keep; отказ — не ошибка.
+         */
+        void deleteTemporariesOf(String fileName, T keep);
 
         /** @return имя, которое файл носит после попытки переименования */
         String renameTo(T item, String name);
@@ -46,6 +52,21 @@ final class ReplacingExport {
      */
     static String temporaryName(String fileName) {
         return TEMP_PREFIX + UUID.randomUUID().toString().substring(0, 8) + "-" + fileName;
+    }
+
+    /** Имя — временное имя экспорта fileName: export-<8 hex>-<fileName>. */
+    static boolean isTemporaryOf(String candidate, String fileName) {
+        if (candidate == null || fileName == null) return false;
+        String head = TEMP_PREFIX;
+        int idLength = 8;
+        if (candidate.length() != head.length() + idLength + 1 + fileName.length()) return false;
+        if (!candidate.startsWith(head) || !candidate.endsWith("-" + fileName)) return false;
+        for (int i = head.length(); i < head.length() + idLength; i++) {
+            char c = candidate.charAt(i);
+            boolean hex = (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f');
+            if (!hex) return false;
+        }
+        return true;
     }
 
     /** @return имя, под которым экспорт в итоге лежит */
@@ -67,6 +88,13 @@ final class ReplacingExport {
         // записала другая сборка, например), остаётся, и тогда MediaStore
         // даст новому суффикс — вызывающему вернётся настоящее имя.
         store.deleteOthersNamed(fileName, item);
-        return store.renameTo(item, fileName);
+        String storedName = store.renameTo(item, fileName);
+
+        // Копия под временным именем остаётся, если прошлый экспорт убили
+        // между публикацией и переименованием. Убирается она только сейчас,
+        // когда новый экспорт цел и на месте: до этого она могла быть
+        // единственным свежим бэкапом.
+        store.deleteTemporariesOf(fileName, item);
+        return storedName;
     }
 }

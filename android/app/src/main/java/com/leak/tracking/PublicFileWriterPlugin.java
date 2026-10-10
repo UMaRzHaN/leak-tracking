@@ -275,6 +275,11 @@ public class PublicFileWriterPlugin extends Plugin {
                 }
 
                 @Override
+                public void deleteTemporariesOf(String name, Uri keep) {
+                    deleteTemporaryExports(resolver, collection, relativePath, name, keep);
+                }
+
+                @Override
                 public String renameTo(Uri item, String name) {
                     return renameToRequested(resolver, item, name);
                 }
@@ -373,6 +378,41 @@ public class PublicFileWriterPlugin extends Plugin {
             }
         } catch (Exception ignored) {
             // Export should still proceed even if cleanup is blocked by scoped storage.
+        }
+    }
+
+    private void deleteTemporaryExports(
+        ContentResolver resolver,
+        Uri collection,
+        String relativePath,
+        String fileName,
+        Uri keepItem
+    ) {
+        String[] projection = new String[] {
+            MediaStore.MediaColumns._ID,
+            MediaStore.MediaColumns.DISPLAY_NAME,
+        };
+        // LIKE только сужает выборку; точное правило имени — в ReplacingExport.
+        String selection = MediaStore.MediaColumns.DISPLAY_NAME + " LIKE ? AND " + MediaStore.MediaColumns.RELATIVE_PATH + "=?";
+        String[] args = new String[] { "export-%", relativePath };
+
+        try (Cursor cursor = resolver.query(collection, projection, selection, args, null)) {
+            if (cursor == null) return;
+
+            int idColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID);
+            int nameColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME);
+            while (cursor.moveToNext()) {
+                long id = cursor.getLong(idColumn);
+                if (keepItem != null && id == ContentUris.parseId(keepItem)) continue;
+                if (!ReplacingExport.isTemporaryOf(cursor.getString(nameColumn), fileName)) continue;
+                try {
+                    resolver.delete(Uri.withAppendedPath(collection, String.valueOf(id)), null, null);
+                } catch (SecurityException ignored) {
+                    // Чужую копию Android удалить не даст — она просто останется.
+                }
+            }
+        } catch (Exception ignored) {
+            // Уборка не должна ронять уже удавшийся экспорт.
         }
     }
 

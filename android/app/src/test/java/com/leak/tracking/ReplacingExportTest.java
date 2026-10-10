@@ -79,6 +79,14 @@ public class ReplacingExportTest {
         }
 
         @Override
+        public void deleteTemporariesOf(String name, Entry keep) {
+            log.add("delete-temporaries");
+            entries.removeIf(
+                entry -> entry != keep && entry.deletable && ReplacingExport.isTemporaryOf(entry.name, name)
+            );
+        }
+
+        @Override
         public String renameTo(Entry item, String name) {
             log.add("rename");
             boolean taken = entries.stream().anyMatch(entry -> entry != item && entry.name.equals(name));
@@ -114,7 +122,7 @@ public class ReplacingExportTest {
         assertEquals(1, store.entries.size());
         assertArrayEquals(NEW, store.visible("project.zip").content);
         assertEquals(
-            List.of("create", "write", "publish", "delete-old", "rename"),
+            List.of("create", "write", "publish", "delete-old", "rename", "delete-temporaries"),
             store.log
         );
     }
@@ -204,5 +212,44 @@ public class ReplacingExportTest {
         assertTrue(first.endsWith(".zip"));
         assertFalse(first.equals("project.zip"));
         assertFalse(first.equals(second));
+    }
+
+    @Test
+    public void nextExportClearsATemporaryCopyLeftByAKilledOne() throws Exception {
+        FakeStore store = new FakeStore();
+        store.existing("export-0a1b2c3d-project.zip", OLD);
+        store.existing("export-0a1b2c3d-other.zip", OLD);
+        store.existing("export-notahex1-project.zip", OLD);
+
+        ReplacingExport.write(store, "project.zip", new ByteArrayInputStream(NEW));
+
+        assertArrayEquals(NEW, store.visible("project.zip").content);
+        assertEquals(null, store.visible("export-0a1b2c3d-project.zip"));
+        assertFalse(store.visible("export-0a1b2c3d-other.zip") == null);
+        assertFalse(store.visible("export-notahex1-project.zip") == null);
+    }
+
+    @Test
+    public void failedExportKeepsATemporaryCopyThatMayBeTheOnlyFreshBackup() {
+        FakeStore store = new FakeStore();
+        store.existing("export-0a1b2c3d-project.zip", OLD);
+        store.failWriteAfterBytes = 2;
+
+        try {
+            ReplacingExport.write(store, "project.zip", new ByteArrayInputStream(NEW));
+            fail("write must fail");
+        } catch (Exception expected) {
+            // ENOSPC
+        }
+
+        assertArrayEquals(OLD, store.visible("export-0a1b2c3d-project.zip").content);
+    }
+
+    @Test
+    public void temporaryNameIsRecognisedAsTemporaryOfItsTarget() {
+        String name = ReplacingExport.temporaryName("project.zip");
+        assertTrue(ReplacingExport.isTemporaryOf(name, "project.zip"));
+        assertFalse(ReplacingExport.isTemporaryOf(name, "other.zip"));
+        assertFalse(ReplacingExport.isTemporaryOf("project.zip", "project.zip"));
     }
 }
