@@ -153,7 +153,6 @@ public class LocalSyncPlugin extends Plugin {
     private volatile String channelArchiveToken;
     private volatile boolean archiveChannelReady;
 
-
     @Override
     public void load() {
         archives.sweepOrphans(System.currentTimeMillis());
@@ -268,7 +267,6 @@ public class LocalSyncPlugin extends Plugin {
         switch (command.type()) {
             case BEGIN:
                 if (!archives.hasPrepared(command.token())) {
-
                     replyProxy.postMessage("error Unknown archive token");
                     return;
                 }
@@ -335,7 +333,6 @@ public class LocalSyncPlugin extends Plugin {
         String chunkBase64 = call.getString("chunkBase64");
         File archive = archives.prepared(token);
         if (archive == null || chunkBase64 == null) {
-
             call.reject("Unknown archive token or missing chunk");
             return;
         }
@@ -491,7 +488,6 @@ public class LocalSyncPlugin extends Plugin {
         String archiveToken = call.getString("archiveToken", "");
         File outgoing;
         outgoing = archives.claimPrepared(archiveToken, System.currentTimeMillis());
-
 
         if (
             host.isEmpty() ||
@@ -734,6 +730,10 @@ public class LocalSyncPlugin extends Plugin {
             String sessionId = normalizeSessionId(input.readUTF());
             long archiveSize = input.readLong();
             String expectedHash = input.readUTF();
+            // projectKey is deliberately not compared here, unlike in
+            // handleImportClient. It is "type:name", and a project renamed on
+            // one phone keeps its syncId; syncId alone says the two databases
+            // share an origin and may be merged.
             if (!expectedSyncId.equals(syncId)) {
                 rejectPeer(output, LocalSyncFailure.DIFFERENT_ORIGIN, "Проекты имеют разное происхождение и не могут быть объединены");
                 return ClientOutcome.CONTINUE;
