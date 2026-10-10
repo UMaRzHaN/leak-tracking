@@ -1,5 +1,9 @@
 import { STORAGE_KEYS } from "./storageKeys";
 import { PROJECT_META } from "@/configs/projectMeta";
+import { logger } from "@/utils/logger";
+
+// Копия списка — не часть первого экрана: модуль грузится, когда до неё дошло.
+const loadMirror = () => import("./projectListMirror");
 
 const RESERVED_FOLDER_CHARACTERS = '<>:"/\\|?*';
 const MAX_FOLDER_NAME_LENGTH = 50;
@@ -75,7 +79,7 @@ export class ProjectStorageReadError extends Error {
   }
 }
 
-function validateStoredProjects(list) {
+export function validateStoredProjects(list) {
   const ids = new Set();
   const folders = new Set();
 
@@ -164,6 +168,9 @@ export function preserveAndResetCorruptedProjects(recoveryValue) {
  */
 export function saveProjects(list) {
   localStorage.setItem(STORAGE_KEYS.PROJECTS_LIST, JSON.stringify(list));
+  void loadMirror()
+    .then(({ mirrorProjectList }) => mirrorProjectList(list))
+    .catch((error) => logger.warn("[projects] Mirror unavailable:", error));
 }
 
 export function loadActiveId() {
