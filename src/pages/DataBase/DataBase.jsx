@@ -74,17 +74,17 @@ export default function DataBase({
         sortAsc={filters.sortAsc}
         onSortToggle={filters.toggleSort}
         selectedCount={bulk.selectedCount}
+        hiddenSelectedCount={bulk.hiddenSelectedCount}
         allDisplayedSelected={bulk.allDisplayedSelected}
         onClearSelection={bulk.clearSelection}
         onSelectDisplayed={
           bulk.allDisplayedSelected ? bulk.clearSelection : bulk.selectDisplayed
         }
         onMonitorSelected={() => {
-          const selected = filters.displayed.filter((item) =>
-            bulk.selectedIds.has(item.id),
-          );
-          onMonitorLeaks?.(selected);
-          bulk.clearSelection();
+          // Проверяются выбранные среди видимых; выбор, скрытый фильтром,
+          // остаётся — его не сбрасывают молча.
+          onMonitorLeaks?.(bulk.actionableSelected);
+          bulk.clearActionable();
         }}
         onEditBulkCalculation={() => setBulkCalculationOpen(true)}
       />

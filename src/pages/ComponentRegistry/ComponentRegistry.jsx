@@ -338,6 +338,14 @@ export default function ComponentRegistry({
     visible.length > 0 &&
     visible.every((component) => selectedIds.has(component.id));
 
+  // Правило то же, что у базы утечек: осмотр списком — по выбранным среди
+  // видимых. Выбор, скрытый фильтром, остаётся и показан плашкой у панели.
+  const visibleSelected = useMemo(
+    () => visible.filter((component) => selectedIds.has(component.id)),
+    [visible, selectedIds],
+  );
+  const hiddenSelectedCount = selectedIds.size - visibleSelected.length;
+
   /**
    * Расстояние до карточки от того места, где человек стоит.
    *
@@ -398,8 +406,7 @@ export default function ComponentRegistry({
       const user = userProfile?.name;
       // Осмотр в реестре во время сверки — тоже её отметка.
       const roundNumber = activeReconcileRoundNumber(project?.id);
-      for (const card of components) {
-        if (!selectedIds.has(card.id)) continue;
+      for (const card of visibleSelected) {
         try {
           await updateComponent(
             card.id,
@@ -421,18 +428,8 @@ export default function ComponentRegistry({
           return next;
         });
       }
-      clearSelection();
     },
-    [
-      clearSelection,
-      components,
-      notify,
-      project?.id,
-      selectedIds,
-      t,
-      updateComponent,
-      userProfile,
-    ],
+    [notify, project?.id, t, updateComponent, userProfile, visibleSelected],
   );
 
   /**
@@ -554,7 +551,7 @@ export default function ComponentRegistry({
       {bulkInspecting && (
         <ComponentInspectSheet
           subtitle={t("database.selectedOf", {
-            selected: selectedIds.size,
+            selected: visibleSelected.length,
             visible: visible.length,
           })}
           onPick={inspectSelected}
@@ -616,7 +613,8 @@ export default function ComponentRegistry({
         visibleCount={visible.length}
         sortAsc={sortAsc}
         onSortToggle={() => setSortAsc((value) => !value)}
-        selectedCount={selectedIds.size}
+        selectedCount={visibleSelected.length}
+        hiddenSelectedCount={hiddenSelectedCount}
         allDisplayedSelected={allDisplayedSelected}
         onSelectDisplayed={selectDisplayed}
         onClearSelection={clearSelection}

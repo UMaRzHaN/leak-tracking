@@ -16,6 +16,7 @@ function ComponentResultsBar({
   sortAsc,
   onSortToggle,
   selectedCount = 0,
+  hiddenSelectedCount = 0,
   allDisplayedSelected = false,
   onSelectDisplayed,
   onClearSelection,
@@ -63,7 +64,7 @@ function ComponentResultsBar({
           длинного списка, а выбирают как раз прокручивая. Действие одно и то
           же по смыслу — отметить обойдённое, только у железа это его
           состояние, а не проверка утечки. */}
-      {selectedCount > 0 && (
+      {(selectedCount > 0 || hiddenSelectedCount > 0) && (
         <div className={s.bulkBar}>
           <span className={s.bulkCheck}>✓</span>
           <span className={s.bulkCount}>
@@ -71,12 +72,21 @@ function ComponentResultsBar({
               selected: selectedCount,
               visible: visibleCount,
             })}
+            {hiddenSelectedCount > 0 && (
+              <span className={s.bulkHidden}>
+                {t("database.hiddenSelected", { count: hiddenSelectedCount })}
+              </span>
+            )}
           </span>
           <div className={s.bulkBtns}>
             <button className={s.bulkClearBtn} onClick={onClearSelection}>
               {t("database.clearSelection")}
             </button>
-            <button className={s.bulkMonitorBtn} onClick={onInspectSelected}>
+            <button
+              className={s.bulkMonitorBtn}
+              onClick={onInspectSelected}
+              disabled={selectedCount === 0}
+            >
               {t("components.bulkStatus")}
             </button>
           </div>

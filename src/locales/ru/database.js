@@ -67,6 +67,7 @@ export const database = {
     noNearby: "Нет утечек в радиусе {{radius}} м",
     noRecords: "Записей нет",
   },
+  hiddenSelected: "ещё {{count}} выбрано, скрыто фильтром",
   selectedOf: "{{selected}} выбрано из {{visible}}",
   nearMe: "Рядом со мной",
 

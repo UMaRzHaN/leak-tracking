@@ -9,6 +9,7 @@ export default function ResultsBar({
   sortAsc,
   onSortToggle,
   selectedCount,
+  hiddenSelectedCount = 0,
   allDisplayedSelected,
   onClearSelection,
   onSelectDisplayed,
@@ -50,7 +51,7 @@ export default function ResultsBar({
         </div>
       </div>
 
-      {selectedCount > 0 && (
+      {(selectedCount > 0 || hiddenSelectedCount > 0) && (
         <div className={s.bulkBar}>
           <span className={s.bulkCheck}>✓</span>
           <span className={s.bulkCount}>
@@ -58,17 +59,29 @@ export default function ResultsBar({
               selected: selectedCount,
               visible: visibleCount,
             })}
+            {/* Действия применяются к видимым; скрытые фильтром остаются
+                выбранными, и об этом сказано здесь, а не молчанием. */}
+            {hiddenSelectedCount > 0 && (
+              <span className={s.bulkHidden}>
+                {t("database.hiddenSelected", { count: hiddenSelectedCount })}
+              </span>
+            )}
           </span>
           <div className={s.bulkBtns}>
             <button className={s.bulkClearBtn} onClick={onClearSelection}>
               {t("database.clearSelection")}
             </button>
-            <button className={s.bulkMonitorBtn} onClick={onMonitorSelected}>
+            <button
+              className={s.bulkMonitorBtn}
+              onClick={onMonitorSelected}
+              disabled={selectedCount === 0}
+            >
               {t("database.check")}
             </button>
             <button
               className={s.bulkCalcBtn}
               onClick={onEditBulkCalculation}
+              disabled={selectedCount === 0}
               title={t("database.editCalcParamsForSelected")}
               aria-label={t("database.calcParams")}
             >

@@ -52,22 +52,48 @@ export function useBulkActions({
     });
   }, [displayed]);
 
+  /*
+   * Правило одно на все массовые действия: они применяются к выбранным И
+   * видимым. Выбор, скрытый фильтром, сохраняется — сменили отбор, вернулись,
+   * и он на месте, — но действовать вслепую по записям, которых человек не
+   * видит, нельзя. Сколько таких, говорит плашка у панели действий.
+   */
+  const actionableIds = useMemo(
+    () =>
+      new Set(
+        displayed
+          .filter((item) => selectedIds.has(item.id))
+          .map((item) => item.id),
+      ),
+    [displayed, selectedIds],
+  );
+  const hiddenSelectedCount = selectedIds.size - actionableIds.size;
+
+  /** Снимает с выбора только то, к чему действие применилось. */
+  const clearActionable = useCallback(() => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      actionableIds.forEach((id) => next.delete(id));
+      return next;
+    });
+  }, [actionableIds]);
+
   const bulkCalculationVars = useMemo(() => {
-    const firstSelected = data.find((item) => selectedIds.has(item.id));
+    const firstSelected = data.find((item) => actionableIds.has(item.id));
     return firstSelected
       ? buildLeakCalculationParams(firstSelected, projectVars)
       : projectVars;
-  }, [data, projectVars, selectedIds]);
+  }, [actionableIds, data, projectVars]);
 
   const handleBulkCalculationSave = useCallback(
     async (calculationParams) => {
-      if (!selectedIds.size) return;
+      if (!actionableIds.size) return;
       if (!requireHistoryUser()) return false;
 
       // Параметры одни на все выбранные: вне допустимых значений расчёт
       // молча вернул бы записи с прежними выбросами, а счётчик назвал бы их
       // пересчитанными.
-      const selected = data.filter((item) => selectedIds.has(item.id));
+      const selected = data.filter((item) => actionableIds.has(item.id));
       if (
         selected.some(
           (item) =>
@@ -82,7 +108,7 @@ export function useBulkActions({
       const now = Date.now();
       let changed = 0;
       const next = data.map((item) => {
-        if (!selectedIds.has(item.id)) return item;
+        if (!actionableIds.has(item.id)) return item;
         // Розовому мешку нужны давление и температура записи: где их нет,
         // запись остаётся как была и в «изменено» не считается.
         if (findCalculationBlocker(item, projectVars, calculationParams)) {
@@ -100,7 +126,7 @@ export function useBulkActions({
 
       if (changed === 0) {
         notify("info", t("database.paramsAlreadyApplied"));
-        clearSelection();
+        clearActionable();
         return true;
       }
 
@@ -108,7 +134,7 @@ export function useBulkActions({
         await setData(next);
         hapticSuccess();
         notify("success", t("database.paramsUpdated", { changed }));
-        clearSelection();
+        clearActionable();
         return true;
       } catch (error) {
         notify(
@@ -119,25 +145,32 @@ export function useBulkActions({
       }
     },
     [
-      clearSelection,
+      actionableIds,
+      clearActionable,
       data,
       historyUser,
       notify,
       projectVars,
       requireHistoryUser,
-      selectedIds,
       setData,
       t,
     ],
   );
 
-  const selectedCount = selectedIds.size;
   const allDisplayedSelected =
     displayed.length > 0 && displayed.every((item) => selectedIds.has(item.id));
+  const actionableSelected = useMemo(
+    () => displayed.filter((item) => actionableIds.has(item.id)),
+    [actionableIds, displayed],
+  );
 
   return {
     selectedIds,
-    selectedCount,
+    // Счётчик панели — то, к чему применится действие; скрытые — отдельно.
+    selectedCount: actionableIds.size,
+    hiddenSelectedCount,
+    actionableSelected,
+    clearActionable,
     allDisplayedSelected,
     clearSelection,
     deselectId,

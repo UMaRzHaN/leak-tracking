@@ -15,7 +15,12 @@ vi.mock("@/utils/haptics", () => ({
 
 function renderWith(
   data,
-  { userProfile = { name: "Inspector" }, setData, projectVars } = {},
+  {
+    userProfile = { name: "Inspector" },
+    setData,
+    projectVars,
+    displayed = data,
+  } = {},
 ) {
   const notify = vi.fn();
   const deletePhoto = vi.fn().mockResolvedValue(undefined);
@@ -23,7 +28,7 @@ function renderWith(
     useBulkActions({
       data,
       setData: setData ?? vi.fn().mockResolvedValue(undefined),
-      displayed: data,
+      displayed,
       notify,
       deletePhoto,
       userProfile,
@@ -244,5 +249,59 @@ describe("bulk recalculation", () => {
       "Failed to update parameters: db locked",
     );
     expect(result.current.selectedIds.size).toBe(1);
+  });
+});
+
+describe("выбор, скрытый фильтром", () => {
+  const projectVars = {
+    ...VAR_DEFAULTS,
+    gasType: "methane",
+    GWP: 28,
+    Operating_mode: 365,
+  };
+
+  it("действует только на видимые, а скрытый выбор оставляет", async () => {
+    const data = [
+      { id: "a", status: STATUS.OPEN, ...projectVars },
+      { id: "b", status: STATUS.OPEN, ...projectVars },
+    ];
+    const setData = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderWith(data, {
+      setData,
+      projectVars,
+      displayed: [data[0]],
+    });
+
+    act(() => result.current.toggleSelected("a"));
+    act(() => result.current.toggleSelected("b"));
+    expect(result.current.selectedCount).toBe(1);
+    expect(result.current.hiddenSelectedCount).toBe(1);
+    expect(result.current.actionableSelected.map((item) => item.id)).toEqual([
+      "a",
+    ]);
+
+    await act(async () => {
+      await result.current.handleBulkCalculationSave({
+        ...projectVars,
+        GWP: 82,
+      });
+    });
+
+    const [written] = setData.mock.calls[0];
+    expect(written[0].calculationParams.GWP).toBe(82);
+    // Скрытая фильтром запись не пересчитана и осталась выбранной.
+    expect(written[1]).toBe(data[1]);
+    expect([...result.current.selectedIds]).toEqual(["b"]);
+  });
+
+  it("после проверки снимает с выбора только видимые", () => {
+    const data = [leak("a"), leak("b")];
+    const { result } = renderWith(data, { displayed: [data[0]] });
+
+    act(() => result.current.toggleSelected("a"));
+    act(() => result.current.toggleSelected("b"));
+    act(() => result.current.clearActionable());
+
+    expect([...result.current.selectedIds]).toEqual(["b"]);
   });
 });

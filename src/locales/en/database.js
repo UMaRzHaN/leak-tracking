@@ -63,6 +63,7 @@ export const database = {
     noNearby: "No leaks within {{radius}} m",
     noRecords: "No records",
   },
+  hiddenSelected: "{{count}} more selected, hidden by filters",
   selectedOf: "{{selected}} selected of {{visible}}",
   nearMe: "Near me",
 

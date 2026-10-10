@@ -108,7 +108,10 @@ function createController() {
     bulk: {
       selectedCount: 1,
       allDisplayedSelected: false,
-      selectedIds: new Set(["leak-1"]),
+      hiddenSelectedCount: 1,
+      selectedIds: new Set(["leak-1", "hidden-by-filter"]),
+      actionableSelected: [leak],
+      clearActionable: vi.fn(),
       clearSelection: vi.fn(),
       selectDisplayed: vi.fn(),
       toggleSelected: vi.fn(),
@@ -155,7 +158,10 @@ describe("DataBase", () => {
     expect(controller.current.filters.setFilter).toHaveBeenCalledWith("open");
     expect(onMonitorLeak).toHaveBeenCalled();
     expect(onMonitorLeaks).toHaveBeenCalledWith([{ id: "leak-1" }]);
-    expect(controller.current.bulk.clearSelection).toHaveBeenCalled();
+    // «Проверить» — выбранные среди видимых; выбор, скрытый фильтром, не
+    // сбрасывается.
+    expect(controller.current.bulk.clearActionable).toHaveBeenCalled();
+    expect(controller.current.bulk.clearSelection).not.toHaveBeenCalled();
     expect(controller.current.bulk.deselectId).toHaveBeenCalledWith("leak-1");
   });
 });

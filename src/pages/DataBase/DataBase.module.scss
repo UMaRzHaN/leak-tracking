@@ -517,6 +517,22 @@
   text-overflow: ellipsis;
 }
 
+.bulkHidden {
+  display: block;
+  font-weight: 500;
+  color: var(--c-text3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// Всё выбранное скрыто фильтром: применять не к чему.
+.bulkMonitorBtn:disabled,
+.bulkCalcBtn:disabled {
+  opacity: 0.45;
+  cursor: default;
+  pointer-events: none;
+}
+
 .bulkBtns {
   display: flex;
   align-items: center;

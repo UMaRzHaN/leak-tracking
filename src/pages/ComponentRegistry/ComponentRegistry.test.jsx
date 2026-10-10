@@ -376,6 +376,39 @@ describe("ComponentRegistry screen", () => {
     localStorage.clear();
   });
 
+  it("осматривает списком только видимые, а скрытый фильтром выбор хранит", async () => {
+    localStorage.clear();
+    registry.current = makeRegistry({
+      components: [
+        { id: "a", component_uid: "1", component: "Задвижка" },
+        { id: "b", component_uid: "2", component: "Труба" },
+      ],
+    });
+    renderRegistry();
+
+    fireEvent.click(screen.getByText("Select all"));
+    fireEvent.change(
+      screen.getByPlaceholderText("Number, name, drawing tag..."),
+      { target: { value: "Задвижка" } },
+    );
+    expect(screen.getByText("1 more selected, hidden by filters")).toBeTruthy();
+
+    fireEvent.click(screen.getByText("Change state"));
+    const start = screen.queryByRole("button", { name: "Start" });
+    if (start) fireEvent.click(start);
+    fireEvent.click(await screen.findByRole("button", { name: "В работе" }));
+
+    await waitFor(() =>
+      expect(registry.current.updateComponent).toHaveBeenCalledTimes(1),
+    );
+    expect(registry.current.updateComponent.mock.calls[0][0]).toBe("a");
+    // Скрытая карточка осталась выбранной — её не сбросили молча.
+    expect(
+      await screen.findByText("1 more selected, hidden by filters"),
+    ).toBeTruthy();
+    localStorage.clear();
+  });
+
   it("says nothing about conflicts when there are none", () => {
     renderRegistry();
     expect(screen.queryByText(/duplicated number/i)).toBeNull();
