@@ -2,67 +2,13 @@ import { getPhotoBlob, getPhotoSrc } from "@/hooks/photoService";
 import { blobToDataUri, dataUrlToBlob } from "@/utils/photoConversion";
 import {
   allocateUniqueLeakArchiveSegments,
-  buildEventPhotoArchivePath,
-  buildLeakPhotoArchivePath,
-  buildMonitoringPhotoArchivePath,
-  buildRoundMonitoringPhotoArchivePath,
   normalizeImageExtension,
   parseDataImageUri,
 } from "@/services/archive/archivePaths";
-import {
-  EVENT_PHOTO_KEYS,
-  EXPORT_CONCURRENCY,
-  EXPORT_YIELD_EVERY,
-  MONITORING_PHOTO_KEYS,
-  PHOTO_KEYS,
-} from "./constants";
+import { EXPORT_CONCURRENCY, EXPORT_YIELD_EVERY } from "./constants";
 import { yieldToMainThread } from "./runtime";
 import { planRoundMonitoringFolders } from "@/services/archive/archiveLayout";
-import { getMonitoringRecords } from "@/utils/monitoring";
-
-/**
- * Снимки осмотров — первыми, в папки обходов. У открытой утечки «фото до» —
- * это и есть снимок последнего осмотра; пойди поля утечки первыми, он лёг бы в
- * её папку, и обход остался бы без своего снимка. Дальше такие пути берутся
- * из `archived`, второй копии не появляется.
- */
-async function archiveInspectionPhotos(leak, placeRecord, archived, store) {
-  for (const record of getMonitoringRecords(leak)) {
-    for (const key of MONITORING_PHOTO_KEYS) {
-      const path = record?.[key];
-      if (path == null || archived.has(String(path))) continue;
-      const resolved = await store(String(path));
-      if (!resolved) continue;
-      const archivePath = inspectionPhotoPath(
-        placeRecord,
-        record,
-        resolved.ext,
-        key,
-      );
-      if (!archivePath) continue;
-      await resolved.write(archivePath);
-      archived.set(String(path), `zip:${archivePath}`);
-    }
-  }
-}
-
-/**
- * Снимок осмотра — в папку своего обхода, если раскладка по обходам задана;
- * иначе по-старому, в папку утечки. Без раскладки выгружаются записи
- * восстановления: обходов у них в бэкапе не считают.
- */
-function inspectionPhotoPath(placeRecord, record, extension, key) {
-  const placement = placeRecord?.(record);
-  return placement
-    ? buildRoundMonitoringPhotoArchivePath(
-        placement.roundSegment,
-        placement.leakSegment,
-        placement.recordNumber,
-        extension,
-        key,
-      )
-    : null;
-}
+import { exportLeakPhotos } from "./leakPhotoExport";
 
 async function resolveBase64(path, idbGet) {
   if (typeof path !== "string" || !path) return null;
@@ -108,296 +54,86 @@ export async function resolvePhotoBlob(path, idbGet) {
   return { blob, ext: normalizeImageExtension(mime) };
 }
 
-/**
- * Снимки ленты событий в архив.
- *
- * Почти каждый из них уже там: осмотр — это запись обхода, последняя починка —
- * поле самой утечки. Поэтому сначала спрашивается, куда этот путь уже положили,
- * и только не найденное пишется заново. Иначе архив с двумя обходами и двумя
- * ремонтами раздувался бы вдвое — на телефоне это десятки мегабайт.
- *
- * @param {any[]} events
- * @param {string} leakNumber
- * @param {Map<string, string>} archived путь на устройстве → путь в архиве
- * @param {(path: string) => Promise<{ext: string, write: (archivePath: string) => void|Promise<void>}|null>} store
- * @param {boolean} preserveUnresolvedPhotoPaths
- * @param {((record: any) => any)|null} [placeRecord]
- */
-async function exportEventPhotos(
-  events,
-  leakNumber,
-  archived,
-  store,
-  preserveUnresolvedPhotoPaths,
-  placeRecord = null,
-) {
-  const exported = [];
-  for (const [eventIndex, event] of events.entries()) {
-    const copy = { ...event };
-    for (const key of EVENT_PHOTO_KEYS) {
-      const path = event?.[key];
-      if (path == null) continue;
-
-      const known = archived.get(String(path));
-      if (known) {
-        copy[key] = known;
-        continue;
-      }
-
-      const resolved = await store(String(path));
-      if (!resolved) {
-        if (!preserveUnresolvedPhotoPaths) delete copy[key];
-        continue;
-      }
-      const archivePath =
-        inspectionPhotoPath(placeRecord, event, resolved.ext, key) ??
-        buildEventPhotoArchivePath(leakNumber, eventIndex, resolved.ext, key);
-      await resolved.write(archivePath);
-      archived.set(String(path), `zip:${archivePath}`);
-      copy[key] = `zip:${archivePath}`;
-    }
-    exported.push(copy);
-  }
-  return exported;
+/** Папки утечек и раскладка по обходам — общие для обеих выгрузок. */
+function planExport(leaks, options) {
+  const {
+    segmentPrefix = "leak",
+    preserveUnresolvedPhotoPaths = false,
+    leakSegments = null,
+    monitoringFolderLabel = null,
+  } = options;
+  return {
+    leakSegments:
+      leakSegments ??
+      allocateUniqueLeakArchiveSegments(leaks, { prefix: segmentPrefix }),
+    placeRecord: monitoringFolderLabel
+      ? planRoundMonitoringFolders(leaks, monitoringFolderLabel).byRecord
+      : null,
+    preserveUnresolvedPhotoPaths,
+  };
 }
 
+const isLeakRecord = (leak) =>
+  Boolean(leak) && typeof leak === "object" && !Array.isArray(leak);
+
+/**
+ * @typedef {{
+ *   segmentPrefix?: string,
+ *   preserveUnresolvedPhotoPaths?: boolean,
+ *   leakSegments?: string[]|null,
+ *   monitoringFolderLabel?: ((result: string) => string)|null,
+ * }} ExportOptions
+ */
+
+/** Потоковая выгрузка: снимки уходят в архив байтами, по одной утечке. */
 export async function exportLeaksWithPhotosToStream(
   leaks,
   zip,
   idbGet,
-  {
-    segmentPrefix = "leak",
-    preserveUnresolvedPhotoPaths = false,
-    leakSegments: providedLeakSegments = /** @type {string[]|null} */ (null),
-    monitoringFolderLabel = /** @type {((result: string) => string)|null} */ (
-      null
-    ),
-  } = {},
+  options = /** @type {ExportOptions} */ ({}),
 ) {
-  const exported = new Array(leaks.length);
-  const leakSegments =
-    providedLeakSegments ??
-    allocateUniqueLeakArchiveSegments(leaks, { prefix: segmentPrefix });
-  const placeRecord = monitoringFolderLabel
-    ? planRoundMonitoringFolders(leaks, monitoringFolderLabel).byRecord
-    : null;
+  const plan = planExport(leaks, options);
+  const store = async (path) => {
+    const resolved = await resolvePhotoBlob(path, idbGet);
+    if (!resolved) return null;
+    return {
+      ext: resolved.ext,
+      write: (archivePath) => zip.add(archivePath, resolved.blob),
+    };
+  };
 
+  const exported = new Array(leaks.length);
   for (const [index, leak] of leaks.entries()) {
     if (index > 0 && index % EXPORT_YIELD_EVERY === 0) {
       await yieldToMainThread();
     }
-    if (!leak || typeof leak !== "object" || Array.isArray(leak)) {
-      exported[index] = leak;
-      continue;
-    }
-    const copy = { ...leak };
-    const leakNumber = leakSegments[index];
-
-    const archived = new Map();
-    const store = async (path) => {
-      const resolved = await resolvePhotoBlob(path, idbGet);
-      if (!resolved) return null;
-      return {
-        ext: resolved.ext,
-        write: (archivePath) => zip.add(archivePath, resolved.blob),
-      };
-    };
-    if (placeRecord) {
-      await archiveInspectionPhotos(leak, placeRecord, archived, store);
-    }
-
-    for (const key of PHOTO_KEYS) {
-      const path = leak[key];
-      if (path == null) continue;
-      const known = archived.get(String(path));
-      if (known) {
-        copy[key] = known;
-        continue;
-      }
-      const resolved = await resolvePhotoBlob(path, idbGet);
-      if (!resolved) {
-        if (!preserveUnresolvedPhotoPaths) delete copy[key];
-        continue;
-      }
-
-      const archivePath = buildLeakPhotoArchivePath(
-        leakNumber,
-        key,
-        resolved.ext,
-      );
-      await zip.add(archivePath, resolved.blob);
-      copy[key] = `zip:${archivePath}`;
-      archived.set(String(path), `zip:${archivePath}`);
-    }
-
-    if (Array.isArray(copy.monitoringRecords)) {
-      const records = [];
-      for (const [recordIndex, record] of copy.monitoringRecords.entries()) {
-        const recordCopy = { ...record };
-        for (const key of MONITORING_PHOTO_KEYS) {
-          const path = record?.[key];
-          if (path == null) continue;
-          const known = archived.get(String(path));
-          if (known) {
-            recordCopy[key] = known;
-            continue;
-          }
-          const resolved = await resolvePhotoBlob(path, idbGet);
-          if (!resolved) {
-            if (!preserveUnresolvedPhotoPaths) delete recordCopy[key];
-            continue;
-          }
-          const archivePath =
-            inspectionPhotoPath(placeRecord, record, resolved.ext, key) ??
-            buildMonitoringPhotoArchivePath(
-              leakNumber,
-              recordIndex,
-              resolved.ext,
-              key,
-            );
-          await zip.add(archivePath, resolved.blob);
-          recordCopy[key] = `zip:${archivePath}`;
-          archived.set(String(path), `zip:${archivePath}`);
-        }
-        records.push(recordCopy);
-      }
-      copy.monitoringRecords = records;
-    }
-
-    if (Array.isArray(copy.events)) {
-      copy.events = await exportEventPhotos(
-        copy.events,
-        leakNumber,
-        archived,
-        store,
-        preserveUnresolvedPhotoPaths,
-        placeRecord,
-      );
-    }
-
-    exported[index] = copy;
+    exported[index] = isLeakRecord(leak)
+      ? await exportLeakPhotos(leak, plan.leakSegments[index], store, plan)
+      : leak;
   }
-
   return exported;
 }
+
+/** Выгрузка через JSZip: снимки — base64, утечки — в несколько потоков. */
 export async function exportLeaksWithPhotos(
   leaks,
   zip,
   idbGet,
-  {
-    segmentPrefix = "leak",
-    preserveUnresolvedPhotoPaths = false,
-    leakSegments: providedLeakSegments = /** @type {string[]|null} */ (null),
-    monitoringFolderLabel = /** @type {((result: string) => string)|null} */ (
-      null
-    ),
-  } = {},
+  options = /** @type {ExportOptions} */ ({}),
 ) {
-  const exported = new Array(leaks.length);
-  const leakSegments =
-    providedLeakSegments ??
-    allocateUniqueLeakArchiveSegments(leaks, { prefix: segmentPrefix });
-  const placeRecord = monitoringFolderLabel
-    ? planRoundMonitoringFolders(leaks, monitoringFolderLabel).byRecord
-    : null;
-  let cursor = 0;
-
-  async function exportOne(leak, index) {
-    if (!leak || typeof leak !== "object" || Array.isArray(leak)) {
-      exported[index] = leak;
-      return;
-    }
-    const copy = { ...leak };
-    const leakNumber = leakSegments[index];
-
-    const archived = new Map();
-    const store = async (path) => {
-      const resolved = await resolveBase64(path, idbGet);
-      if (!resolved) return null;
-      return {
-        ext: resolved.ext,
-        write: (archivePath) =>
-          zip.file(archivePath, resolved.base64, { base64: true }),
-      };
+  const plan = planExport(leaks, options);
+  const store = async (path) => {
+    const resolved = await resolveBase64(path, idbGet);
+    if (!resolved) return null;
+    return {
+      ext: resolved.ext,
+      write: (archivePath) =>
+        zip.file(archivePath, resolved.base64, { base64: true }),
     };
-    if (placeRecord) {
-      await archiveInspectionPhotos(leak, placeRecord, archived, store);
-    }
+  };
 
-    for (const key of PHOTO_KEYS) {
-      const path = leak[key];
-      if (path == null) continue;
-      const known = archived.get(String(path));
-      if (known) {
-        copy[key] = known;
-        continue;
-      }
-      const resolved = await resolveBase64(path, idbGet);
-      if (!resolved) {
-        if (!preserveUnresolvedPhotoPaths) delete copy[key];
-        continue;
-      }
-
-      const archivePath = buildLeakPhotoArchivePath(
-        leakNumber,
-        key,
-        resolved.ext,
-      );
-      zip.file(archivePath, resolved.base64, { base64: true });
-      copy[key] = `zip:${archivePath}`;
-      archived.set(String(path), `zip:${archivePath}`);
-    }
-
-    if (Array.isArray(copy.monitoringRecords)) {
-      const records = [];
-      for (const [recordIndex, record] of copy.monitoringRecords.entries()) {
-        const recordCopy = { ...record };
-        for (const key of MONITORING_PHOTO_KEYS) {
-          const path = record?.[key];
-          if (path == null) continue;
-          const known = archived.get(String(path));
-          if (known) {
-            recordCopy[key] = known;
-            continue;
-          }
-
-          const resolved = await resolveBase64(path, idbGet);
-          if (!resolved) {
-            if (!preserveUnresolvedPhotoPaths) delete recordCopy[key];
-            continue;
-          }
-
-          const archivePath =
-            inspectionPhotoPath(placeRecord, record, resolved.ext, key) ??
-            buildMonitoringPhotoArchivePath(
-              leakNumber,
-              recordIndex,
-              resolved.ext,
-              key,
-            );
-          zip.file(archivePath, resolved.base64, { base64: true });
-          recordCopy[key] = `zip:${archivePath}`;
-          archived.set(String(path), `zip:${archivePath}`);
-        }
-        records.push(recordCopy);
-      }
-      copy.monitoringRecords = records;
-    }
-
-    if (Array.isArray(copy.events)) {
-      copy.events = await exportEventPhotos(
-        copy.events,
-        leakNumber,
-        archived,
-        store,
-        preserveUnresolvedPhotoPaths,
-        placeRecord,
-      );
-    }
-
-    exported[index] = copy;
-  }
-
+  const exported = new Array(leaks.length);
+  let cursor = 0;
   async function worker() {
     while (cursor < leaks.length) {
       const index = cursor;
@@ -405,13 +141,15 @@ export async function exportLeaksWithPhotos(
       if (index > 0 && index % EXPORT_YIELD_EVERY === 0) {
         await yieldToMainThread();
       }
-      await exportOne(leaks[index], index);
+      const leak = leaks[index];
+      exported[index] = isLeakRecord(leak)
+        ? await exportLeakPhotos(leak, plan.leakSegments[index], store, plan)
+        : leak;
     }
   }
 
   await Promise.all(
     Array.from({ length: Math.min(EXPORT_CONCURRENCY, leaks.length) }, worker),
   );
-
   return exported;
 }
