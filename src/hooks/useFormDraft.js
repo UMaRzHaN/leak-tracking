@@ -2,7 +2,9 @@ import { useCallback } from "react";
 import { logger } from "@/utils/logger";
 
 const LEGACY_DRAFT_KEY = "app:form_draft_v1";
-const TTL = 86_400_000; // 24 часа
+// Неделя, а не сутки: начатую в пятницу на площадке запись дописывают в
+// понедельник, и суточный срок молча выбрасывал её в выходные.
+const TTL = 7 * 86_400_000;
 
 /**
  * У каждой формы свой черновик.
@@ -117,7 +119,22 @@ export function useFormDraft(projectId, kind = "leak") {
         };
 
         if (!key) return;
-        localStorage.setItem(key, JSON.stringify(payload));
+        try {
+          localStorage.setItem(key, JSON.stringify(payload));
+        } catch (error) {
+          // Снимок в черновике — data URL на сотни килобайт, и квота
+          // localStorage кончается на нём, а не на тексте. Без повтора
+          // пропадал весь черновик, вместе с уже набранными полями.
+          if (!photoPayload.photo) throw error;
+          logger.warn(
+            "Draft did not fit with its photo; saving text only:",
+            error,
+          );
+          localStorage.setItem(
+            key,
+            JSON.stringify({ ...payload, form: rest, photoDropped: true }),
+          );
+        }
         if (legacyKey) localStorage.removeItem(legacyKey);
       } catch (e) {
         logger.warn("Draft save failed:", e);

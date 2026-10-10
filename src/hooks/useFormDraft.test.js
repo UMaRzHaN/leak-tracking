@@ -81,7 +81,7 @@ describe("hasDraft", () => {
       JSON.stringify({
         projectId: PROJECT_ID,
         form: { x: 1 },
-        savedAt: Date.now() - 90_000_000,
+        savedAt: Date.now() - 8 * 86_400_000,
       }),
     );
     const { result } = renderDraftHook();
@@ -130,7 +130,7 @@ describe("TTL expiry", () => {
       form: { station: "X" },
       step: 1,
       projectId: PROJECT_ID,
-      savedAt: Date.now() - 90_000_000, // 25 часов назад
+      savedAt: Date.now() - 8 * 86_400_000, // 8 дней назад
     });
     localStorage.setItem(DRAFT_KEY, expired);
 
@@ -144,7 +144,7 @@ describe("TTL expiry", () => {
       form: { station: "Y" },
       step: 3,
       projectId: PROJECT_ID,
-      savedAt: Date.now() - 60_000, // 1 минута назад
+      savedAt: Date.now() - 3 * 86_400_000, // 3 дня назад
     });
     localStorage.setItem(DRAFT_KEY, fresh);
 
@@ -152,6 +152,34 @@ describe("TTL expiry", () => {
     const draft = result.current.loadDraft();
     expect(draft).not.toBeNull();
     expect(draft.form.station).toBe("Y");
+  });
+});
+
+describe("storage quota", () => {
+  it("keeps the typed fields when the photo does not fit", () => {
+    const { result } = renderDraftHook();
+    const setItem = Storage.prototype.setItem;
+    const spy = vi
+      .spyOn(Storage.prototype, "setItem")
+      .mockImplementation(function (key, value) {
+        if (String(value).includes("data:image/")) {
+          throw new DOMException("quota", "QuotaExceededError");
+        }
+        return setItem.call(this, key, value);
+      });
+
+    act(() => {
+      result.current.saveDraft(
+        { station: "Q", photo: { src: "data:image/jpeg;base64,big" } },
+        2,
+      );
+    });
+    spy.mockRestore();
+
+    const draft = result.current.loadDraft();
+    expect(draft.form.station).toBe("Q");
+    expect(draft.form.photo).toBeUndefined();
+    expect(draft.step).toBe(2);
   });
 });
 
@@ -224,7 +252,7 @@ describe("legacy draft migration", () => {
       "app:form_draft_v1",
       JSON.stringify({
         form: { station: "old" },
-        savedAt: Date.now() - 90_000_000,
+        savedAt: Date.now() - 8 * 86_400_000,
       }),
     );
     const { result } = renderDraftHook();
