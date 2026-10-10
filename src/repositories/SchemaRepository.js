@@ -71,8 +71,12 @@ function whenReady(timeoutMs = 5_000) {
   });
 }
 
-const indexKey = (projectId) => `${projectId}:index`;
-const fileKey = (projectId, schemaId) => `${projectId}:file:${schemaId}`;
+// Всё, что проект держит в этом сторе, лежит под его префиксом: по нему
+// проект и удаляется целиком.
+const projectKeyPrefix = (projectId) => `${projectId}:`;
+const indexKey = (projectId) => `${projectKeyPrefix(projectId)}index`;
+const fileKey = (projectId, schemaId) =>
+  `${projectKeyPrefix(projectId)}file:${schemaId}`;
 
 function unwrapIndex(raw) {
   if (Array.isArray(raw)) return raw;
@@ -277,6 +281,11 @@ export const SchemaRepository = {
    * browser they sit in a store of their own, keyed by project id, and used to
    * outlive the project that owned them — a new project taking the same id
    * would inherit drawings nobody put there.
+   *
+   * Удаляется всё под ключом проекта, а не то, что перечислено в живом
+   * индексе. По индексу уходили только живые чертежи: байты сирот — файла,
+   * записанного без индекса из-за оборвавшегося сохранения, или удалённого,
+   * когда стирание файла не удалось, — не удалялись никогда.
    */
   async removeProjectSchemas(project) {
     if (!project?.id) return false;
@@ -284,12 +293,15 @@ export const SchemaRepository = {
 
     try {
       await assertReady();
-      const schemas = await this.listSchemas(project);
-      for (const schema of schemas) {
-        await store.remove(fileKey(project.id, schema.id));
+      const prefix = projectKeyPrefix(project.id);
+      const keys = (await store.listKeysStrict()).filter(
+        (key) => typeof key === "string" && key.startsWith(prefix),
+      );
+      let removedAll = true;
+      for (const key of keys) {
+        if (!(await store.remove(key))) removedAll = false;
       }
-      await store.remove(indexKey(project.id));
-      return true;
+      return removedAll;
     } catch (error) {
       logger.warn("[schemas] failed to delete the project drawings:", error);
       return false;
