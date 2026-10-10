@@ -80,6 +80,13 @@ export function ComponentRegistryProvider({ children }) {
   // Мутации читают этот список, а не состояние: запись, начатая до
   // ре-рендера, должна строиться на том, из чего её посчитали.
   const latestRef = useRef(EMPTY);
+  // Прочитан ли `latestRef` из хранилища. Пока нет — пустой список в нём
+  // означает «не знаем», а не «карточек нет», и строить на нём запись нельзя:
+  // одна новая карточка заменила бы собой весь обход.
+  const loadedRef = useRef(false);
+  // Сколько записей прошло. Чтение, начатое до записи, приносит список без
+  // неё и не должно затирать собой записанное.
+  const writeCountRef = useRef(0);
   // Номер поколения: ответ по прежнему проекту не должен подменить нынешний
   // список, а запись, начатая до переключения, — вернуть его на экран.
   const generationRef = useRef(0);
@@ -99,6 +106,7 @@ export function ComponentRegistryProvider({ children }) {
 
     generationRef.current += 1;
     latestRef.current = EMPTY;
+    loadedRef.current = false;
     writeQueueRef.current = Promise.resolve(EMPTY);
     setStored(EMPTY);
     setError(null);
@@ -118,6 +126,7 @@ export function ComponentRegistryProvider({ children }) {
     if (!enabled || !requested) return undefined;
 
     const generation = ++generationRef.current;
+    const writesBefore = writeCountRef.current;
     let cancelled = false;
     setError(null);
 
@@ -125,12 +134,15 @@ export function ComponentRegistryProvider({ children }) {
       .then((repository) => repository.load(project))
       .then((loaded) => {
         if (cancelled || generation !== generationRef.current) return;
+        if (writesBefore !== writeCountRef.current) return;
         latestRef.current = loaded;
+        loadedRef.current = true;
         setStored(loaded);
       })
       .catch((loadError) => {
         if (cancelled || generation !== generationRef.current) return;
         logger.error("[components] registry load failed:", loadError);
+        loadedRef.current = false;
         setError(loadError);
       })
       .finally(() => {
@@ -158,7 +170,17 @@ export function ComponentRegistryProvider({ children }) {
       const generation = generationRef.current;
       const run = writeQueueRef.current.then(async () => {
         const repository = await loadRepository();
-        const previous = latestRef.current;
+        // Не прочитанный — или не прочитавшийся — реестр читается здесь же.
+        // Отказ чтения становится отказом записи: лучше не сохранить карточку,
+        // чем сохранить её вместо всех остальных.
+        let previous = latestRef.current;
+        if (!loadedRef.current) {
+          previous = await repository.load(project);
+          if (generation === generationRef.current) {
+            latestRef.current = previous;
+            loadedRef.current = true;
+          }
+        }
         const written = await repository.save(project, recompute(previous), {
           numericKeys,
           // Что, по мнению приложения, уже лежит в хранилище. С этим одна
@@ -169,7 +191,9 @@ export function ComponentRegistryProvider({ children }) {
         // Проект успели переключить: записать в прежний было правильно, а
         // показать записанное — уже нет.
         if (generation !== generationRef.current) return written;
+        writeCountRef.current += 1;
         latestRef.current = written;
+        setError(null);
         setStored(written);
         return written;
       });
