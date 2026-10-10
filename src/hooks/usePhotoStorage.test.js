@@ -24,6 +24,10 @@ const mockIdbSave = vi.fn();
 const mockIdbDelete = vi.fn();
 const mockIdbGet = vi.fn();
 const mockListKeys = vi.fn();
+// Фоновая уборка не трогает свежие снимки; по умолчанию все они давние.
+const mockListSavedAt = vi.fn(
+  async () => new Map((await mockListKeys()).map((key) => [key, 1_000])),
+);
 const mockGetState = vi.fn();
 const mockCompressImage = vi.hoisted(() => vi.fn(async (blob) => blob));
 
@@ -37,6 +41,11 @@ vi.mock("../repositories/idb", () => ({
     get: mockIdbGet,
     listKeys: mockListKeys,
   },
+}));
+
+vi.mock("../repositories/photoGc", async (importOriginal) => ({
+  ...(await importOriginal()),
+  listWebPhotoSavedAt: mockListSavedAt,
 }));
 
 vi.mock("../app/project/ProjectContext", () => ({
@@ -65,6 +74,9 @@ const makeBlob = (type = "image/jpeg") => new Blob(["data"], { type });
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetState.mockReturnValue({ ready: true });
+  mockListSavedAt.mockImplementation(
+    async () => new Map((await mockListKeys()).map((key) => [key, 1_000])),
+  );
   mockIdbSave.mockResolvedValue(true);
   mockIdbDelete.mockResolvedValue(undefined);
   mockIdbGet.mockResolvedValue(null);
@@ -247,6 +259,27 @@ describe("gcOrphanedPhotos (web path)", () => {
       await result.current.gcOrphanedPhotos(leaks);
     });
     expect(mockIdbDelete).not.toHaveBeenCalled();
+  });
+
+  // Снимок пишется раньше карточки, которая на него сошлётся. Уборка, попавшая
+  // между этими шагами, видит файл без ссылки — и не должна его трогать.
+  it("keeps an unreferenced photo saved moments ago", async () => {
+    mockListKeys.mockResolvedValue([
+      "photo_proj-1_fresh_999",
+      "photo_proj-1_orphan_333",
+    ]);
+    mockListSavedAt.mockResolvedValueOnce(
+      new Map([
+        ["photo_proj-1_fresh_999", Date.now() - 1_000],
+        ["photo_proj-1_orphan_333", 1_000],
+      ]),
+    );
+    const { result } = renderHook(() => usePhotoStorage());
+    await act(async () => {
+      await result.current.gcOrphanedPhotos([]);
+    });
+    expect(mockIdbDelete).toHaveBeenCalledWith("photo_proj-1_orphan_333");
+    expect(mockIdbDelete).not.toHaveBeenCalledWith("photo_proj-1_fresh_999");
   });
 
   it("deletes all keys when leaks list is empty", async () => {

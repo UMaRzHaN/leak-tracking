@@ -309,6 +309,32 @@ describe("PhotoRepository on Android", () => {
     expect(mocks.deleteFile).not.toHaveBeenCalled();
   });
 
+  // Снимок записан, карточка с ссылкой на него — ещё нет. Фоновая уборка,
+  // попавшая в это окно, видит файл без владельца и обязана его оставить.
+  it("с заданным сроком оставляет свежий файл без ссылки", async () => {
+    const now = 10 * 60 * 60 * 1000;
+    const folder = "LeakReports/native_fresh/photos";
+    mocks.readdir.mockResolvedValue({
+      files: [
+        { name: "fresh.jpg", mtime: now - 1_000 },
+        { name: "unknown.jpg" },
+        { name: "orphan.jpg", mtime: now - 2 * 60 * 60 * 1000 },
+      ],
+    });
+
+    await PhotoRepository.gcOrphaned(() => [], {
+      folderName: "native_fresh",
+      minAgeMs: 60 * 60 * 1000,
+      now,
+    });
+
+    expect(mocks.deleteFile).toHaveBeenCalledOnce();
+    expect(mocks.deleteFile).toHaveBeenCalledWith({
+      directory: "DATA",
+      path: `${folder}/orphan.jpg`,
+    });
+  });
+
   it("не убирает ничего, когда о владельцах не смогли ответить", async () => {
     mocks.readdir.mockResolvedValue({ files: [{ name: "orphan.jpg" }] });
 
