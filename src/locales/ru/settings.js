@@ -306,6 +306,8 @@ export const settings = {
   inventoryImportEmpty: "В файле не нашлось компонентов для импорта.",
   inventoryImported:
     "Инвентаризация: добавлено {{v1}}, обновлено {{v2}}, совпавших номеров {{v3}}.",
+  inventoryImportedRemovedAndSchemas:
+    "Инвентаризация: удалено карточек {{v1}}, восстановлено чертежей {{v2}}.",
   inventoryRowsShadowed:
     "Строк не влилось: {{v1}} — такие номера уже заведены на устройстве, карточка с площадки важнее строки таблицы.",
   inventoryImportedIntoNewProject:

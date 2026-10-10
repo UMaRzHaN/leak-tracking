@@ -132,6 +132,35 @@ describe("importing an inventory", () => {
     expect(mocks.save).not.toHaveBeenCalled();
   });
 
+  it("восстанавливает чертежи, даже когда карточки не изменились", async () => {
+    // Архив, где поправили только чертёж, приходил без него: схемы
+    // восстанавливались лишь вслед за изменёнными карточками.
+    mocks.restoreSchemas.mockResolvedValue({ restored: 1, skipped: 0 });
+
+    const result = await importInventoryFile(new File([""], "a.zip"), project, {
+      excel,
+    });
+
+    expect(mocks.restoreSchemas).toHaveBeenCalled();
+    expect(result).toMatchObject({ source: "archive", schemas: 1 });
+  });
+
+  it("принимает архив, который привёз только удаления", async () => {
+    mocks.restoreComponents.mockResolvedValue({
+      added: 0,
+      updated: 0,
+      removed: 2,
+      conflicts: 0,
+    });
+
+    const result = await importInventoryFile(new File([""], "a.zip"), project, {
+      excel,
+    });
+
+    expect(result).toMatchObject({ source: "archive", removed: 2 });
+    expect(mocks.restoreSchemas).toHaveBeenCalled();
+  });
+
   it("falls back to the sheet when no archive cards are present", async () => {
     const file = await sheetFile([[1, "4242", "ЗД32"]]);
 

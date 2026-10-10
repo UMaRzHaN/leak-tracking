@@ -308,6 +308,8 @@ export const settings = {
   inventoryImportEmpty: "No components to import were found in the file.",
   inventoryImported:
     "Inventory: {{v1}} added, {{v2}} updated, {{v3}} number(s) colliding.",
+  inventoryImportedRemovedAndSchemas:
+    "Inventory: {{v1}} card(s) removed, {{v2}} drawing(s) restored.",
   inventoryRowsShadowed:
     "{{v1}} row(s) were not merged — those numbers already exist on the device, and a card written on site outweighs a spreadsheet row.",
   inventoryImportedIntoNewProject:

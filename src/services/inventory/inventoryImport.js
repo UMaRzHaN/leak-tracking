@@ -109,7 +109,7 @@ export function separateSheetCards(local, incoming) {
  * @param {File|Blob} file
  * @param {{id: string, folderName?: string}} project
  * @param {{excel: {headers: string[], keysOrder: string[]}}} registry the project's registry declaration
- * @returns {Promise<{added: number, updated: number, conflicts: number, shadowed: number, skipped: number, source: "archive"|"sheet"|"none", schemas: number}>}
+ * @returns {Promise<{added: number, updated: number, removed?: number, conflicts: number, shadowed: number, skipped: number, source: "archive"|"sheet"|"none", schemas: number}>}
  */
 /**
  * `ComponentRepository` тянет за собой мост Capacitor и нативное хранилище
@@ -140,16 +140,26 @@ export async function importInventoryFile(file, project, registry) {
   const archive =
     (await restoreComponentsFromWorkbook(file, project, registry)) ??
     (await restoreComponentsFromArchive(file, project));
-  if (archive.added || archive.updated || archive.conflicts) {
-    // Drawings ride in the same archive and are cheap to miss: the registry
-    // screen shows both, and an inventory handed over without its schemes is
-    // half a handover.
-    let schemas = 0;
-    try {
-      schemas = (await restoreSchemasFromArchive(file, project)).restored;
-    } catch (error) {
-      logger.warn("[inventory] drawings not restored from the archive:", error);
-    }
+  // Drawings ride in the same archive and are cheap to miss: the registry
+  // screen shows both, and an inventory handed over without its schemes is
+  // half a handover. Они восстанавливаются сами по себе, а не только когда
+  // изменились карточки: архив, где поправили один чертёж или удалили
+  // чертёж, не трогая реестра, иначе приходил без чертежей.
+  let schemas = 0;
+  try {
+    schemas = (await restoreSchemasFromArchive(file, project)).restored;
+  } catch (error) {
+    logger.warn("[inventory] drawings not restored from the archive:", error);
+  }
+  // Удаление — тоже изменение: архив, который привёз только надгробия, —
+  // это архив, а не повод читать видимый лист поверх него.
+  if (
+    archive.added ||
+    archive.updated ||
+    archive.removed ||
+    archive.conflicts ||
+    schemas
+  ) {
     return { ...nothing, ...archive, source: "archive", schemas };
   }
 
@@ -157,7 +167,7 @@ export async function importInventoryFile(file, project, registry) {
     file,
     registry.excel,
   );
-  if (components.length === 0) return { ...nothing, skipped };
+  if (components.length === 0) return { ...nothing, skipped, schemas };
 
   const local = await (await componentRepository()).load(project);
   // Строки листа сличаются с карточками. Надгробие номера не занимает, и
@@ -193,6 +203,6 @@ export async function importInventoryFile(file, project, registry) {
     shadowed: shadowed.length,
     skipped,
     source: "sheet",
-    schemas: 0,
+    schemas,
   };
 }
