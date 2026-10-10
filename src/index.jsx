@@ -2,6 +2,10 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "@/app/App";
 import { ProjectProvider } from "@/app/project/ProjectContext";
+import {
+  loadProjects,
+  validateStoredProjects,
+} from "@/app/project/projectStorage";
 import { ComponentRegistryProvider } from "@/features/componentRegistry/ComponentRegistryContext";
 import { LeakFormProvider } from "@/features/leakForm/LeakFormContext";
 import ErrorBoundary from "@/components/ui/ErrorBoundary/ErrorBoundary";
@@ -34,6 +38,15 @@ async function bootstrap() {
       await import("../performance/importPerformanceHarness");
     installImportPerformanceHarness();
   }
+
+  // До первого рендера: провайдер проектов читает список синхронно, и
+  // потерянный список должен вернуться раньше, чем приложение решит, что
+  // проектов нет.
+  await import("@/app/project/projectListMirror")
+    .then(({ recoverMissingProjectList }) =>
+      recoverMissingProjectList({ loadProjects, validateStoredProjects }),
+    )
+    .catch(ignoredError("bootstrap.recoverProjectList"));
 
   const root = ReactDOM.createRoot(document.getElementById("root"));
   root.render(
