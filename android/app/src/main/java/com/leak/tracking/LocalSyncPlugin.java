@@ -34,7 +34,6 @@ import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.math.BigInteger;
 import java.security.KeyPairGenerator;
@@ -587,11 +586,13 @@ public class LocalSyncPlugin extends Plugin {
     }
 
     private void acceptClient(ServerSocket activeServer) {
+        AcceptFailureStreak failures = new AcceptFailureStreak();
         try {
             while (!activeServer.isClosed()) {
                 Socket socket = null;
                 try {
                     socket = activeServer.accept();
+                    failures.success();
                     String peerKey = peerKey(socket);
                     if (!connectionGuard.tryAcquire(peerKey)) {
                         closeSocket(socket);
@@ -610,10 +611,12 @@ public class LocalSyncPlugin extends Plugin {
                         closeSocket(acceptedSocket);
                         notifySyncError(new Exception("Local sync service is busy", error));
                     }
-                } catch (SocketException error) {
-                    if (!activeServer.isClosed()) notifySyncError(error);
                 } catch (Exception error) {
-                    if (!activeServer.isClosed()) notifySyncError(error);
+                    if (activeServer.isClosed()) continue;
+                    notifySyncError(error);
+                    // Выход из цикла закрывает сеанс в finally ниже — с
+                    // причиной error, как любой обрыв приёма.
+                    if (failures.failure()) break;
                 } finally {
                     closeSocket(socket);
                 }
