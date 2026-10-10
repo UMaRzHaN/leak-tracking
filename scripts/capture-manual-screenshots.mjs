@@ -11,6 +11,7 @@
  */
 import { chromium } from "@playwright/test";
 import fs from "node:fs/promises";
+import { createStepRunner, openTab } from "./manual-capture-steps.mjs";
 import path from "node:path";
 import { encodePngFilesToWebp } from "./image-encoder.mjs";
 import { MANUAL_CAPTURE_TIME, freezeClock } from "./manual-capture-time.mjs";
@@ -25,6 +26,7 @@ const SEED = path.resolve("scripts/seed100leaks.js");
 
 const done = [];
 const failed = [];
+const step = createStepRunner(failed);
 
 async function main() {
   await fs.mkdir(OUT_DIR, { recursive: true });
@@ -91,23 +93,6 @@ async function resetToHome(page) {
   await page.waitForTimeout(600);
 }
 
-/**
- * Вкладка нижней навигации — по названию, а не по номеру.
- *
- * Номера съехали, как только у Upstream появился «Реестр»: он встал между
- * «Мониторингом» и «Картой», и `nth(4)` начал открывать реестр вместо карты.
- * Название переживёт и следующую вкладку.
- */
-async function openTab(page, name) {
-  await page
-    .getByRole("contentinfo")
-    .getByRole("button", {
-      name: name instanceof RegExp ? name : new RegExp(name),
-    })
-    .first()
-    .click();
-}
-
 // PNG с экрана весит впятеро больше того же кадра в WebP, а руководство
 // переснимают целиком: раз в несколько месяцев это два десятка мегабайт,
 // которые остаются в истории навсегда. Кодировщик — тот же Chromium, что
@@ -130,15 +115,6 @@ async function shot(page, name, options = {}) {
   await page.screenshot({ path: path.join(OUT_DIR, `${name}.png`) });
   done.push(name);
   console.log("  ✓", name);
-}
-
-async function step(name, fn) {
-  try {
-    await fn();
-  } catch (error) {
-    failed.push(`${name}: ${error.message.split("\n")[0]}`);
-    console.log("  ✗", name, "—", error.message.split("\n")[0]);
-  }
 }
 
 // --- 1. Стартовый экран и создание проекта -------------------------------
