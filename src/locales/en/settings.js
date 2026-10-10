@@ -223,6 +223,17 @@ export const settings = {
   importExcelLoading: "Import...",
   backupHint:
     "Export ZIP creates a complete project backup. Import accepts any of the three — a ZIP backup, an XLSX or Excel ZIP archive, an inventory archive — and works out on its own what the file is and where it belongs.",
+  backupStatus: {
+    never: "This project has never been backed up.",
+    last: "Last backup: {{date}}.",
+    overdue:
+      "Project data has existed only on this device for {{days}} days. Export a ZIP and move the file off the phone.",
+  },
+  storagePersistence: {
+    persisted: "The browser will not delete project data without your consent.",
+    notPersisted:
+      "The browser may delete this site's data when space runs low or after a long break. Install the app to the home screen and export a ZIP regularly.",
+  },
   importFile: "Import",
   importUnknownFile:
     'Could not tell what "{{v1}}" is. Expected an XLSX, a ZIP backup or an inventory archive.',
