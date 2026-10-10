@@ -1,3 +1,4 @@
+import { Blob as NodeBlob } from "node:buffer";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const cache = {
@@ -119,7 +120,10 @@ describe("map tile boundaries", () => {
       vi.fn((url) =>
         Promise.resolve({
           ok: url !== "failed",
-          blob: vi.fn(async () => new Blob(["tile"])),
+          // Тайл кладётся в кэш через `new Response(blob)`, а Response здесь
+          // из Node: на Node 22 он не принимает Blob из jsdom (нет `stream`),
+          // и тест падал только в CI. В WebView Blob и Response из одного мира.
+          blob: vi.fn(async () => new NodeBlob(["tile"])),
         }),
       ),
     );
