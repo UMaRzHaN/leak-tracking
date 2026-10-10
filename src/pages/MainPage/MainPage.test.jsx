@@ -11,6 +11,9 @@ vi.mock("@/app/hooks/useLanguage", () => ({
       `${key}${options?.count == null ? "" : `:${options.count}`}`,
   }),
 }));
+vi.mock("@/app/components/BackupReminderBanner", () => ({
+  default: () => null,
+}));
 vi.mock("./components/StatCard", () => ({
   default: ({ label, onClick }) => <button onClick={onClick}>{label}</button>,
 }));

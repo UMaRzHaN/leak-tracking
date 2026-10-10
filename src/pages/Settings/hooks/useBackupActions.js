@@ -3,6 +3,8 @@ import { useCallback, useRef, useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { LeakRepository } from "@/repositories/LeakRepository";
 import { isNative } from "@/utils/platform";
+import { markProjectBackedUp } from "@/services/storage/backupReminder";
+import { pluralRecords } from "@/utils/pluralRecords";
 import {
   LEAK_BACKUP_DIR,
   projectExportFolder,
@@ -18,15 +20,6 @@ function detectTypeFromFileName(str) {
   if (lower.includes("midstream")) return "midstream";
   if (lower.includes("upstream")) return "upstream";
   return null;
-}
-
-function pluralRecords(count, lang) {
-  if (lang !== "ru") return count === 1 ? "record" : "records";
-  if (count % 10 === 1 && count % 100 !== 11) return "запись";
-  if ([2, 3, 4].includes(count % 10) && ![12, 13, 14].includes(count % 100)) {
-    return "записи";
-  }
-  return "записей";
 }
 
 /** Есть ли в реестре компонентов хоть что-то, ради чего стоит собрать архив. */
@@ -185,6 +178,7 @@ export function useBackupActions({
           }),
         );
       }
+      markProjectBackedUp(activeProject?.id);
     } catch (error) {
       notify("error", `${t("settings.exportError")}: ${errorText(error, t)}`);
     } finally {

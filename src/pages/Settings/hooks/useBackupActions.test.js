@@ -1,5 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { readLastBackupAt } from "@/services/storage/backupReminder";
 import { translate } from "@/test/translate";
 
 // Resolves against the real English locale, so these assertions fail if the
@@ -52,6 +53,7 @@ const { useBackupActions } = await import("./useBackupActions");
 
 describe("useBackupActions", () => {
   beforeEach(() => {
+    localStorage.clear();
     vi.clearAllMocks();
     platformState.isNative = false;
     nativeWriter.writePublicFileStream.mockImplementation(({ produce }) =>
@@ -280,6 +282,8 @@ describe("useBackupActions", () => {
       "success",
       "ZIP saved to Documents/active/Leaks/zip_backup/",
     );
+    // Выгрузка снимает напоминание о бэкапе.
+    expect(readLastBackupAt("active-1")).toEqual(expect.any(Number));
   });
   it("warns instead of building an empty backup", async () => {
     const notify = vi.fn();
@@ -324,6 +328,8 @@ describe("useBackupActions", () => {
 
     expect(notify).toHaveBeenCalledWith("error", "Export error: disk full");
     expect(result.current.isExportingZip).toBe(false);
+    // Неудавшаяся выгрузка — не бэкап.
+    expect(readLastBackupAt("active-1")).toBeNull();
   });
 
   it("rejects an archive whose project type cannot be determined", async () => {

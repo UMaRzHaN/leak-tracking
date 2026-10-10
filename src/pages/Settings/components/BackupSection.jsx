@@ -1,7 +1,10 @@
 import s from "../Settings.module.scss";
+import BackupStatus from "./BackupStatus";
+import StoragePersistenceStatus from "./StoragePersistenceStatus";
 
 export default function BackupSection({
   activeProject,
+  hasData = false,
   importRef,
   isExporting = false,
   isImportingExcel = false,
@@ -40,6 +43,11 @@ export default function BackupSection({
               : localeTexts.importFile}
           </button>
         </div>
+        {/* Пока идёт выгрузка, дата ещё прежняя — показывать её рано. */}
+        {!isExporting && (
+          <BackupStatus projectId={activeProject.id} hasData={hasData} />
+        )}
+        <StoragePersistenceStatus />
         <p className={s.backupHint}>{localeTexts.backupHint}</p>
       </div>
 

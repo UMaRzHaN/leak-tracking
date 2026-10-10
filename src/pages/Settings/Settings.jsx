@@ -180,6 +180,7 @@ export default function Settings(props) {
 
         <BackupSection
           activeProject={activeProject}
+          hasData={data.length > 0}
           importRef={importZipRef}
           isExporting={isExportingZip}
           isImportingExcel={isImportingExcel}

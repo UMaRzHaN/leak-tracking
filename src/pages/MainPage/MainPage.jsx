@@ -7,6 +7,7 @@ import LeakCardCompact from "@/features/leakList/LeakCardCompact/LeakCardCompact
 import Notification from "@/components/ui/Notification/Notification";
 import { STATUS, STATUS_META, getStatusMeta } from "@/utils/status";
 import { useLanguage } from "@/app/hooks/useLanguage";
+import BackupReminderBanner from "@/app/components/BackupReminderBanner";
 import s from "./MainPage.module.scss";
 
 const LeakDetailsSheet = lazy(
@@ -86,6 +87,10 @@ export default function MainPage({
 
   return (
     <div className={s.page}>
+      <BackupReminderBanner
+        hasData={data.length > 0}
+        onOpen={() => setPage("settings")}
+      />
       <Notification
         notification={notification}
         onClose={() => setNotification(null)}

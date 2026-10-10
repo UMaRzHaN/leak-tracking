@@ -9,6 +9,14 @@ export const app = {
     retry: "Retry mirror",
   },
 
+  backupReminder: {
+    title: "Time for a backup",
+    description:
+      "Project data has existed only on this device for {{days}} days. Losing or resetting the phone would take it along.",
+    open: "Back up now",
+    later: "Later",
+  },
+
   loadError: {
     title: "Data could not be read",
     description:
