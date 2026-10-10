@@ -6,7 +6,9 @@ import { STATUS_ORDER, getStatusMeta } from "@/utils/status";
 import s from "@/pages/MapPage/MapPage.module.scss";
 import { FICTION_FILTER, MONITORING_FILTER } from "@/domain/leakFilters";
 import ComponentStatusFilter from "./ComponentStatusFilter";
+import ControlIcon from "./ControlIcon";
 import FilterIcon from "./FilterIcon";
+import LeakMetaFilter from "./LeakMetaFilter";
 
 const FILTER_MENU = {
   COMPONENT_STATUS: "componentStatus",
@@ -50,10 +52,6 @@ export default function MapControls({
   const [openFilterMenu, setOpenFilterMenu] = useState(
     /** @type {string|null} */ (null),
   );
-  const statusSet = new Set(statusFilters);
-  const statusActive = statusFilters.length > 0;
-  const prioritySet = new Set(priorityFilters);
-  const priorityActive = priorityFilters.length > 0;
   const isComponentStatusOpen = openFilterMenu === FILTER_MENU.COMPONENT_STATUS;
   const isStatusOpen = openFilterMenu === FILTER_MENU.STATUS;
   const isPriorityOpen = openFilterMenu === FILTER_MENU.PRIORITY;
@@ -128,21 +126,13 @@ export default function MapControls({
           disabled={!gpsEnabled}
           aria-label={t("map.controls.myLocation")}
         >
-          <svg
-            className={s.controlIcon}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
+          <ControlIcon>
             <circle cx="12" cy="12" r="3" />
             <line x1="12" y1="2" x2="12" y2="6" />
             <line x1="12" y1="18" x2="12" y2="22" />
             <line x1="2" y1="12" x2="6" y2="12" />
             <line x1="18" y1="12" x2="22" y2="12" />
-          </svg>
+          </ControlIcon>
         </button>
 
         <button
@@ -151,18 +141,10 @@ export default function MapControls({
           onClick={onOpenSheet}
           aria-label={t("map.controls.searchLeaks")}
         >
-          <svg
-            className={s.controlIcon}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
+          <ControlIcon>
             <circle cx="11" cy="11" r="7" />
             <line x1="16.5" y1="16.5" x2="22" y2="22" />
-          </svg>
+          </ControlIcon>
         </button>
 
         {!showsComponents && (
@@ -176,18 +158,10 @@ export default function MapControls({
               aria-expanded={isMonitoringOpen}
               aria-label={t("map.monitoringFilter")}
             >
-              <svg
-                className={s.controlIcon}
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
+              <ControlIcon>
                 <circle cx="12" cy="12" r="8" />
                 <path d="m8.5 12 2.2 2.2 4.8-5" />
-              </svg>
+              </ControlIcon>
             </button>
             <div
               className={`${s.filterFlyout} ${
@@ -226,71 +200,26 @@ export default function MapControls({
         onClick={onToggleHeatmap}
         aria-label={t("map.heatmap")}
       >
-        <svg
-          className={s.controlIcon}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
+        <ControlIcon>
           <path d="M12 21a7 7 0 0 0 7-7c0-4-4-7-7-11-3 4-7 7-7 11a7 7 0 0 0 7 7z" />
           <path d="M12 17a3 3 0 0 0 3-3c0-1.7-1.6-3.1-3-5-1.4 1.9-3 3.3-3 5a3 3 0 0 0 3 3z" />
-        </svg>
+        </ControlIcon>
       </button>
 
       */}
 
         {!showsComponents && (
-          <div className={s.filterControlWrap}>
-            <button
-              type="button"
-              className={`${s.controlBtn} ${statusActive ? s.controlBtnActive : ""}`}
-              onClick={() => toggleFilterMenu(FILTER_MENU.STATUS)}
-              aria-expanded={isStatusOpen}
-              aria-label={t("map.statusFilter")}
-            >
-              <FilterIcon />
-            </button>
-            <div
-              className={`${s.filterFlyout} ${isStatusOpen ? s.filterFlyoutOpen : ""}`}
-            >
-              <button
-                type="button"
-                className={s.filterOptionBtn}
-                onClick={onStatusClear}
-              >
-                {t("map.all")}
-              </button>
-              {STATUS_ORDER.map((status) => {
-                const meta = getStatusMeta(status, t);
-                const isActive = statusSet.has(status);
-
-                return (
-                  <button
-                    key={status}
-                    type="button"
-                    className={`${s.filterOptionBtn} ${
-                      isActive ? s.filterOptionBtnActive : ""
-                    }`}
-                    style={
-                      isActive
-                        ? {
-                            borderColor: meta.border,
-                            color: meta.color,
-                            background: meta.bg,
-                          }
-                        : undefined
-                    }
-                    onClick={() => onStatusToggle(status)}
-                  >
-                    {meta.short}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          <LeakMetaFilter
+            label={t("map.statusFilter")}
+            icon={<FilterIcon />}
+            order={STATUS_ORDER}
+            getMeta={getStatusMeta}
+            selected={statusFilters}
+            open={isStatusOpen}
+            onToggleMenu={() => toggleFilterMenu(FILTER_MENU.STATUS)}
+            onToggle={onStatusToggle}
+            onClear={onStatusClear}
+          />
         )}
 
         {/*
@@ -305,66 +234,23 @@ export default function MapControls({
         />
 
         {!showsComponents && (
-          <div className={s.filterControlWrap}>
-            <button
-              type="button"
-              className={`${s.controlBtn} ${priorityActive ? s.controlBtnActive : ""}`}
-              onClick={() => toggleFilterMenu(FILTER_MENU.PRIORITY)}
-              aria-expanded={isPriorityOpen}
-              aria-label={t("map.priorityFilter")}
-            >
-              <svg
-                className={s.controlIcon}
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
+          <LeakMetaFilter
+            label={t("map.priorityFilter")}
+            icon={
+              <ControlIcon>
                 <path d="M3 5h18" />
                 <path d="M7 12h10" />
                 <path d="M10 19h4" />
-              </svg>
-            </button>
-            <div
-              className={`${s.filterFlyout} ${isPriorityOpen ? s.filterFlyoutOpen : ""}`}
-            >
-              <button
-                type="button"
-                className={s.filterOptionBtn}
-                onClick={onPriorityClear}
-              >
-                {t("map.all")}
-              </button>
-              {PRIORITY_ORDER.map((priority) => {
-                const meta = getPriorityMeta(priority, t);
-                const isActive = prioritySet.has(priority);
-
-                return (
-                  <button
-                    key={priority}
-                    type="button"
-                    className={`${s.filterOptionBtn} ${
-                      isActive ? s.filterOptionBtnActive : ""
-                    }`}
-                    style={
-                      isActive
-                        ? {
-                            borderColor: meta.border,
-                            color: meta.color,
-                            background: meta.bg,
-                          }
-                        : undefined
-                    }
-                    onClick={() => onPriorityToggle(priority)}
-                  >
-                    {meta.short}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+              </ControlIcon>
+            }
+            order={PRIORITY_ORDER}
+            getMeta={getPriorityMeta}
+            selected={priorityFilters}
+            open={isPriorityOpen}
+            onToggleMenu={() => toggleFilterMenu(FILTER_MENU.PRIORITY)}
+            onToggle={onPriorityToggle}
+            onClear={onPriorityClear}
+          />
         )}
 
         {!showsComponents && onFictionChange && (
@@ -378,18 +264,10 @@ export default function MapControls({
             >
               {/* Пунктирный круг с косой чертой — как пунктирная рамка фикции
                   на карточке: «тут ничего нет». */}
-              <svg
-                className={s.controlIcon}
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
+              <ControlIcon>
                 <circle cx="12" cy="12" r="8" strokeDasharray="3 3" />
                 <path d="M7 17 17 7" />
-              </svg>
+              </ControlIcon>
             </button>
             <div
               className={`${s.filterFlyout} ${isFictionOpen ? s.filterFlyoutOpen : ""}`}
@@ -437,18 +315,10 @@ export default function MapControls({
               aria-expanded={isNearbyOpen}
               aria-label={t("map.nearbyLeaks")}
             >
-              <svg
-                className={s.controlIcon}
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
+              <ControlIcon>
                 <path d="M12 21s7-4.35 7-11a7 7 0 0 0-14 0c0 6.65 7 11 7 11z" />
                 <circle cx="12" cy="10" r="2" />
-              </svg>
+              </ControlIcon>
             </button>
             <div
               className={`${s.filterFlyout} ${isNearbyOpen ? s.filterFlyoutOpen : ""}`}
@@ -488,15 +358,7 @@ export default function MapControls({
               : t("map.controls.downloadArea")
           }
         >
-          <svg
-            className={s.controlIcon}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
+          <ControlIcon>
             {downloading ? (
               <path d="M7 7h10v10H7z" />
             ) : (
@@ -505,7 +367,7 @@ export default function MapControls({
                 <path d="M3 19h18" />
               </>
             )}
-          </svg>
+          </ControlIcon>
         </button>
       </div>
     </>

@@ -1,4 +1,4 @@
-import s from "@/pages/MapPage/MapPage.module.scss";
+import ControlIcon from "./ControlIcon";
 
 /**
  * Значок кнопки отбора: список со строками разной длины.
@@ -9,21 +9,13 @@ import s from "@/pages/MapPage/MapPage.module.scss";
  */
 export default function FilterIcon() {
   return (
-    <svg
-      className={s.controlIcon}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <ControlIcon>
       <path d="M9 6h11" />
       <path d="M9 12h11" />
       <path d="M9 18h11" />
       <path d="M4 6h.01" />
       <path d="M4 12h.01" />
       <path d="M4 18h.01" />
-    </svg>
+    </ControlIcon>
   );
 }
