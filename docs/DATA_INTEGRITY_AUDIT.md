@@ -74,10 +74,9 @@
 
 ## Состояние проверок
 
-- `vitest`: 3240 из 3241. Падает `tileCache.test.js › preloads uncached tiles
-concurrently…` — падает и без изменений этой ветки, к аудиту не относится.
-  Из‑за него `vitest --coverage` не пишет сводку, и `check:coverage-ratchet`
-  локально не прогнан.
+- `vitest`: 3256 из 3256. Прежде падавший `tileCache.test.js` починен: в тесте
+  `Blob` из jsdom без `stream()` ломал `new Response` из Node (в браузере
+  проблемы нет). `vitest --coverage` и `check:coverage-ratchet` проходят.
 - `lint`, `typecheck`, `typecheck:strict`, `typecheck:tools`, `format:check` — чисто.
 - `check:bundle` проходит с предупреждением: стартовый бандл 124 305 Б gzip
   из 128 000 (97,1 %). До изменений было 124 104 — в 56 байтах от полосы
