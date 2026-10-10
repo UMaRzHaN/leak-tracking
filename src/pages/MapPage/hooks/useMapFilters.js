@@ -279,7 +279,9 @@ export function useMapFilters({
     const cache = distanceCacheRef.current;
     return monitoringLeaks
       .map((leak) => {
-        const key = `${leak.id}_${roundedLat}_${roundedLng}`;
+        // Координаты самой точки — в ключе: поправленная на месте утечка
+        // сохраняет id, и без них из кэша бралось расстояние до старой точки.
+        const key = `${leak.id}_${leak.lat}_${leak.lng}_${roundedLat}_${roundedLng}`;
         let distance = cache.get(key);
         if (distance === undefined) {
           distance = getDistanceMeters(
