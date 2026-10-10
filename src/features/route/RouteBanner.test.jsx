@@ -61,4 +61,25 @@ describe("RouteBanner", () => {
     fireEvent.click(screen.getByRole("button", { name: "End route" }));
     expect(onEnd).toHaveBeenCalledOnce();
   });
+
+  it("asks before ending an unfinished route", () => {
+    const onEnd = vi.fn();
+    render(
+      <RouteBanner
+        progress={{ total: 124, done: 36, left: 88, step: 37, current: target }}
+        coords={null}
+        gpsEnabled={false}
+        onFocus={vi.fn()}
+        onEnd={onEnd}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "End route" }));
+    expect(onEnd).not.toHaveBeenCalled();
+    expect(screen.getByText(/Points left: 88/)).toBeTruthy();
+
+    const ends = screen.getAllByRole("button", { name: "End route" });
+    fireEvent.click(ends[ends.length - 1]);
+    expect(onEnd).toHaveBeenCalledOnce();
+  });
 });

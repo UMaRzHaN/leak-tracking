@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
+import ConfirmSheet from "@/components/ui/ConfirmSheet/ConfirmSheet";
 import { distanceMeters } from "@/utils/geoUtils";
 import { getStatusMeta } from "@/utils/status";
 import Icon from "@/components/ui/Icon/Icon";
@@ -20,6 +22,7 @@ export default function RouteBanner({
   onEnd,
 }) {
   const { t, lang } = useLanguage();
+  const [confirmEnd, setConfirmEnd] = useState(false);
   if (!progress) return null;
 
   const target = progress.current;
@@ -68,7 +71,9 @@ export default function RouteBanner({
       <button
         type="button"
         className={s.end}
-        onClick={onEnd}
+        // Крестик стоит вплотную к плашке, а маршрут на сотню точек заново не
+        // соберёшь одним касанием: незаконченный — только с подтверждением.
+        onClick={() => (target ? setConfirmEnd(true) : onEnd())}
         aria-label={t("route.end")}
         title={t("route.end")}
       >
@@ -84,6 +89,20 @@ export default function RouteBanner({
       >
         <span style={{ width: `${percent}%` }} />
       </span>
+
+      <ConfirmSheet
+        open={confirmEnd}
+        title={t("route.endConfirmTitle")}
+        description={t("route.endConfirmDescription", {
+          left: progress.left ?? progress.total - progress.done,
+        })}
+        confirmLabel={t("route.end")}
+        onConfirm={() => {
+          setConfirmEnd(false);
+          onEnd();
+        }}
+        onCancel={() => setConfirmEnd(false)}
+      />
     </div>
   );
 }

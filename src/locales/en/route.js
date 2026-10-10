@@ -17,4 +17,7 @@ export const route = {
   finishedHint: "All points checked",
   check: "Check",
   end: "End route",
+  endConfirmTitle: "End the route?",
+  endConfirmDescription:
+    "Points left: {{left}}. The route will have to be built again.",
 };
