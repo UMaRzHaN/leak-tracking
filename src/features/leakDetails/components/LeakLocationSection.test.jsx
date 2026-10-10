@@ -6,6 +6,16 @@ import { SHOW_ON_MAP_EVENT, takeMapFocus } from "@/app/mapFocus";
 import { translate } from "@/test/translate";
 import LeakLocationSection from "./LeakLocationSection";
 
+// Снимок карты лениво грузит Leaflet и слой тайлов. Тест кончался раньше, чем
+// модуль успевал выполниться: он оставался скомпилированным в процессе
+// воркера без блочных счётчиков, и тест слоя тайлов, попавший в тот же
+// процесс, на Linux терял половину ветвей покрытия (CI падал на пороге
+// cachedTileLayer.js). Карта здесь не проверяется, как и в карточке
+// компонента.
+vi.mock("./CoordsMapPreview", () => ({
+  default: () => <div data-testid="map-preview" />,
+}));
+
 const fields = [
   { key: "lat", label: "Latitude" },
   { key: "lng", label: "Longitude" },
