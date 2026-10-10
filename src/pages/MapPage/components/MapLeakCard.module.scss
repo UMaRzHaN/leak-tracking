@@ -129,7 +129,17 @@
   white-space: nowrap;
 }
 
+.photoButton {
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  cursor: zoom-in;
+}
+
 .photo {
+  display: block;
   flex: none;
   width: 72px;
   height: 72px;

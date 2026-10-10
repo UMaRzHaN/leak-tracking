@@ -1,7 +1,13 @@
+import { useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
+import PhotoViewer from "@/features/photos/PhotoViewer/PhotoViewer";
 import { distanceMeters } from "@/utils/geoUtils";
 import { formatCompactNumber, formatNumber } from "@/utils/locale";
-import { getLeakDetailsHeroPhotoPath } from "@/utils/monitoring";
+import {
+  getLatestMonitoringPhotoPath,
+  getLeakDetailsHeroPhotoPath,
+} from "@/utils/monitoring";
+import { getStatusRepairMilestones } from "@/domain/leakEvents";
 import { usePhotoSrc } from "@/hooks/usePhotoSrc";
 import { STATUS } from "@/utils/status";
 import StatusBadge from "@/components/ui/StatusBadge/StatusBadge";
@@ -31,7 +37,19 @@ function formatAmount(value, decimals, lang) {
  */
 export default function MapLeakCard({ leak, coords, onMonitor, onOpen }) {
   const { lang, t } = useLanguage();
-  const photo = usePhotoSrc(getLeakDetailsHeroPhotoPath(leak));
+  // Последний актуальный снимок — тот же, что в шапке записи и в карточке
+  // списка, и открывается он так же: тапом, во весь экран.
+  // Без первичного снимка — снимок ремонта, устранения или осмотра, в том же
+  // порядке, что у карточки списка: запись, переведённая в ремонт без своего
+  // фото, иначе стояла на карте пустой.
+  const milestones = getStatusRepairMilestones(leak);
+  const photo = usePhotoSrc(
+    getLeakDetailsHeroPhotoPath(leak) ??
+      milestones.repairPhoto ??
+      milestones.resolvedPhoto ??
+      getLatestMonitoringPhotoPath(leak),
+  );
+  const [viewerOpen, setViewerOpen] = useState(false);
   const place = leak.location || leak.address || "";
   const details = [leak.component, leak.leak_description]
     .filter(Boolean)
@@ -91,7 +109,16 @@ export default function MapLeakCard({ leak, coords, onMonitor, onOpen }) {
             </div>
           )}
         </div>
-        {photo && <img className={s.photo} src={photo} alt="" />}
+        {photo && (
+          <button
+            type="button"
+            className={s.photoButton}
+            onClick={() => setViewerOpen(true)}
+            aria-label={t("map.card.photo")}
+          >
+            <img className={s.photo} src={photo} alt="" draggable={false} />
+          </button>
+        )}
       </div>
       <div className={s.actions}>
         {onMonitor && (
@@ -111,6 +138,9 @@ export default function MapLeakCard({ leak, coords, onMonitor, onOpen }) {
           {t("map.card.open")}
         </button>
       </div>
+      {viewerOpen && photo && (
+        <PhotoViewer src={photo} onClose={() => setViewerOpen(false)} />
+      )}
     </section>
   );
 }

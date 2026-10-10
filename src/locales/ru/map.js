@@ -5,7 +5,7 @@ export const map = {
     inventory: "Инвентаризация",
     monitoring: "Мониторинг",
   },
-  card: { check: "Проверить", open: "Открыть запись" },
+  card: { check: "Проверить", open: "Открыть запись", photo: "Открыть фото" },
   filters: "Фильтры карты",
   reset: "Сбросить",
   done: "Готово",

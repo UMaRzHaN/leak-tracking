@@ -5,7 +5,10 @@ vi.mock("@/app/hooks/useLanguage", async () => {
   const { englishLanguageHook } = await import("@/test/translate");
   return englishLanguageHook();
 });
-vi.mock("@/hooks/usePhotoSrc", () => ({ usePhotoSrc: () => null }));
+const photoSrc = vi.hoisted(() => ({ value: null }));
+vi.mock("@/hooks/usePhotoSrc", () => ({
+  usePhotoSrc: (path) => (path ? photoSrc.value : null),
+}));
 
 const MapLeakCard = (await import("./MapLeakCard")).default;
 
@@ -62,5 +65,47 @@ describe("MapLeakCard (5d)", () => {
       />,
     );
     expect(screen.queryByRole("button", { name: "Check" })).toBeNull();
+  });
+
+  it("opens the latest photo full screen, like the list card", () => {
+    photoSrc.value = "blob:latest";
+    try {
+      render(
+        <MapLeakCard
+          leak={{ ...leak, photo: "idb://first" }}
+          coords={null}
+          onOpen={vi.fn()}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "Open photo" }));
+
+      const shown = [...document.querySelectorAll("img")].filter(
+        (img) => img.getAttribute("src") === "blob:latest",
+      );
+      expect(shown.length).toBeGreaterThan(1);
+    } finally {
+      photoSrc.value = null;
+    }
+  });
+
+  it("falls back to the repair photo when the record has none of its own", () => {
+    photoSrc.value = "blob:repair";
+    try {
+      render(
+        <MapLeakCard
+          leak={{
+            ...leak,
+            status: "in_progress",
+            photo_repair: "idb://repair",
+          }}
+          coords={null}
+          onOpen={vi.fn()}
+        />,
+      );
+      expect(screen.getByRole("button", { name: "Open photo" })).toBeTruthy();
+    } finally {
+      photoSrc.value = null;
+    }
   });
 });
