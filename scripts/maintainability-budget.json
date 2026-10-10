@@ -23,7 +23,7 @@
   },
   "exceptions": {
     "android/app/src/main/java/com/leak/tracking/LeakDatabaseStore.java": 564,
-    "android/app/src/main/java/com/leak/tracking/LocalSyncPlugin.java": 1608,
+    "android/app/src/main/java/com/leak/tracking/LocalSyncPlugin.java": 1604,
     "android/app/src/main/java/com/leak/tracking/PublicFileWriterPlugin.java": 441,
     "performance/importPerformanceHarness.js": 754,
     "performance/nativeStoragePerformanceHarness.js": 317,
