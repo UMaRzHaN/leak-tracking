@@ -24,11 +24,6 @@ export default function BackupStatus({ projectId, hasData }) {
       : t("settings.backupStatus.never");
 
   return (
-    <p
-      className={overdue ? s.backupStatusOverdue : s.backupStatus}
-      role={overdue ? "alert" : undefined}
-    >
-      {text}
-    </p>
+    <p className={overdue ? s.backupStatusOverdue : s.backupStatus}>{text}</p>
   );
 }
