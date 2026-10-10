@@ -63,7 +63,10 @@ vi.mock("@capacitor/filesystem", () => ({
       }
     }),
     mkdir: vi.fn(async () => {}),
-    stat: vi.fn(async () => ({})),
+    stat: vi.fn(async ({ path }) => {
+      if (!store.files.has(path)) throw new Error("File does not exist");
+      return {};
+    }),
   },
 }));
 
@@ -77,6 +80,7 @@ const {
 const FOLDER = "buzahur";
 const JSON_PATH = `LeakReports/${FOLDER}/data/components.json`;
 const KEY = `components:${FOLDER}`;
+const MARKER_PATH = `LeakReports/${FOLDER}/data/components.sqlite.json`;
 const card = (id, extra = {}) => ({ id, component_uid: id, ...extra });
 
 beforeEach(() => {
@@ -154,6 +158,47 @@ describe("a walk recorded before the store existed", () => {
   });
 });
 
+describe("a registry that already lives in the store", () => {
+  // Маркер переезда говорит, где живой обход. Без него потеря базы выглядела
+  // бы как реестр, который ещё не переехал, — и поднимался бы старый файл.
+  it("marks itself as moved on the first write and the first read", async () => {
+    await saveNativeComponents(FOLDER, [card("a")]);
+    expect(store.files.has(MARKER_PATH)).toBe(true);
+
+    store.files.delete(MARKER_PATH);
+    resetNativeComponentStorageForTests();
+    await loadNativeComponents(FOLDER);
+    expect(store.files.has(MARKER_PATH)).toBe(true);
+  });
+
+  it("refuses to open as empty or from the old file once the rows are gone", async () => {
+    store.files.set(JSON_PATH, JSON.stringify([card("old")]));
+    await saveNativeComponents(FOLDER, [card("a"), card("b")]);
+    resetNativeComponentStorageForTests();
+    store.projects.delete(KEY);
+
+    await expect(loadNativeComponents(FOLDER)).rejects.toMatchObject({
+      code: "SQLITE_PROJECT_MISSING",
+    });
+    expect(store.projects.has(KEY)).toBe(false);
+  });
+
+  it("refuses the JSON fallback when the plugin disappears", async () => {
+    store.files.set(JSON_PATH, JSON.stringify([card("old")]));
+    await saveNativeComponents(FOLDER, [card("a")]);
+    resetNativeComponentStorageForTests();
+    store.unavailable = true;
+
+    await expect(loadNativeComponents(FOLDER)).rejects.toMatchObject({
+      code: "SQLITE_STORAGE_UNAVAILABLE",
+    });
+    await expect(
+      saveNativeComponents(FOLDER, [card("x")]),
+    ).rejects.toMatchObject({ code: "SQLITE_STORAGE_UNAVAILABLE" });
+    expect(JSON.parse(store.files.get(JSON_PATH))).toEqual([card("old")]);
+  });
+});
+
 describe("a build without the plugin", () => {
   beforeEach(() => {
     store.unavailable = true;
@@ -181,6 +226,9 @@ describe("deleting a project's registry", () => {
 
     expect(store.projects.has(KEY)).toBe(false);
     expect(store.files.has(JSON_PATH)).toBe(false);
+    expect(store.files.has(MARKER_PATH)).toBe(false);
+    // Проект, заведённый потом под тем же именем, начинает с чистого листа.
+    await expect(loadNativeComponents(FOLDER)).resolves.toEqual([]);
   });
 
   it("reports success when there was nothing to delete", async () => {
