@@ -364,7 +364,7 @@ export const ComponentRepository = {
       // обновить страницу, а не искать беду в хранилище.
       if (
         error instanceof ComponentDataError ||
-        error?.code === "PROJECT_CHANGED_ELSEWHERE"
+        /** @type {any} */ (error)?.code === "PROJECT_CHANGED_ELSEWHERE"
       ) {
         throw error;
       }

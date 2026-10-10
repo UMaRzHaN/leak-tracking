@@ -56,7 +56,7 @@ export function useVoiceCorrections(projectId) {
 
   const save = useCallback(
     (next) => {
-      if (!key) return;
+      if (!key || !projectId) return;
       const normalized = normalizeVoiceCorrections(next);
       if (normalized.length) {
         localStorage.setItem(key, JSON.stringify(normalized));

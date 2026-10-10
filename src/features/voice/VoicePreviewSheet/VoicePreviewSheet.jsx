@@ -4,6 +4,15 @@ import { useModalDialog } from "@/hooks/useModalDialog";
 import { fieldLabel } from "@/utils/fieldLabels";
 import s from "./VoicePreviewSheet.module.scss";
 
+/**
+ * @param {{
+ *   pending: any,
+ *   heard?: {phrase: string, fields: Record<string, string>} | null,
+ *   steps: any,
+ *   onConfirm: (data: any) => void,
+ *   onDismiss: () => void,
+ * }} props
+ */
 export default function VoicePreviewSheet({
   pending,
   heard = null,

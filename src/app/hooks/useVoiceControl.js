@@ -52,7 +52,7 @@ export function useVoiceControl({
       // Без обработчика команд фраза — просто диктовка: «назад», сказанное в
       // карточке реестра, иначе пропадало бы молча.
       const command = onCommand ? parseVoiceCommand(text, lang) : null;
-      if (command) {
+      if (onCommand && command) {
         onCommand(command);
         return;
       }
