@@ -22,7 +22,7 @@
     "src/services/sync/localSyncQrPayload.js": 145
   },
   "exceptions": {
-    "android/app/src/main/java/com/leak/tracking/LeakDatabaseStore.java": 564,
+    "android/app/src/main/java/com/leak/tracking/LeakDatabaseStore.java": 515,
     "android/app/src/main/java/com/leak/tracking/LocalSyncPlugin.java": 1604,
     "android/app/src/main/java/com/leak/tracking/PublicFileWriterPlugin.java": 441,
     "performance/importPerformanceHarness.js": 754,
@@ -77,11 +77,10 @@
     "src/pages/Settings/hooks/useSettingsPage.js": 755,
     "src/repositories/ComponentRepository.js": 382,
     "src/repositories/LeakRepository.js": 567,
-    "src/repositories/PhotoRepository.js": 412,
+    "src/repositories/PhotoRepository.js": 390,
     "src/repositories/SchemaRepository.js": 326,
     "src/repositories/backupSchema.js": 554,
     "src/repositories/legacyNativeLeakStorage.js": 618,
-    "src/repositories/nativeLeakStorage.js": 323,
     "src/repositories/webEnvelopeRecords.js": 357,
     "src/services/backup/backupImport.js": 531,
     "src/services/backup/leakMergeEngine.js": 486,

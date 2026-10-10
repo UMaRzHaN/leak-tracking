@@ -5,6 +5,14 @@ import { PhotoRepository } from "@/repositories/PhotoRepository";
 import { collectPhotoOwners } from "@/services/storage/photoOwners";
 import { idb } from "@/repositories/idb";
 
+/**
+ * Фоновая уборка идёт сама, на первом простое после открытия проекта, — в
+ * любой момент, в том числе между записью снимка и записью карточки, которая
+ * на него сошлётся. Свежие файлы она поэтому не трогает; сирота, пережившая
+ * срок, уйдёт при следующем открытии.
+ */
+export const BACKGROUND_PHOTO_GC_MIN_AGE_MS = 24 * 60 * 60 * 1000;
+
 export function usePhotoStorage() {
   const { activeProject } = useProjectData();
   const [ready, setReady] = useState(() =>
@@ -99,6 +107,7 @@ export function usePhotoStorage() {
         {
           projectId: activeProject?.id,
           folderName: activeProject?.folderName,
+          minAgeMs: BACKGROUND_PHOTO_GC_MIN_AGE_MS,
         },
       );
     },
