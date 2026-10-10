@@ -424,6 +424,23 @@ export function useMonitoringPage({
     setNotification({ type: "success", message: texts.saved });
   };
 
+  // Снимок осмотра — до записи осмотра, своим ключом, не трогая прежних:
+  // на них ссылаются более ранние осмотры этой же утечки.
+  const saveDraftPhoto = async (leak, draft) => {
+    const rawPhoto =
+      draft.photo?.raw ??
+      (draft.photo?.src ? dataUrlToBlob(draft.photo.src) : null);
+    if (!rawPhoto) return null;
+    const photoPath = await savePhoto(
+      rawPhoto,
+      `${leak.id}_monitoring_${Date.now()}`,
+      getMonitoringPhotoPathsToKeep(leak),
+      { cleanupOldVersions: false },
+    );
+    if (!photoPath) throw new Error(t("monitoring.photoSaveFailed"));
+    return photoPath;
+  };
+
   const saveRecord = async (leak) => {
     if (isSaving) return;
     setSubmitted(true);
@@ -461,20 +478,7 @@ export function useMonitoringPage({
 
     setIsSaving(true);
     try {
-      const rawPhoto =
-        draft.photo?.raw ??
-        (draft.photo?.src ? dataUrlToBlob(draft.photo.src) : null);
-      const photoPath = rawPhoto
-        ? await savePhoto(
-            rawPhoto,
-            `${leak.id}_monitoring_${Date.now()}`,
-            getMonitoringPhotoPathsToKeep(leak),
-            { cleanupOldVersions: false },
-          )
-        : null;
-      if (rawPhoto && !photoPath) {
-        throw new Error(t("monitoring.photoSaveFailed"));
-      }
+      const photoPath = await saveDraftPhoto(leak, draft);
       await finishMonitoringSave({ leak, draft, photoPath });
     } catch (error) {
       setNotification({
@@ -495,22 +499,7 @@ export function useMonitoringPage({
 
     setIsSaving(true);
     try {
-      const rawPhoto =
-        pending.draft.photo?.raw ??
-        (pending.draft.photo?.src
-          ? dataUrlToBlob(pending.draft.photo.src)
-          : null);
-      const photoPath = rawPhoto
-        ? await savePhoto(
-            rawPhoto,
-            `${pending.leak.id}_monitoring_${Date.now()}`,
-            getMonitoringPhotoPathsToKeep(pending.leak),
-            { cleanupOldVersions: false },
-          )
-        : null;
-      if (rawPhoto && !photoPath) {
-        throw new Error(t("monitoring.photoSaveFailed"));
-      }
+      const photoPath = await saveDraftPhoto(pending.leak, pending.draft);
       await finishMonitoringSave({
         leak: pending.leak,
         draft: pending.draft,

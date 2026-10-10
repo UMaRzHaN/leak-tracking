@@ -1,6 +1,7 @@
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { formatRoundPeriod } from "./monitoringDomain";
 import s from "./Monitoring.module.scss";
+import o from "./MonitoringRoundOverview.module.scss";
 
 export default function MonitoringRoundOverview({
   round,
@@ -47,18 +48,18 @@ export default function MonitoringRoundOverview({
 
       {showCompletion && (
         <section
-          className={`${s.completionCard} ${
-            isCompleted ? s.completionCardDone : ""
+          className={`${o.completionCard} ${
+            isCompleted ? o.completionCardDone : ""
           }`}
           aria-live="polite"
         >
-          <div className={s.completionSummary}>
-            <span className={s.completionIcon} aria-hidden="true">
+          <div className={o.completionSummary}>
+            <span className={o.completionIcon} aria-hidden="true">
               <svg viewBox="0 0 24 24" focusable="false">
                 <path d="m7.5 12.5 3 3 6-7" />
               </svg>
             </span>
-            <div className={s.completionHeading}>
+            <div className={o.completionHeading}>
               <strong>
                 {isCompleted ? texts.roundCompleted : texts.roundReady}
               </strong>
@@ -67,26 +68,26 @@ export default function MonitoringRoundOverview({
               </span>
             </div>
           </div>
-          <div className={s.completionStats}>
-            <span className={s.completionStat}>
-              <i className={s.statOpen} />
+          <div className={o.completionStats}>
+            <span className={o.completionStat}>
+              <i className={o.statOpen} />
               <small>{texts.openResult}</small>
               <strong>{summary.open}</strong>
             </span>
-            <span className={s.completionStat}>
-              <i className={s.statRepair} />
+            <span className={o.completionStat}>
+              <i className={o.statRepair} />
               <small>{texts.repairResult}</small>
               <strong>{summary.inProgress}</strong>
             </span>
-            <span className={s.completionStat}>
-              <i className={s.statResolved} />
+            <span className={o.completionStat}>
+              <i className={o.statResolved} />
               <small>{texts.resolvedResult}</small>
               <strong>{summary.resolved}</strong>
             </span>
           </div>
           <button
             type="button"
-            className={s.completionAction}
+            className={o.completionAction}
             onClick={isCompleted ? onStartRound : onFinishRound}
           >
             {isCompleted ? texts.newRound : texts.finishRound}
