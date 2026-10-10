@@ -1,4 +1,5 @@
 import { normalizeLocationValue } from "@/utils/locationFilter";
+import { isLocationScoped } from "@/utils/locationTree";
 
 /**
  * «Обследовано без утечек» (4a–4c): сколько объектов осмотрено в каждой
@@ -34,6 +35,54 @@ export function sliceValues(leaks, field) {
   return [...seen.values()].sort((left, right) => left.localeCompare(right));
 }
 
+/**
+ * Место группы — путь в дереве мест, как у выбора в шапке: подразделение,
+ * месторождение, локация. Пустой путь — группа на весь проект.
+ */
+function normalizePlace(value) {
+  if (!Array.isArray(value)) return [];
+  const place = value.map((part) => normalizeLocationValue(part));
+  // Путь не может прерываться: «место» без родителя не выбирается в шапке.
+  const gap = place.indexOf("");
+  return gap === -1 ? place : place.slice(0, gap);
+}
+
+/** Место для подписи: «ПУ №1 › Карачаганакское». */
+export function placeLabel(place) {
+  return Array.isArray(place) ? place.join(" › ") : "";
+}
+
+/** Одно ли это место — для групп с одинаковым именем в разных местах. */
+export function samePlace(left = [], right = []) {
+  return (
+    left.length === right.length &&
+    left.every((part, depth) => norm(part) === norm(right[depth]))
+  );
+}
+
+/** Лежит ли место `place` внутри выбранного пути `path` (или совпадает). */
+export function placeWithin(place, path) {
+  if (!Array.isArray(place) || !Array.isArray(path)) return false;
+  if (place.length < path.length) return false;
+  return path.every((part, depth) => norm(part) === norm(place[depth]));
+}
+
+/** Записи, лежащие в месте `place`; пустое место — все записи. */
+export function leaksInPlace(leaks, place, levelKeys = []) {
+  const list = Array.isArray(leaks) ? leaks : [];
+  return place?.length
+    ? list.filter((leak) => leakInPlace(leak, place, levelKeys))
+    : list;
+}
+
+function leakInPlace(leak, place, levelKeys) {
+  return place.every(
+    (part, depth) =>
+      levelKeys[depth] !== undefined &&
+      norm(leak?.[levelKeys[depth]]) === norm(part),
+  );
+}
+
 function toCount(value) {
   const number = Number(String(value ?? "").replace(",", "."));
   return Number.isFinite(number) && number > 0 ? Math.round(number) : 0;
@@ -50,26 +99,67 @@ export function normalizeSurvey(value) {
     : SLICE.CATEGORY;
   const groups = (Array.isArray(value.groups) ? value.groups : [])
     .filter((group) => group && String(group.name ?? "").trim())
-    .map((group) => ({
-      id: String(group.id ?? group.name),
-      name: String(group.name).trim(),
-      checked: toCount(group.checked),
-      estimate: toCount(group.estimate),
-    }));
+    .map((group) => {
+      const place = normalizePlace(group.place);
+      return {
+        id: String(group.id ?? group.name),
+        name: String(group.name).trim(),
+        checked: toCount(group.checked),
+        estimate: toCount(group.estimate),
+        ...(place.length ? { place } : {}),
+      };
+    });
   return { slice, groups, updatedAt: value.updatedAt ?? null };
 }
 
 /**
- * Разбивка по группам (4b): проверено, оценка, утечки в группе и частота на
- * осмотренный объект. Утечки считаются по тому же полю разреза.
+ * Группы обследования для выбранного в шапке места.
+ *
+ * Без выбора — все группы. При выбранном месте — только группы с местом
+ * внутри него: охват по месту. Если ни у одной группы место не указано,
+ * обследование целиком «по всему проекту», и тогда так и считается, с
+ * пометкой `projectWide`. Несколько папок разом (`path === null`) в одно
+ * место не сводятся — тоже «по всему проекту».
+ *
+ * @param {{ slice: string, groups: any[], updatedAt?: any }} survey
+ * @param {string[]|null|undefined} path
  */
-export function summarizeSurvey(survey, leaks, field) {
-  const counts = new Map();
-  for (const leak of Array.isArray(leaks) ? leaks : []) {
-    const key = norm(leak?.[field]);
-    if (key) counts.set(key, (counts.get(key) ?? 0) + 1);
-  }
+export function surveyForPlace(survey, path) {
+  if (!isLocationScoped(path)) return { survey, projectWide: false };
+  const placed = survey.groups.some((group) => group.place?.length);
+  // Пустое обследование ни к какому месту не относится — и помечать нечего.
+  if (!Array.isArray(path) || !placed)
+    return { survey, projectWide: survey.groups.length > 0 };
+  return {
+    survey: {
+      ...survey,
+      groups: survey.groups.filter((group) => placeWithin(group.place, path)),
+    },
+    projectWide: false,
+  };
+}
+
+/**
+ * Разбивка по группам (4b): проверено, оценка, утечки в группе и частота на
+ * осмотренный объект. Утечки считаются по тому же полю разреза, а у группы с
+ * местом — только утечки этого места: «Компрессоры» двух месторождений —
+ * две разные группы.
+ */
+export function summarizeSurvey(survey, leaks, field, levelKeys = []) {
+  const list = Array.isArray(leaks) ? leaks : [];
+  const countIn = (rows) => {
+    const counts = new Map();
+    for (const leak of rows) {
+      const key = norm(leak?.[field]);
+      if (key) counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return counts;
+  };
+  const projectCounts = countIn(list);
   const groups = survey.groups.map((group) => {
+    const counts = group.place?.length
+      ? countIn(leaksInPlace(list, group.place, levelKeys))
+      : projectCounts;
     const leakCount = counts.get(norm(group.name)) ?? 0;
     const total = Math.max(group.estimate, group.checked);
     return {

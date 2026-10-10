@@ -2,7 +2,15 @@ import { useId, useMemo, useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { useModalDialog } from "@/hooks/useModalDialog";
 import Icon from "@/components/ui/Icon/Icon";
-import { SLICE, sliceField, sliceValues } from "@/domain/surveyGroups";
+import {
+  leaksInPlace,
+  placeLabel,
+  samePlace,
+  sliceField,
+  sliceValues,
+} from "@/domain/surveyGroups";
+import SliceScreen from "./SliceScreen";
+import SurveyPlaceRow from "./SurveyPlaceRow";
 import s from "./Coverage.module.scss";
 
 const num = (value) => Math.max(0, Math.round(Number(value) || 0));
@@ -11,11 +19,16 @@ const num = (value) => Math.max(0, Math.round(Number(value) || 0));
  * Ввод «Обследовано» (4a): по каждой группе — сколько осмотрено и сколько
  * всего (оценка). Раскрыта одна группа со степпером, остальные свёрнуты в
  * строку «32 из ~90» с «Изменить». Разрез меняется на своём экране (4c).
+ *
+ * Место группы берётся из выбора в шапке: заведённая там группа считается в
+ * охвате этого места. Группу без места можно привязать к выбранному месту, а
+ * привязанную — вернуть на весь проект.
  */
 export default function SurveyScreen({
   survey,
   leaks,
   levelKeys,
+  placePath = /** @type {string[]|null} */ ([]),
   onSave,
   onClose,
 }) {
@@ -27,15 +40,20 @@ export default function SurveyScreen({
   const [openId, setOpenId] = useState(survey.groups[0]?.id ?? null);
   const [adding, setAdding] = useState("");
   const [sliceOpen, setSliceOpen] = useState(false);
+  // Несколько папок разом (null) — не одно место: группы идут на весь проект.
+  const here = placePath?.length ? placePath : null;
 
   const suggestions = useMemo(() => {
     const taken = new Set(
-      groups.map((group) => group.name.toLocaleLowerCase()),
+      groups
+        .filter((group) => samePlace(group.place, here ?? []))
+        .map((group) => group.name.toLocaleLowerCase()),
     );
-    return sliceValues(leaks, sliceField(slice, levelKeys)).filter(
-      (value) => !taken.has(value.toLocaleLowerCase()),
-    );
-  }, [groups, leaks, slice, levelKeys]);
+    return sliceValues(
+      leaksInPlace(leaks, here, levelKeys),
+      sliceField(slice, levelKeys),
+    ).filter((value) => !taken.has(value.toLocaleLowerCase()));
+  }, [groups, leaks, slice, levelKeys, here]);
   // Подсказки — чипами под полем, а не системным datalist: на Android он
   // рисуется светлым списком под клавиатурой, а на пустом поле не виден вовсе.
   const shownSuggestions = useMemo(() => {
@@ -60,7 +78,13 @@ export default function SurveyScreen({
     const id = `g-${Date.now().toString(36)}-${groups.length}`;
     setGroups((current) => [
       ...current,
-      { id, name: clean, checked: 0, estimate: 0 },
+      {
+        id,
+        name: clean,
+        checked: 0,
+        estimate: 0,
+        ...(here ? { place: here } : {}),
+      },
     ]);
     setOpenId(id);
     setAdding("");
@@ -125,6 +149,11 @@ export default function SurveyScreen({
           <strong>{t(`coverage.checkedBy.${slice}`)}</strong>
           <span>{t("coverage.totalIsEstimate")}</span>
         </div>
+        {here && (
+          <p className={s.hint}>
+            {t("coverage.newInPlace", { place: placeLabel(here) })}
+          </p>
+        )}
 
         {groups.map((group) =>
           group.id === openId ? (
@@ -177,6 +206,11 @@ export default function SurveyScreen({
                   +
                 </button>
               </div>
+              <SurveyPlaceRow
+                place={group.place}
+                here={here}
+                onChange={(place) => patch(group.id, { place })}
+              />
             </div>
           ) : (
             <div key={group.id} className={s.groupCollapsed}>
@@ -184,6 +218,7 @@ export default function SurveyScreen({
                 <strong>{group.name}</strong>
                 <small>
                   {group.checked} {t("coverage.of")} ~{group.estimate}
+                  {group.place && ` · ${placeLabel(group.place)}`}
                 </small>
               </span>
               <button type="button" onClick={() => setOpenId(group.id)}>
@@ -237,77 +272,6 @@ export default function SurveyScreen({
           onClick={() => onSave({ slice, groups })}
         >
           {t("coverage.save")}
-        </button>
-      </footer>
-    </div>
-  );
-}
-
-/**
- * Настройка разреза (4c): поле, по которому считаются частота утечек и
- * охват. Второй уровень разбивки пока не делается — переключатель в макете
- * выключен по умолчанию, и данных под него нет.
- */
-function SliceScreen({ value, leaks, levelKeys, onBack, onApply }) {
-  const { t } = useLanguage();
-  const [picked, setPicked] = useState(value);
-  return (
-    <div
-      className={s.screen}
-      role="dialog"
-      aria-modal="true"
-      aria-label={t("coverage.sliceTitle")}
-    >
-      <header className={s.screenHeader}>
-        <button
-          type="button"
-          className={s.back}
-          onClick={onBack}
-          aria-label={t("leakDetails.back")}
-        >
-          <Icon name="chevronLeft" size={20} strokeWidth={2} />
-        </button>
-        <h1>{t("coverage.sliceTitle")}</h1>
-      </header>
-      <div className={s.screenBody}>
-        <p className={s.hint}>{t("coverage.sliceLead")}</p>
-        <h2 className={s.caption}>{t("coverage.primaryField")}</h2>
-        <div role="radiogroup" className={s.sliceList}>
-          {Object.values(SLICE).map((slice) => {
-            const examples = sliceValues(
-              leaks,
-              sliceField(slice, levelKeys),
-            ).slice(0, 3);
-            return (
-              <button
-                key={slice}
-                type="button"
-                role="radio"
-                aria-checked={picked === slice}
-                className={picked === slice ? s.sliceOn : s.sliceOff}
-                onClick={() => setPicked(slice)}
-              >
-                <span>
-                  <strong>{t(`coverage.slices.${slice}.title`)}</strong>
-                  <small>
-                    {examples.length
-                      ? examples.join(", ")
-                      : t(`coverage.slices.${slice}.hint`)}
-                  </small>
-                </span>
-                <span className={s.radioDot} aria-hidden="true" />
-              </button>
-            );
-          })}
-        </div>
-      </div>
-      <footer className={s.footer}>
-        <button
-          type="button"
-          className={s.primary}
-          onClick={() => onApply(picked)}
-        >
-          {t("coverage.apply")}
         </button>
       </footer>
     </div>

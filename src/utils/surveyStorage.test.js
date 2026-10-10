@@ -24,6 +24,15 @@ describe("saveSurvey", () => {
     expect(readSurvey("p1").updatedAt).toBe(SURVEY.updatedAt);
   });
 
+  it("keeps a group's place, which backup and merge go through", () => {
+    saveSurvey("p1", {
+      ...SURVEY,
+      groups: [{ ...SURVEY.groups[0], place: ["ПУ-1", "Северное"] }],
+    });
+
+    expect(readSurvey("p1").groups[0].place).toEqual(["ПУ-1", "Северное"]);
+  });
+
   it("removes the record when no groups are left", () => {
     saveSurvey("p1", SURVEY);
     saveSurvey("p1", null);

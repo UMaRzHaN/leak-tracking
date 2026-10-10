@@ -1,6 +1,6 @@
 export const coverage = {
   title: "Охват обследования",
-  projectWide: "По всему проекту: обследование вводится без деления по местам",
+  projectWide: "По всему проекту: у групп обследования не указано место",
   ofObjects: "{{checked}} из ~{{total}} объектов",
   byGroup: {
     category: "По категориям объектов",
@@ -35,6 +35,10 @@ export const coverage = {
   checkedLabel: "Проверено в группе «{{name}}»",
   less: "Меньше",
   more: "Больше",
+  wholeProject: "Весь проект",
+  newInPlace: "Новые группы — в месте «{{place}}»",
+  bindHere: "Привязать к «{{place}}»",
+  unbind: "На весь проект",
   edit: "Изменить",
   addGroup: "Добавить категорию",
   add: "Добавить",

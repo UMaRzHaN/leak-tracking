@@ -88,11 +88,6 @@ export function pathToLocationFilters(path, levelKeys) {
 }
 
 /**
- * The inverse, used by the breadcrumb. A filter carrying several values did not
- * come from the browser, so there is no single path to show: the caller is told
- * `null` and can say "several selected" instead of inventing a location.
- */
-/**
  * Выбрано ли место в шапке: путь пустой — это «Все». Несколько папок разом
  * путём не выражаются (null) и тоже значат выбор.
  * @param {string[]|null|undefined} path
@@ -101,6 +96,11 @@ export function isLocationScoped(path) {
   return !(Array.isArray(path) && path.length === 0);
 }
 
+/**
+ * The inverse, used by the breadcrumb. A filter carrying several values did not
+ * come from the browser, so there is no single path to show: the caller is told
+ * `null` and can say "several selected" instead of inventing a location.
+ */
 export function locationFiltersToPath(filters, levelKeys) {
   const path = [];
   for (const [depth, key] of levelKeys.entries()) {

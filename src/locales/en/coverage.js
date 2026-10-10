@@ -1,7 +1,6 @@
 export const coverage = {
   title: "Survey coverage",
-  projectWide:
-    "Whole project: the survey is entered without splitting by location",
+  projectWide: "Whole project: no location is set on the survey groups",
   ofObjects: "{{checked}} of ~{{total}} sites",
   byGroup: {
     category: "By site category",
@@ -36,6 +35,10 @@ export const coverage = {
   checkedLabel: "Checked in “{{name}}”",
   less: "Less",
   more: "More",
+  wholeProject: "Whole project",
+  newInPlace: "New groups go to “{{place}}”",
+  bindHere: "Assign to “{{place}}”",
+  unbind: "Whole project",
   edit: "Edit",
   addGroup: "Add a category",
   add: "Add",

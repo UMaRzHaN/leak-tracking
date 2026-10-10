@@ -1,5 +1,4 @@
 import { lazy, Suspense, useCallback, useRef, useState } from "react";
-import { isLocationScoped } from "@/utils/locationTree";
 import { repairRound, repairsToCheck } from "@/pages/Repairs/repairRoundStore";
 import { useRoundStartGate } from "@/app/project/hooks/useRoundStartGate";
 import { useLanguage } from "./hooks/useLanguage";
@@ -314,7 +313,7 @@ export default function AppRoutes({
         {dataLoaded && !loadError && page === "coverage" && (
           <CoveragePage
             data={data}
-            projectWide={isLocationScoped(leakScope?.path)}
+            placePath={leakScope ? leakScope.path : []}
             onBack={() => goBack(prevPage)}
           />
         )}

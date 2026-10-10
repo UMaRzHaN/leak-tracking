@@ -28,8 +28,7 @@ import { showsComponentTree, showsLocationScope } from "./pages";
 import { STATUS } from "@/utils/status";
 import { hasComponentRegistry } from "@/configs/componentRegistry.config";
 import { computeSurveyCoverage } from "@/utils/surveyCoverage";
-import { isLocationScoped } from "@/utils/locationTree";
-import { surveyCoverage } from "@/domain/surveyGroups";
+import { surveyCoverage, surveyForPlace } from "@/domain/surveyGroups";
 import { useSurvey } from "@/utils/surveyStorage";
 import {
   MODULE,
@@ -214,15 +213,16 @@ export default function App() {
   );
 
   // Введённое обследование (4a) точнее: в нём есть и осмотренное без
-  // находок. Без ввода — нижняя граница по объектам с утечками. Обследование
-  // вводится на весь проект, поэтому при выбранном месте плитка так и
-  // подписана: «по всему проекту».
-  const placeScoped = isLocationScoped(leakScope.path);
+  // находок. Без ввода — нижняя граница по объектам с утечками. При
+  // выбранном месте считаются группы этого места; если места у групп не
+  // указаны, охват по всему проекту, и плитка так и подписана.
+  const placePath = leakScope.path;
   const coverage = useMemo(() => {
     if (page !== "" || module !== MODULE.LDAR) return null;
-    const fromSurvey = surveyCoverage(survey);
+    const scoped = surveyForPlace(survey, placePath);
+    const fromSurvey = surveyCoverage(scoped.survey);
     return fromSurvey
-      ? { ...fromSurvey, projectWide: placeScoped }
+      ? { ...fromSurvey, projectWide: scoped.projectWide }
       : computeSurveyCoverage({
           leaks: leakScope.scopedLeaks,
           components: componentScope.scopedLeaks,
@@ -232,7 +232,7 @@ export default function App() {
     page,
     module,
     survey,
-    placeScoped,
+    placePath,
     leakScope.scopedLeaks,
     leakScope.levelKeys,
     componentScope.scopedLeaks,

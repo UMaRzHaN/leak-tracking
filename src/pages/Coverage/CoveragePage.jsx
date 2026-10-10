@@ -6,10 +6,16 @@ import { getLocationLevelKeys } from "@/utils/locationTree";
 import { formatNumber } from "@/utils/locale";
 import Icon from "@/components/ui/Icon/Icon";
 import Notification from "@/components/ui/Notification/Notification";
-import { sliceField, summarizeSurvey } from "@/domain/surveyGroups";
+import {
+  placeLabel,
+  sliceField,
+  summarizeSurvey,
+  surveyForPlace,
+} from "@/domain/surveyGroups";
 import { useSurvey } from "@/utils/surveyStorage";
 import SurveyScreen from "./SurveyScreen";
 import s from "./Coverage.module.scss";
+import place from "./SurveyPlace.module.scss";
 
 /**
  * Охват обследования (4b): общий процент и разбивка по группам разреза —
@@ -18,7 +24,7 @@ import s from "./Coverage.module.scss";
  */
 export default function CoveragePage({
   data = [],
-  projectWide = false,
+  placePath = /** @type {string[]|null} */ ([]),
   onBack,
 }) {
   const { t, lang } = useLanguage();
@@ -26,13 +32,18 @@ export default function CoveragePage({
   const [survey, saveSurvey] = useSurvey(activeProject?.id ?? null);
   const [editing, setEditing] = useState(false);
   const [notification, setNotification] = useState(/** @type {any} */ (null));
-  const levelKeys = getLocationLevelKeys(
-    PROJECT_LOCATION_CONFIG[activeProject?.type],
+  const levelKeys = useMemo(
+    () => getLocationLevelKeys(PROJECT_LOCATION_CONFIG[activeProject?.type]),
+    [activeProject?.type],
   );
   const field = sliceField(survey.slice, levelKeys);
+  const { survey: shown, projectWide } = useMemo(
+    () => surveyForPlace(survey, placePath),
+    [survey, placePath],
+  );
   const summary = useMemo(
-    () => summarizeSurvey(survey, data, field),
-    [survey, data, field],
+    () => summarizeSurvey(shown, data, field, levelKeys),
+    [shown, data, field, levelKeys],
   );
 
   return (
@@ -89,6 +100,11 @@ export default function CoveragePage({
                   {group.checked} / ~{group.total}
                 </span>
               </div>
+              {group.place && (
+                <small className={place.groupPlace}>
+                  {placeLabel(group.place)}
+                </small>
+              )}
               <span className={s.bar}>
                 <span style={{ width: `${group.percent}%` }} />
               </span>
@@ -130,6 +146,7 @@ export default function CoveragePage({
           survey={survey}
           leaks={data}
           levelKeys={levelKeys}
+          placePath={placePath}
           onClose={() => setEditing(false)}
           onSave={(next) => {
             saveSurvey(next);

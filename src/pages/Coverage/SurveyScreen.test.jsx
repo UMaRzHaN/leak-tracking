@@ -58,3 +58,60 @@ describe("SurveyScreen suggestions", () => {
     ]);
   });
 });
+
+describe("SurveyScreen place", () => {
+  const placedLeaks = [
+    { subdivision: "North", category: "Compression" },
+    { subdivision: "South", category: "Processing" },
+    { subdivision: "North", category: "Well" },
+  ];
+
+  function renderPlaced(placePath, onSave = vi.fn()) {
+    render(
+      <SurveyScreen
+        survey={{
+          slice: "category",
+          groups: [{ id: "g1", name: "Well", checked: 2, estimate: 5 }],
+        }}
+        leaks={placedLeaks}
+        levelKeys={["subdivision"]}
+        placePath={placePath}
+        onSave={onSave}
+        onClose={() => {}}
+      />,
+    );
+    return onSave;
+  }
+
+  it("files new groups under the selected place and suggests its records", () => {
+    const onSave = renderPlaced(["North"]);
+    // «Well» без места не занимает имя в «North»: там своя группа.
+    expect(chips()).toEqual(["Compression", "Well"]);
+    fireEvent.click(screen.getByRole("button", { name: "Compression" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save survey" }));
+    expect(onSave.mock.calls[0][0].groups).toEqual([
+      { id: "g1", name: "Well", checked: 2, estimate: 5 },
+      expect.objectContaining({ name: "Compression", place: ["North"] }),
+    ]);
+  });
+
+  it("assigns a group to the place and back to the whole project", () => {
+    const onSave = renderPlaced(["North"]);
+    fireEvent.click(screen.getByRole("button", { name: "Assign to “North”" }));
+    expect(screen.getByText("North")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Whole project" }));
+    fireEvent.click(screen.getByRole("button", { name: "Assign to “North”" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save survey" }));
+    expect(onSave.mock.calls[0][0].groups[0].place).toEqual(["North"]);
+  });
+
+  it("keeps groups project-wide without a single selected place", () => {
+    const onSave = renderPlaced(null);
+    expect(
+      screen.queryByRole("button", { name: /Assign to/ }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Compression" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save survey" }));
+    expect(onSave.mock.calls[0][0].groups[1]).not.toHaveProperty("place");
+  });
+});

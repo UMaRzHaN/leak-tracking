@@ -21,7 +21,7 @@ export const mainPage = {
     value: "{{surveyed}} of {{total}} · {{percent}}%",
     hint: "Sites with leak records",
     open: "By site category",
-    projectWide: "Whole project — the survey is not split by location",
+    projectWide: "Whole project — no location is set on the survey",
     noRegistry:
       "Sites with leak records. The total appears with the component registry",
   },
