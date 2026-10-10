@@ -51,10 +51,10 @@ const RU_TO_EN = {
 
   "Механический ручной": "Manual mechanical",
   Гидравлический: "Hydraulic",
-  Гидроэлектрический: "Electrohydraulic",
+  Гидроэлектрический: "Hydroelectric",
   Пневматический: "Pneumatic",
   Пневмогидравлический: "Pneumohydraulic",
-  Пневмогидроэлектрический: "Electropneumohydraulic",
+  Пневмогидроэлектрический: "Pneumohydroelectric",
   Электрический: "Electric",
   Электропневматический: "Electropneumatic",
   Электрогидравлический: "Electrohydraulic",
