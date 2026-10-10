@@ -3,6 +3,7 @@ import { useLanguage } from "./hooks/useLanguage";
 import { isListPage } from "@/app/pages";
 import { useModalDialog } from "@/hooks/useModalDialog";
 import { saveRecoveryFile } from "@/services/storage/saveRecoveryFile";
+import "./projectDataStatus.scss";
 
 const Settings = lazy(() => import("@/pages/Settings/Settings"));
 const AddLeak = lazy(() => import("@/pages/AddLeak/AddLeak"));

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { useProjectData } from "@/app/project/ProjectContext";
 import { getBackupReminderState } from "@/services/storage/backupReminder";
+import "@/app/projectDataStatus.scss";
 
 // Проекты, где нажали «Позже», — до перезапуска приложения.
 const dismissedProjects = new Set();
