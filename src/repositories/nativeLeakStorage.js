@@ -1,4 +1,4 @@
-import { Directory, Encoding, Filesystem } from "@capacitor/filesystem";
+import { Directory, Filesystem } from "@capacitor/filesystem";
 import { logger } from "@/utils/logger";
 import {
   clearNativeProjectStorageCache as clearLegacyCache,
@@ -9,7 +9,6 @@ import {
   writeNativeProjectSnapshot as writeLegacyNativeProjectSnapshot,
 } from "@/repositories/legacyNativeLeakStorage";
 import { isMissingNativeFileError } from "@/repositories/nativeFileErrors";
-import { ensureNativeDirectory } from "@/repositories/nativeDirectory";
 import {
   createNativeSqliteMutation,
   shouldReplaceNativeSqliteDataset,
@@ -18,69 +17,16 @@ import {
   NativeLeakStorage,
   isSqlitePluginUnavailable,
 } from "@/repositories/nativeSqlitePlugin";
+import {
+  assertLegacyFallbackAllowed,
+  assertSqliteProjectNotLost,
+  forgetSqliteMarker,
+  getSqliteMarkerPath,
+  writeSqliteMarker,
+} from "@/repositories/sqliteMarker";
 
 let sqliteUnavailable = false;
 let fallbackWarningLogged = false;
-const sqliteMarkers = new Set();
-
-function getSqliteMarkerPath(folderName) {
-  return `LeakReports/${folderName}/data/data.sqlite.json`;
-}
-
-async function hasSqliteMarker(folderName) {
-  if (sqliteMarkers.has(folderName)) return true;
-  try {
-    await Filesystem.stat({
-      path: getSqliteMarkerPath(folderName),
-      directory: Directory.Data,
-    });
-    sqliteMarkers.add(folderName);
-    return true;
-  } catch (error) {
-    if (isMissingNativeFileError(error)) return false;
-    throw error;
-  }
-}
-
-async function writeSqliteMarker(folderName) {
-  if (await hasSqliteMarker(folderName)) return;
-  const path = getSqliteMarkerPath(folderName);
-  const directory = path.substring(0, path.lastIndexOf("/"));
-  try {
-    await ensureNativeDirectory(directory, Directory.Data);
-    await Filesystem.writeFile({
-      path,
-      directory: Directory.Data,
-      encoding: Encoding.UTF8,
-      data: JSON.stringify({ version: 1, engine: "sqlite" }),
-    });
-    sqliteMarkers.add(folderName);
-  } catch (error) {
-    logger.warn(
-      `[nativeLeakStorage] Could not persist the SQLite migration marker for "${folderName}".`,
-      error,
-    );
-    throw Object.assign(
-      new Error(
-        `Could not persist the SQLite migration marker for "${folderName}".`,
-        { cause: error },
-      ),
-      { code: "SQLITE_MARKER_WRITE_FAILED" },
-    );
-  }
-}
-
-async function assertLegacyFallbackAllowed(folderName, cause) {
-  if (!folderName || !(await hasSqliteMarker(folderName))) return;
-  throw Object.assign(
-    new Error(
-      `Native SQLite storage is unavailable for migrated project "${folderName}"; refusing to load a stale JSON recovery copy.`,
-      { cause },
-    ),
-    { code: "SQLITE_STORAGE_UNAVAILABLE" },
-  );
-}
-
 function noteLegacyFallback(error) {
   sqliteUnavailable = true;
   if (fallbackWarningLogged) return;
@@ -165,6 +111,10 @@ export async function loadNativeProject(folderName) {
       await writeSqliteMarker(folderName);
       return loaded;
     }
+
+    // Маркер есть, а базы о проекте не знают: данные пропали, а не «ещё не
+    // переехали». Пустой проект затёр бы остатки, JSON до переезда — откатил.
+    await assertSqliteProjectNotLost(folderName);
 
     const legacy = await loadLegacyNativeProject(folderName);
     if (!legacy) return null;
@@ -311,13 +261,13 @@ export async function deleteNativeProjectStorage(folderName) {
       );
     }
   });
-  sqliteMarkers.delete(folderName);
+  forgetSqliteMarker(folderName);
   return true;
 }
 
 export function resetNativeStorageStrategyForTests() {
   sqliteUnavailable = false;
   fallbackWarningLogged = false;
-  sqliteMarkers.clear();
+  forgetSqliteMarker();
   clearLegacyCache();
 }
