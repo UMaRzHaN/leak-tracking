@@ -2,8 +2,16 @@ import { appError } from "@/utils/appError";
 import { isNative } from "@/utils/platform";
 import { getSpeechLocale } from "@/utils/locale";
 
-let webRecognition = /** @type {any} */ (null);
-let webBuffer = "";
+/*
+ * Сеанс распознавания в браузере: сам объект, накопленный текст и признак
+ * конца. Текст держит сеанс, а не модуль: следующий сеанс, начатый до
+ * конца предыдущего, не должен стирать его последние слова.
+ */
+let webSession = /** @type {any} */ (null);
+
+// Сколько ждём onend после stop(): браузер, не приславший его вовсе, не
+// должен навсегда держать кнопку в «слушаю».
+const STOP_TIMEOUT_MS = 1500;
 
 export const startSpeechRecognition = async (language) => {
   const speechLocale = getSpeechLocale(language);
@@ -33,29 +41,61 @@ export const startSpeechRecognition = async (language) => {
     throw appError("VOICE_UNSUPPORTED", "Голосовой ввод не поддерживается");
   }
 
-  webBuffer = "";
-  webRecognition = new SpeechAPI();
-  webRecognition.lang = speechLocale;
-  webRecognition.interimResults = true;
-  webRecognition.maxAlternatives = 1;
+  const recognition = new SpeechAPI();
+  recognition.lang = speechLocale;
+  recognition.interimResults = true;
+  recognition.maxAlternatives = 1;
 
-  webRecognition.onresult = (event) => {
-    webBuffer = Array.from(event.results)
+  const session = {
+    recognition,
+    text: "",
+    ended: false,
+    /** @type {(() => void) | null} */
+    onEnded: null,
+  };
+  const finish = () => {
+    session.ended = true;
+    session.onEnded?.();
+  };
+
+  recognition.onresult = (event) => {
+    session.text = Array.from(event.results)
       .map((result) => result[0].transcript)
       .join(" ");
   };
+  recognition.onend = finish;
+  recognition.onerror = finish;
 
-  webRecognition.start();
+  webSession = session;
+  recognition.start();
   return null;
 };
 
+/*
+ * stop() у браузера не мгновенный: последние слова он дораспознаёт и присылает
+ * уже после него, а onend — только когда всё прислано. Отдавать текст сразу
+ * после stop() значило терять конец фразы — «задвижка тридцать» вместо
+ * «задвижка тридцать два».
+ */
 export const stopSpeechRecognition = async () => {
   if (isNative) return null;
 
-  if (webRecognition) {
-    webRecognition.stop();
-    webRecognition = null;
-  }
+  const session = webSession;
+  if (!session) return null;
+  webSession = null;
 
-  return webBuffer || null;
+  await new Promise((resolve) => {
+    if (session.ended) {
+      resolve(undefined);
+      return;
+    }
+    const timer = setTimeout(resolve, STOP_TIMEOUT_MS);
+    session.onEnded = () => {
+      clearTimeout(timer);
+      resolve(undefined);
+    };
+    session.recognition.stop();
+  });
+
+  return session.text || null;
 };

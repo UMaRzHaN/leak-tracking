@@ -18,7 +18,8 @@ function fakeSpeechApi() {
   const instances = [];
   const Api = vi.fn(function () {
     this.start = vi.fn();
-    this.stop = vi.fn();
+    // Как настоящий: конец сеанса — отдельным событием, после stop().
+    this.stop = vi.fn(() => Promise.resolve().then(() => this.onend?.()));
     instances.push(this);
   });
   return { Api, instances };
@@ -94,6 +95,43 @@ describe("распознавание речи в браузере", () => {
     await expect(stopSpeechRecognition()).resolves.toBe(
       "задвижка тридцать два",
     );
+  });
+
+  it("дожидается конца сеанса: последние слова приходят после stop()", async () => {
+    // Браузер дораспознаёт хвост фразы уже после stop() и только потом
+    // присылает onend. Отдавать текст сразу значило терять конец фразы.
+    const { Api, instances } = fakeSpeechApi();
+    window.SpeechRecognition = Api;
+    await startSpeechRecognition("ru");
+    const recognition = instances[0];
+    recognition.stop = vi.fn(() => {
+      setTimeout(() => {
+        recognition.onresult(resultsEvent("задвижка", "тридцать два"));
+        recognition.onend();
+      }, 50);
+    });
+    recognition.onresult(resultsEvent("задвижка"));
+
+    await expect(stopSpeechRecognition()).resolves.toBe(
+      "задвижка тридцать два",
+    );
+  });
+
+  it("не ждёт вечно, если браузер не прислал onend", async () => {
+    vi.useFakeTimers();
+    try {
+      const { Api, instances } = fakeSpeechApi();
+      window.SpeechRecognition = Api;
+      await startSpeechRecognition("ru");
+      instances[0].stop = vi.fn();
+      instances[0].onresult(resultsEvent("кран"));
+
+      const stopped = stopSpeechRecognition();
+      await vi.advanceTimersByTimeAsync(2000);
+      await expect(stopped).resolves.toBe("кран");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("остановка без единого слова возвращает пустоту, а не пустую строку", async () => {
