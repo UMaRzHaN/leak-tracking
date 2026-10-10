@@ -361,6 +361,12 @@
       "functions": 98,
       "lines": 90
     },
+    "src/services/backup/monitoringRoundResolution.js": {
+      "statements": 93,
+      "branches": 89,
+      "functions": 98,
+      "lines": 98
+    },
     "src/services/backup/projectMeta.js": {
       "statements": 84,
       "branches": 80,
