@@ -1,5 +1,5 @@
-import { readFileSync } from "node:fs";
-import { execSync } from "node:child_process";
+import { readFileSync, readdirSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 /**
@@ -16,11 +16,11 @@ describe("типы домена", () => {
     ...source.matchAll(/^export (?:type|interface) (\w+)/gm),
   ].map((match) => match[1]);
 
-  const files = execSync("git ls-files 'src/*.js' 'src/*.jsx'")
-    .toString()
-    .trim()
-    .split("\n")
-    .filter((file) => !file.includes("/types/"));
+  // Обход папки, а не `git ls-files`: тесты гоняются и в распакованном
+  // архиве исходников, где `.git` нет.
+  const files = readdirSync("src", { recursive: true })
+    .map((file) => path.join("src", String(file)).replaceAll("\\", "/"))
+    .filter((file) => /\.jsx?$/.test(file) && !file.includes("/types/"));
   const code = files.map((file) => readFileSync(file, "utf8")).join("\n");
 
   it("объявляет то, что и раньше", () => {
