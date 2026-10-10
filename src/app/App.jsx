@@ -24,7 +24,7 @@ import {
 } from "./hooks/useRoundRemaining";
 import { useRegistryLocationSource } from "@/hooks/useRegistryLocationSource";
 import { MAP_BASE } from "@/pages/MapPage/mapBase";
-import { showsComponentTree } from "./pages";
+import { showsComponentTree, showsLocationScope } from "./pages";
 import { STATUS } from "@/utils/status";
 import { hasComponentRegistry } from "@/configs/componentRegistry.config";
 import { computeSurveyCoverage } from "@/utils/surveyCoverage";
@@ -333,7 +333,7 @@ export default function App() {
             gpsEnabled={gpsEnabled}
             setGpsEnabled={setGpsEnabled}
             onMenuOpen={() => setMenuOpen(true)}
-            locationScope={locationScope}
+            locationScope={showsLocationScope(page) ? locationScope : null}
             onLocationScopeOpen={() => setLocationBrowserOpen(true)}
           />
         </Suspense>

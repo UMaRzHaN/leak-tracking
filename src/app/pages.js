@@ -106,3 +106,18 @@ export function showsComponentTree(page, mapBase) {
     return true;
   return page === "map" && mapBase === MAP_BASE.COMPONENTS;
 }
+
+/**
+ * Показывать ли выбор места в шапке на этом экране.
+ *
+ * У «Чертежей» места нет: чертёж добавляют файлом, без привязки, и поле
+ * `location` записи остаётся пустым. Выбор места там показывал дерево и
+ * счётчик железа, а список не менялся — фильтр, который ничего не фильтрует,
+ * хуже его отсутствия.
+ *
+ * @param {string} page
+ * @returns {boolean}
+ */
+export function showsLocationScope(page) {
+  return page !== "schemas";
+}
