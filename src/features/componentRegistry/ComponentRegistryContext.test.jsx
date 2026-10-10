@@ -136,6 +136,35 @@ describe("ComponentRegistryProvider", () => {
     expect(result.current.components).toEqual([]);
   });
 
+  // Не прочитавшийся реестр — это «не знаем», а не «пусто». Запись поверх
+  // пустоты заменила бы одной карточкой весь обход.
+  it("не пишет поверх реестра, который не прочитался", async () => {
+    mocks.load.mockRejectedValue(new Error("storage gone"));
+    const { result } = mount();
+    await waitFor(() => expect(result.current.error).toBeTruthy());
+
+    await expect(
+      result.current.persist((list) => [...list, { id: "new" }]),
+    ).rejects.toThrow("storage gone");
+    expect(mocks.save).not.toHaveBeenCalled();
+  });
+
+  it("запись до чтения строится на прочитанном реестре", async () => {
+    const { result } = mount(() =>
+      useComponentRegistryStore({ active: false }),
+    );
+
+    await act(async () => {
+      await result.current.persist((list) => [...list, { id: "new" }]);
+    });
+
+    expect(mocks.save).toHaveBeenCalledWith(
+      upstream,
+      [{ id: "a", component_uid: "1" }, { id: "new" }],
+      expect.objectContaining({ previous: [{ id: "a", component_uid: "1" }] }),
+    );
+  });
+
   it("требует провайдера, а не отвечает пустым списком", () => {
     // Забытый провайдер — это ненайденный реестр на экране, где он есть.
     // Тихий пустой список превратил бы поломку в «карточек нет».
