@@ -65,9 +65,10 @@
 
 ### Вне кода
 
-- [ ] **Открыть PR** из `redesign` в `main`: CI запускается только на PR и на
-      `main`, по ветке он ещё не прогонялся.
-      <https://github.com/UMaRzHaN/leak-tracking/compare/main...redesign>
+- [x] **Открыть PR** из `redesign` в `main`:
+      <https://github.com/UMaRzHaN/leak-tracking/pull/26>. Первый прогон CI
+      поймал тест, падавший только на Node 22, и превышение бюджета первой
+      загрузки, накопленное за аудит; оба исправлены.
 - [ ] **Ключ Google Maps.** В Google Cloud Console ограничить ключ только Map
       Tiles API и поставить дневную квоту: ключ вшит в APK, его можно
       извлечь.
