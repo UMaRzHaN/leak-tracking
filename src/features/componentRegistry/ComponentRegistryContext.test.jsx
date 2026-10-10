@@ -148,6 +148,63 @@ describe("ComponentRegistryProvider", () => {
     expect(result.current.components).toEqual([]);
   });
 
+  it("запись, начатая до конца чтения, считается от прочитанного", async () => {
+    // Экран реестра даёт завести карточку, пока список ещё грузится. Запись
+    // считалась от пустого списка и заменяла весь обход одной карточкой.
+    /** @type {(list: any[]) => void} */
+    let finishLoad = () => {};
+    mocks.load.mockImplementationOnce(
+      () => new Promise((resolve) => (finishLoad = resolve)),
+    );
+    const { result } = mount();
+    await waitFor(() => expect(mocks.load).toHaveBeenCalledTimes(1));
+
+    let written;
+    await act(async () => {
+      written = result.current.persist((current) => [
+        ...current,
+        { id: "new", component_uid: "2" },
+      ]);
+      // Чтение заканчивается заметно позже, чем запись встала в очередь.
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      finishLoad([{ id: "a", component_uid: "1" }]);
+      await written;
+    });
+
+    const [, list, options] = mocks.save.mock.calls[0];
+    expect(list.map((card) => card.id)).toEqual(["a", "new"]);
+    expect(options.previous.map((card) => card.id)).toEqual(["a"]);
+  });
+
+  it("после отказа чтения не пишет вслепую поверх реестра", async () => {
+    // Сорвавшееся чтение оставляло пустой список, а экран всё равно давал
+    // сохранить карточку — и весь реестр заменялся ею одной.
+    mocks.load.mockRejectedValue(new Error("storage gone"));
+    const { result } = mount();
+    await waitFor(() => expect(result.current.error).toBeTruthy());
+
+    await expect(
+      result.current.persist((current) => [
+        ...current,
+        { id: "new", component_uid: "2" },
+      ]),
+    ).rejects.toThrow("storage gone");
+    expect(mocks.save).not.toHaveBeenCalled();
+
+    // Хранилище ожило — запись строится на том, что в нём лежит.
+    mocks.load.mockResolvedValue([{ id: "a", component_uid: "1" }]);
+    await act(async () => {
+      await result.current.persist((current) => [
+        ...current,
+        { id: "new", component_uid: "2" },
+      ]);
+    });
+    expect(mocks.save.mock.calls[0][1].map((card) => card.id)).toEqual([
+      "a",
+      "new",
+    ]);
+  });
+
   it("требует провайдера, а не отвечает пустым списком", () => {
     // Забытый провайдер — это ненайденный реестр на экране, где он есть.
     // Тихий пустой список превратил бы поломку в «карточек нет».

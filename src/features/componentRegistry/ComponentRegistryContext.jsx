@@ -85,6 +85,15 @@ export function ComponentRegistryProvider({ children }) {
   // Мутации читают этот список, а не состояние: запись, начатая до
   // ре-рендера, должна строиться на том, из чего её посчитали.
   const latestRef = useRef(EMPTY);
+  // Отражает ли latestRef хранилище. Пока нет — до первой загрузки или после
+  // отказа чтения, — список в памяти пуст не потому, что реестр пуст, и
+  // запись, посчитанная от него, заменила бы весь обход одной карточкой.
+  const latestIsStoredRef = useRef(false);
+  // Чтение, которое сейчас идёт. Запись ждёт его: иначе карточка, сохранённая
+  // до конца чтения, считалась бы от списка, который вот-вот устареет, — в
+  // том числе от прочитанного до импорта, который это чтение и подхватывает.
+  /** @type {import("react").MutableRefObject<Promise<unknown>>} */
+  const loadingRef = useRef(Promise.resolve());
   // Номер поколения: ответ по прежнему проекту не должен подменить нынешний
   // список, а запись, начатая до переключения, — вернуть его на экран.
   const generationRef = useRef(0);
@@ -104,6 +113,8 @@ export function ComponentRegistryProvider({ children }) {
 
     generationRef.current += 1;
     latestRef.current = EMPTY;
+    latestIsStoredRef.current = false;
+    loadingRef.current = Promise.resolve();
     writeQueueRef.current = Promise.resolve(EMPTY);
     setStored(EMPTY);
     setError(null);
@@ -126,11 +137,12 @@ export function ComponentRegistryProvider({ children }) {
     let cancelled = false;
     setError(null);
 
-    loadRepository()
+    const loadingNow = loadRepository()
       .then((repository) => repository.load(project))
       .then((loaded) => {
         if (cancelled || generation !== generationRef.current) return;
         latestRef.current = loaded;
+        latestIsStoredRef.current = true;
         setStored(loaded);
       })
       .catch((loadError) => {
@@ -143,6 +155,10 @@ export function ComponentRegistryProvider({ children }) {
           setSettledRevision(revision);
         }
       });
+    // Пустой намеренно: об отказе чтения сообщает ветка выше, а записи
+    // нужно только дождаться, чем бы оно ни кончилось.
+    // eslint-disable-next-line no-restricted-syntax
+    loadingRef.current = loadingNow.catch(() => {});
 
     return () => {
       cancelled = true;
@@ -163,7 +179,14 @@ export function ComponentRegistryProvider({ children }) {
       const generation = generationRef.current;
       const run = writeQueueRef.current.then(async () => {
         const repository = await loadRepository();
-        const previous = latestRef.current;
+        await loadingRef.current;
+        // Список в памяти не из хранилища — чтение ещё не случилось или
+        // сорвалось. Тогда основа записи читается здесь же: отказ чтения
+        // сорвёт и запись, а не заменит реестр одной новой карточкой.
+        const previous =
+          latestIsStoredRef.current && generation === generationRef.current
+            ? latestRef.current
+            : await repository.load(project);
         const written = await repository.save(project, recompute(previous), {
           numericKeys,
           // Что, по мнению приложения, уже лежит в хранилище. С этим одна
@@ -175,6 +198,7 @@ export function ComponentRegistryProvider({ children }) {
         // показать записанное — уже нет.
         if (generation !== generationRef.current) return written;
         latestRef.current = written;
+        latestIsStoredRef.current = true;
         setStored(written);
         return written;
       });
