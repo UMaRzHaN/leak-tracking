@@ -391,6 +391,25 @@ describe("LeakRepository Android SQLite storage", () => {
     );
   });
 
+  // Маркер есть, а база о проекте не знает: файл базы пересоздан или испорчен.
+  // Открыть такой проект пустым — значит затереть остатки первым же
+  // сохранением; поднять JSON времён до переезда — молча откатить его.
+  it("refuses to open a migrated project the database no longer holds", async () => {
+    nativeState.files.set(
+      "LeakReports/alpha/data/data.json",
+      JSON.stringify([{ id: "pre-migration", status: "open" }]),
+    );
+    await LeakRepository.saveAll([{ id: "sqlite", status: "open" }], project);
+    resetNativeStorageStrategyForTests();
+    nativeState.projects.delete("alpha");
+
+    await expect(LeakRepository.getAll(project)).rejects.toMatchObject({
+      code: "PROJECT_DATA_READ_FAILED",
+      cause: expect.objectContaining({ code: "SQLITE_PROJECT_MISSING" }),
+    });
+    expect(nativeState.projects.has("alpha")).toBe(false);
+  });
+
   it("falls back to snapshot/journal only when the plugin is unavailable", async () => {
     nativeState.unavailable = true;
     await LeakRepository.saveAll([{ id: "legacy", status: "open" }], project);
