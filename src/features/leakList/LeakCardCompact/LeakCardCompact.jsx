@@ -17,6 +17,7 @@ import {
 } from "@/utils/monitoring";
 import PhotoViewer from "@/features/photos/PhotoViewer/PhotoViewer";
 import s from "./LeakCardCompact.module.scss";
+import LeakCardPhotoStack from "./LeakCardPhotoStack";
 import { isPresent } from "@/utils/isPresent";
 
 function fmtNum(value, decimals = 1, lang) {
@@ -301,47 +302,14 @@ function LeakCardCompact({
                 )}
               </div>
               {showBook ? (
-                <div
-                  className={`${s.photoStack} ${
-                    comparePairs.length >= 3 ? s.photoStackTriple : ""
-                  } ${showRepairStack ? s.photoStackRepair : ""}`}
-                  onClick={(e) => {
+                <LeakCardPhotoStack
+                  pairs={comparePairs}
+                  repair={showRepairStack}
+                  onOpen={(e) => {
                     e.stopPropagation();
                     setViewerIndex(0);
                   }}
-                >
-                  {comparePairs.map((pair, index) => {
-                    const isFront = index === 0;
-                    const isBack = index === comparePairs.length - 1;
-                    return (
-                      <div
-                        key={pair.label}
-                        className={`${s.photoStackItem} ${
-                          isFront
-                            ? s.photoStackFront
-                            : isBack
-                              ? s.photoStackBack
-                              : s.photoStackMiddle
-                        } ${s[`photoStack${pair.key}`] ?? ""}`}
-                      >
-                        <img
-                          src={pair.src}
-                          alt={pair.label}
-                          className={s.photoStackImg}
-                          loading="lazy"
-                          draggable={false}
-                        />
-                        <span
-                          className={
-                            isFront ? s.photoStackLabel : s.photoStackBackLabel
-                          }
-                        >
-                          {pair.label}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
+                />
               ) : (
                 hasPhoto && (
                   <div
