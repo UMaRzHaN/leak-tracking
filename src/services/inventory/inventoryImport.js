@@ -41,7 +41,7 @@ import { mergeSheetEditsIntoCards } from "./inventorySheetMerge";
  * слияние со ссылкой в чужое хранилище, показывала бы пустую рамку там, где
  * есть фотография.
  *
- * @returns {Promise<{added: number, updated: number, conflicts: number}|null>}
+ * @returns {Promise<{added: number, updated: number, removed: number, conflicts: number}|null>}
  *   null — если служебного листа в архиве нет вовсе.
  */
 async function restoreComponentsFromWorkbook(file, project, registry) {
@@ -106,7 +106,7 @@ export function separateSheetCards(local, incoming) {
  * @param {File|Blob} file
  * @param {{id: string, folderName?: string}} project
  * @param {{excel: {headers: string[], keysOrder: string[]}}} registry the project's registry declaration
- * @returns {Promise<{added: number, updated: number, removed?: number, conflicts: number, shadowed: number, skipped: number, source: "archive"|"sheet"|"none", schemas: number}>}
+ * @returns {Promise<{added: number, updated: number, removed: number, conflicts: number, shadowed: number, skipped: number, source: "archive"|"sheet"|"none", schemas: number}>}
  */
 /**
  * `ComponentRepository` тянет за собой мост Capacitor и нативное хранилище
@@ -124,6 +124,7 @@ export async function importInventoryFile(file, project, registry) {
   const nothing = {
     added: 0,
     updated: 0,
+    removed: 0,
     conflicts: 0,
     shadowed: 0,
     skipped: 0,
@@ -196,6 +197,8 @@ export async function importInventoryFile(file, project, registry) {
   return {
     added,
     updated,
+    // Лист удалений не несёт: удаляют только надгробия служебного листа.
+    removed: 0,
     conflicts: conflicts.length,
     shadowed: shadowed.length,
     skipped,
