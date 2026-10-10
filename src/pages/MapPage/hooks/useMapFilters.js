@@ -1,5 +1,6 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { useActiveLocation } from "@/hooks/useActiveLocation";
+import { useSharedFilterStates } from "@/hooks/useSharedFilterState";
 import { getDistanceMeters } from "@/utils/geoUtils";
 import { STATUS } from "@/utils/status";
 import { readMonitoringRound } from "@/utils/monitoringRound";
@@ -20,6 +21,26 @@ import { useLocationToggles } from "./useLocationToggles";
 
 const NEARBY_RADIUS_OPTIONS = [100, 500, 1000];
 
+/** @type {Record<string, [string, any, boolean?]>} значение → [сеттер, начальное, по сеттеру?] */
+const FILTER_STATE = {
+  nearbyFilter: ["setNearbyFilter", false],
+  nearbyRadius: ["setNearbyRadius", NEARBY_RADIUS_M],
+  priorityFilter: ["setPriorityFilter", []],
+  statusFilter: ["setFilter", []],
+  fictionFilter: ["setFictionFilter", FICTION_FILTER.ALL],
+  monitoringFilter: ["setMonitoringFilter", MONITORING_FILTER.DUE],
+  locationFilter: ["setLocationFilter", null, true],
+  mainLocationFilter: ["setMainLocationFilter", null, true],
+};
+
+/** Обновление мультивыбора: значение добавляется, а выбранное — снимается. */
+const toggleValue = (value) => (current) => {
+  const values = normalizeMultiFilter(current);
+  return values.includes(value)
+    ? values.filter((item) => item !== value)
+    : [...values, value];
+};
+
 export function useMapFilters({
   leaks,
   coords,
@@ -38,26 +59,6 @@ export function useMapFilters({
     secondary: locationKey,
     label: locationLabel,
   } = useActiveLocation(leaks);
-  const [localNearbyOnly, setLocalNearbyOnly] = useState(false);
-  const [localNearbyRadius, setLocalNearbyRadius] = useState(NEARBY_RADIUS_M);
-  const [localPriorityFilter, setLocalPriorityFilter] = useState(
-    /** @type {string[]} */ ([]),
-  );
-  const [localStatusFilter, setLocalStatusFilter] = useState(
-    /** @type {string[]} */ ([]),
-  );
-  const [localMainLocationFilter, setLocalMainLocationFilter] = useState(
-    /** @type {string|null} */ (null),
-  );
-  const [localLocationFilter, setLocalLocationFilter] = useState(
-    /** @type {string|null} */ (null),
-  );
-  const [localFictionFilter, setLocalFictionFilter] = useState(
-    FICTION_FILTER.ALL,
-  );
-  const [localMonitoringFilter, setLocalMonitoringFilter] = useState(
-    MONITORING_FILTER.DUE,
-  );
   const monitoringRound = useMemo(
     () => readMonitoringRound(activeProjectId),
     [activeProjectId],
@@ -66,45 +67,28 @@ export function useMapFilters({
   const monitoringRoundNumber = monitoringRound?.number ?? null;
   const hasMonitoringRound = Boolean(monitoringRoundId);
 
-  const nearbyOnly = sharedFilters?.nearbyFilter ?? localNearbyOnly;
-  const setNearbyOnly = sharedFilters?.setNearbyFilter ?? setLocalNearbyOnly;
-  const nearbyRadius = sharedFilters?.nearbyRadius ?? localNearbyRadius;
-  const setNearbyRadius =
-    sharedFilters?.setNearbyRadius ?? setLocalNearbyRadius;
-  const priorityFilters = normalizeMultiFilter(
-    sharedFilters?.priorityFilter ?? localPriorityFilter,
-  );
-  const setPriorityFilter =
-    sharedFilters?.setPriorityFilter ?? setLocalPriorityFilter;
-  const statusFilters = normalizeMultiFilter(
-    sharedFilters?.statusFilter ?? localStatusFilter,
-  );
-  const setStatusFilter = sharedFilters?.setFilter ?? setLocalStatusFilter;
-  // Общий с базой и мониторингом: выбранное там видно здесь.
-  const fictionFilter = sharedFilters?.fictionFilter ?? localFictionFilter;
-  const setFictionFilter =
-    sharedFilters?.setFictionFilter ?? setLocalFictionFilter;
-  const monitoringFilter =
-    sharedFilters?.monitoringFilter ?? localMonitoringFilter;
-  const setMonitoringFilter =
-    sharedFilters?.setMonitoringFilter ?? setLocalMonitoringFilter;
+  const {
+    nearbyFilter: nearbyOnly,
+    setNearbyFilter: setNearbyOnly,
+    nearbyRadius,
+    setNearbyRadius,
+    priorityFilter: rawPriorityFilter,
+    setPriorityFilter,
+    statusFilter: rawStatusFilter,
+    setFilter: setStatusFilter,
+    // Общий с базой и мониторингом: выбранное там видно здесь.
+    fictionFilter,
+    setFictionFilter,
+    monitoringFilter,
+    setMonitoringFilter,
+    locationFilter,
+    setLocationFilter,
+    mainLocationFilter,
+    setMainLocationFilter,
+  } = useSharedFilterStates(sharedFilters, FILTER_STATE);
+  const priorityFilters = normalizeMultiFilter(rawPriorityFilter);
+  const statusFilters = normalizeMultiFilter(rawStatusFilter);
   const sharedSearch = sharedFilters?.search ?? "";
-  const hasSharedLocationFilter =
-    typeof sharedFilters?.setLocationFilter === "function";
-  const locationFilter = hasSharedLocationFilter
-    ? (sharedFilters.locationFilter ?? null)
-    : localLocationFilter;
-  const setLocationFilter = hasSharedLocationFilter
-    ? sharedFilters.setLocationFilter
-    : setLocalLocationFilter;
-  const hasSharedMainLocationFilter =
-    typeof sharedFilters?.setMainLocationFilter === "function";
-  const mainLocationFilter = hasSharedMainLocationFilter
-    ? (sharedFilters.mainLocationFilter ?? null)
-    : localMainLocationFilter;
-  const setMainLocationFilter = hasSharedMainLocationFilter
-    ? sharedFilters.setMainLocationFilter
-    : setLocalMainLocationFilter;
   const lastLocationFilter = sharedFilters?.lastLocationFilter ?? null;
   const {
     enabledLocations,
@@ -158,26 +142,11 @@ export function useMapFilters({
   );
 
   const togglePriorityFilter = useCallback(
-    (priority) => {
-      setPriorityFilter((current) => {
-        const values = normalizeMultiFilter(current);
-        return values.includes(priority)
-          ? values.filter((item) => item !== priority)
-          : [...values, priority];
-      });
-    },
+    (priority) => setPriorityFilter(toggleValue(priority)),
     [setPriorityFilter],
   );
-
   const toggleStatusFilter = useCallback(
-    (status) => {
-      setStatusFilter((current) => {
-        const values = normalizeMultiFilter(current);
-        return values.includes(status)
-          ? values.filter((item) => item !== status)
-          : [...values, status];
-      });
-    },
+    (status) => setStatusFilter(toggleValue(status)),
     [setStatusFilter],
   );
 

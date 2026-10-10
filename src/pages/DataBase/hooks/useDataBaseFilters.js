@@ -3,25 +3,35 @@ import { STATUS, STATUS_ORDER } from "@/utils/status";
 import { distanceMeters, filterNearbyLeaks } from "@/utils/geoUtils";
 import { matchesLeakLocationFilter } from "@/utils/locationFilter";
 import { compareLeakRecency } from "@/utils/leakOrder";
-
-export const ALL = "all";
+import { useSharedFilterStates } from "@/hooks/useSharedFilterState";
 import { FICTION_FILTER, NEARBY, NEARBY_RADIUS_M } from "@/domain/leakFilters";
 import { isLeakFiction } from "@/utils/monitoring";
-
-export const NEARBY_RADIUS_OPTIONS = [100, 500, 1000];
-
 import {
   buildLeakSearchText,
   matchesLeakSearch,
   normalizeLeakSearchText,
 } from "./leakSearchText";
 
+export const ALL = "all";
+export const NEARBY_RADIUS_OPTIONS = [100, 500, 1000];
 export { buildLeakSearchText, matchesLeakSearch, normalizeLeakSearchText };
 
 export function normalizeMultiFilter(value) {
   if (Array.isArray(value)) return value.filter((item) => item !== ALL);
   return value && value !== ALL ? [value] : [];
 }
+
+/** @type {Record<string, [string, any, boolean?]>} значение → [сеттер, начальное, по сеттеру?] */
+const FILTER_STATE = {
+  statusFilter: ["setFilter", []],
+  priorityFilter: ["setPriorityFilter", []],
+  fictionFilter: ["setFictionFilter", FICTION_FILTER.ALL],
+  mainLocationFilter: ["setMainLocationFilter", null, true],
+  locationFilter: ["setLocationFilter", null, true],
+  lastLocationFilter: ["setLastLocationFilter", null, true],
+  nearbyFilter: ["setNearbyFilter", false],
+  nearbyRadius: ["setNearbyRadius", NEARBY_RADIUS_M],
+};
 
 export function useDataBaseFilters({
   data,
@@ -33,72 +43,30 @@ export function useDataBaseFilters({
 }) {
   const [localSearchInput, setLocalSearchInput] = useState("");
   const [search, setSearch] = useState(() => sharedFilters?.search ?? "");
-  const [localStatusFilter, setLocalStatusFilter] = useState(
-    /** @type {string[]} */ ([]),
-  );
-  const [localPriorityFilter, setLocalPriorityFilter] = useState(
-    /** @type {string[]} */ ([]),
-  );
-  const [localFictionFilter, setLocalFictionFilter] = useState(
-    FICTION_FILTER.ALL,
-  );
-  const [localMainLocationFilter, setLocalMainLocationFilter] = useState(
-    /** @type {string|null} */ (null),
-  );
-  const [localLocationFilter, setLocalLocationFilter] = useState(
-    /** @type {string|null} */ (null),
-  );
-  const [localLastLocationFilter, setLocalLastLocationFilter] = useState(
-    /** @type {string|null} */ (null),
-  );
-  const [localNearbyFilter, setLocalNearbyFilter] = useState(false);
-  const [localNearbyRadius, setLocalNearbyRadius] = useState(NEARBY_RADIUS_M);
   const [sortAsc, setSortAsc] = useState(false);
 
   const searchInput = sharedFilters?.search ?? localSearchInput;
   const setSearchInput = sharedFilters?.setSearch ?? setLocalSearchInput;
-  const statusFilter = normalizeMultiFilter(
-    sharedFilters?.statusFilter ?? localStatusFilter,
-  );
-  const setFilter = sharedFilters?.setFilter ?? setLocalStatusFilter;
-  const priorityFilter = normalizeMultiFilter(
-    sharedFilters?.priorityFilter ?? localPriorityFilter,
-  );
-  const setPriorityFilter =
-    sharedFilters?.setPriorityFilter ?? setLocalPriorityFilter;
-  const fictionFilter = sharedFilters?.fictionFilter ?? localFictionFilter;
-  const setFictionFilter =
-    sharedFilters?.setFictionFilter ?? setLocalFictionFilter;
-  const hasSharedMainLocationFilter =
-    typeof sharedFilters?.setMainLocationFilter === "function";
-  const mainLocationFilter = hasSharedMainLocationFilter
-    ? (sharedFilters.mainLocationFilter ?? null)
-    : localMainLocationFilter;
-  const setMainLocationFilter = hasSharedMainLocationFilter
-    ? sharedFilters.setMainLocationFilter
-    : setLocalMainLocationFilter;
-  const hasSharedLocationFilter =
-    typeof sharedFilters?.setLocationFilter === "function";
-  const locationFilter = hasSharedLocationFilter
-    ? (sharedFilters.locationFilter ?? null)
-    : localLocationFilter;
-  const setLocationFilter = hasSharedLocationFilter
-    ? sharedFilters.setLocationFilter
-    : setLocalLocationFilter;
-  const hasSharedLastLocationFilter =
-    typeof sharedFilters?.setLastLocationFilter === "function";
-  const lastLocationFilter = hasSharedLastLocationFilter
-    ? (sharedFilters.lastLocationFilter ?? null)
-    : localLastLocationFilter;
-  const setLastLocationFilter = hasSharedLastLocationFilter
-    ? sharedFilters.setLastLocationFilter
-    : setLocalLastLocationFilter;
-  const nearbyFilter = sharedFilters?.nearbyFilter ?? localNearbyFilter;
-  const setNearbyFilter =
-    sharedFilters?.setNearbyFilter ?? setLocalNearbyFilter;
-  const nearbyRadius = sharedFilters?.nearbyRadius ?? localNearbyRadius;
-  const setNearbyRadius =
-    sharedFilters?.setNearbyRadius ?? setLocalNearbyRadius;
+  const {
+    statusFilter: rawStatusFilter,
+    setFilter,
+    priorityFilter: rawPriorityFilter,
+    setPriorityFilter,
+    fictionFilter,
+    setFictionFilter,
+    mainLocationFilter,
+    setMainLocationFilter,
+    locationFilter,
+    setLocationFilter,
+    lastLocationFilter,
+    setLastLocationFilter,
+    nearbyFilter,
+    setNearbyFilter,
+    nearbyRadius,
+    setNearbyRadius,
+  } = useSharedFilterStates(sharedFilters, FILTER_STATE);
+  const statusFilter = normalizeMultiFilter(rawStatusFilter);
+  const priorityFilter = normalizeMultiFilter(rawPriorityFilter);
 
   const locationKey = useMemo(() => {
     if (configuredLocationKey) return configuredLocationKey;
