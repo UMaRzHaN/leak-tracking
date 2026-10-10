@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import { expect, test } from "@playwright/test";
+import { confirmNewRepairRound } from "./repairSteps.js";
 import {
   createLeak,
   createProject,
@@ -90,6 +91,7 @@ test("кладёт в книгу журнал ремонтов и приёмку
 
   await footerTab(page, "Обход").click();
   await page.getByRole("button", { name: "Проверить", exact: true }).click();
+  await confirmNewRepairRound(page);
   const sheet = page.getByRole("dialog", { name: "Приёмка ремонта" });
   await sheet.getByLabel("Утечка есть?").selectOption("yes");
   await sheet.getByLabel("Бригада", { exact: true }).fill("Бригада 2");
